@@ -1,7 +1,10 @@
 import { Bell, LogOut, Search, Settings, User } from 'lucide-react'
+import { useRouter } from '@tanstack/react-router'
+import { toast } from 'sonner'
 
+import { logoutFn } from '@/server/auth'
 import { ThemeToggle } from '@/components/theme-toggle'
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
+import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { Button } from '@/components/ui/button'
 import {
   DropdownMenu,
@@ -14,7 +17,32 @@ import {
 import { Input } from '@/components/ui/input'
 import { Separator } from '@/components/ui/separator'
 
-export function Topbar() {
+function initialsFromEmail(email: string) {
+  const name = email.split('@')[0]
+  return name.slice(0, 2).toUpperCase()
+}
+
+export function Topbar({
+  userEmail,
+}: {
+  userEmail: string | null | undefined
+}) {
+  const router = useRouter()
+
+  async function handleSignOut() {
+    const result = await logoutFn()
+    if (result?.error) {
+      toast.error(result.message)
+      return
+    }
+    toast.success('Signed out')
+    await router.invalidate()
+    router.navigate({ to: '/login' })
+  }
+
+  const displayName = userEmail ?? 'Guest'
+  const initials = userEmail ? initialsFromEmail(userEmail) : '?'
+
   return (
     <header className="flex h-16 items-center gap-3 border-b bg-background px-4 lg:px-6">
       <div className="relative max-w-md flex-1">
@@ -35,16 +63,17 @@ export function Topbar() {
           <DropdownMenuTrigger asChild>
             <Button variant="ghost" className="gap-2 px-2">
               <Avatar className="size-8">
-                <AvatarImage src="" alt="Sam Hari" />
-                <AvatarFallback>SH</AvatarFallback>
+                <AvatarFallback>{initials}</AvatarFallback>
               </Avatar>
               <span className="hidden text-sm font-medium sm:inline">
-                Sam Hari
+                {displayName}
               </span>
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-48">
-            <DropdownMenuLabel>My Account</DropdownMenuLabel>
+            <DropdownMenuLabel className="truncate">
+              {displayName}
+            </DropdownMenuLabel>
             <DropdownMenuSeparator />
             <DropdownMenuItem>
               <User className="size-4" /> Profile
@@ -53,7 +82,13 @@ export function Topbar() {
               <Settings className="size-4" /> Settings
             </DropdownMenuItem>
             <DropdownMenuSeparator />
-            <DropdownMenuItem variant="destructive">
+            <DropdownMenuItem
+              variant="destructive"
+              onSelect={(e) => {
+                e.preventDefault()
+                handleSignOut()
+              }}
+            >
               <LogOut className="size-4" /> Sign out
             </DropdownMenuItem>
           </DropdownMenuContent>

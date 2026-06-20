@@ -10,13 +10,14 @@ import { DashboardShell } from '@/components/layout/dashboard-shell'
 import { Button } from '@/components/ui/button'
 import { stats } from '@/data/mock'
 
-export const Route = createFileRoute('/dashboard')({
+export const Route = createFileRoute('/_authed/dashboard')({
   component: DashboardPage,
 })
 
 function DashboardPage() {
+  const { user } = Route.useRouteContext()
   return (
-    <DashboardShell>
+    <DashboardShell userEmail={user?.email}>
       <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
         <div>
           <h1 className="text-2xl font-semibold tracking-tight">Dashboard</h1>

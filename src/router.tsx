@@ -1,29 +1,45 @@
 import { QueryClient } from '@tanstack/react-query'
 import { createRouter as createTanStackRouter } from '@tanstack/react-router'
-
 import { routeTree } from './routeTree.gen'
+
+export interface AppUser {
+  id: string
+  email: string
+}
 
 export interface RouterContext {
   queryClient: QueryClient
+  // `user` is added by the root route's beforeLoad and is available
+  // to all descendant routes via Route.useRouteContext().
+  user?: AppUser | null
 }
 
-export function createRouter() {
+export function getRouter() {
   const queryClient = new QueryClient({
     defaultOptions: {
-      queries: { refetchOnWindowFocus: false, staleTime: Infinity },
+      queries: { refetchOnWindowFocus: false, staleTime: 30_000 },
     },
   })
 
-  return createTanStackRouter({
+  const router = createTanStackRouter({
     routeTree,
     defaultPreload: 'intent',
     scrollRestoration: true,
-    context: { queryClient },
+    context: { queryClient, user: null },
   })
+
+  return router
 }
 
 declare module '@tanstack/react-router' {
   interface Register {
-    router: ReturnType<typeof createRouter>
+    router: ReturnType<typeof getRouter>
+  }
+}
+
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
   }
 }

@@ -1,5 +1,6 @@
 import { useState } from 'react'
-import { useNavigate } from '@tanstack/react-router'
+import { useRouter } from '@tanstack/react-router'
+import { useMutation } from '@tanstack/react-query'
 import { Loader2 } from 'lucide-react'
 import { toast } from 'sonner'
 
@@ -20,26 +21,47 @@ import {
   TabsList,
   TabsTrigger,
 } from '@/components/ui/tabs'
+import { loginFn, signupFn } from '@/server/auth'
 
 type Mode = 'login' | 'signup'
 
 export function AuthForm() {
-  const navigate = useNavigate()
+  const router = useRouter()
   const [mode, setMode] = useState<Mode>('login')
-  const [submitting, setSubmitting] = useState(false)
 
-  function handleSubmit(event: React.FormEvent) {
-    event.preventDefault()
-    setSubmitting(true)
-    // Mock auth: simulate a network round-trip, then navigate.
-    setTimeout(() => {
-      setSubmitting(false)
-      toast.success(
-        mode === 'login' ? 'Welcome back!' : 'Account created successfully',
-      )
-      navigate({ to: '/dashboard' })
-    }, 600)
-  }
+  const loginMutation = useMutation({
+    mutationFn: (vars: { data: { email: string; password: string } }) =>
+      loginFn(vars),
+    onSuccess: async (data) => {
+      if (data?.error) {
+        toast.error(data.message)
+        return
+      }
+      toast.success('Welcome back!')
+      await router.invalidate()
+      router.navigate({ to: '/dashboard' })
+    },
+  })
+
+  const signupMutation = useMutation({
+    mutationFn: (vars: {
+      data: { email: string; password: string; name?: string }
+    }) => signupFn(vars),
+    onSuccess: async (data) => {
+      if (data?.error) {
+        toast.error(data.message)
+        return
+      }
+      toast.success('Account created! Check your email to verify.')
+      await router.invalidate()
+      router.navigate({ to: '/dashboard' })
+    },
+  })
+
+  const submitting =
+    mode === 'login'
+      ? loginMutation.status === 'pending'
+      : signupMutation.status === 'pending'
 
   return (
     <div className="flex min-h-svh items-center justify-center bg-gradient-to-b from-muted/50 to-background p-4">
@@ -70,7 +92,19 @@ export function AuthForm() {
               </TabsList>
 
               <TabsContent value="login">
-                <form onSubmit={handleSubmit} className="space-y-4 pt-2">
+                <form
+                  onSubmit={(e) => {
+                    e.preventDefault()
+                    const formData = new FormData(e.currentTarget)
+                    loginMutation.mutate({
+                      data: {
+                        email: formData.get('email') as string,
+                        password: formData.get('password') as string,
+                      },
+                    })
+                  }}
+                  className="space-y-4 pt-2"
+                >
                   <Field
                     id="email"
                     label="Email"
@@ -90,7 +124,20 @@ export function AuthForm() {
               </TabsContent>
 
               <TabsContent value="signup">
-                <form onSubmit={handleSubmit} className="space-y-4 pt-2">
+                <form
+                  onSubmit={(e) => {
+                    e.preventDefault()
+                    const formData = new FormData(e.currentTarget)
+                    signupMutation.mutate({
+                      data: {
+                        email: formData.get('email') as string,
+                        password: formData.get('password') as string,
+                        name: formData.get('name') as string,
+                      },
+                    })
+                  }}
+                  className="space-y-4 pt-2"
+                >
                   <Field
                     id="name"
                     label="Full name"
@@ -112,15 +159,15 @@ export function AuthForm() {
                     placeholder="••••••••"
                     autoComplete="new-password"
                   />
-                  <SubmitButton submitting={submitting} label="Create account" />
+                  <SubmitButton
+                    submitting={submitting}
+                    label="Create account"
+                  />
                 </form>
               </TabsContent>
             </Tabs>
           </CardContent>
         </Card>
-        <p className="mt-4 text-center text-xs text-muted-foreground">
-          This is a mock flow — no real authentication.
-        </p>
       </div>
     </div>
   )
@@ -134,7 +181,9 @@ function Field({
   return (
     <div className="space-y-2">
       <Label htmlFor={id}>{label}</Label>
-      <Input id={id} required {...props} />
+      {/* `name` must be set for FormData.get() to retrieve the value.
+          Default it to the same value as `id` unless overridden. */}
+      <Input id={id} name={id} required {...props} />
     </div>
   )
 }
