@@ -168,6 +168,14 @@ export function AuthForm() {
             </Tabs>
           </CardContent>
         </Card>
+        <p className="mt-4 text-center text-xs text-muted-foreground">
+          <a
+            href="/pricing"
+            className="underline-offset-4 hover:underline"
+          >
+            View plans &amp; pricing
+          </a>
+        </p>
       </div>
     </div>
   )

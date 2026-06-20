@@ -6,6 +6,7 @@ import { AgentsTable } from '@/components/dashboard/agents-table'
 import { ConversationsPanel } from '@/components/dashboard/conversations-panel'
 import { StatCard } from '@/components/dashboard/stat-card'
 import { TrafficChart } from '@/components/dashboard/traffic-chart'
+import { UsageLimitBanner } from '@/components/billing/usage-limit-banner'
 import { DashboardShell } from '@/components/layout/dashboard-shell'
 import { Button } from '@/components/ui/button'
 import { stats } from '@/data/mock'
@@ -29,6 +30,8 @@ function DashboardPage() {
           <Plus className="size-4" /> New Agent
         </Button>
       </div>
+
+      <UsageLimitBanner className="mb-4" />
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
         {stats.map((stat) => (

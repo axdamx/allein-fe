@@ -7,36 +7,46 @@ import {
   Settings,
   Users,
 } from 'lucide-react'
+import { Link } from '@tanstack/react-router'
 
 import { Brand } from '@/components/brand'
-import {
-  Avatar,
-  AvatarFallback,
-  AvatarImage,
-} from '@/components/ui/avatar'
-import { Badge } from '@/components/ui/badge'
+import { PlanBadge } from '@/components/billing/plan-badge'
+import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { Separator } from '@/components/ui/separator'
 import { cn } from '@/lib/utils'
+import type { PlanTier } from '@/lib/plans'
 
 interface NavItem {
   label: string
   icon: ComponentType<{ className?: string }>
+  to: string
   active?: boolean
 }
 
 const mainNav: NavItem[] = [
-  { label: 'Dashboard', icon: LayoutDashboard, active: true },
-  { label: 'Agents', icon: Bot },
-  { label: 'Team', icon: Users },
-  { label: 'Analytics', icon: BarChart3 },
+  { label: 'Dashboard', icon: LayoutDashboard, to: '/dashboard', active: true },
+  { label: 'Agents', icon: Bot, to: '/agents' },
+  { label: 'Team', icon: Users, to: '/team' },
+  { label: 'Analytics', icon: BarChart3, to: '/analytics' },
 ]
 
 const footerNav: NavItem[] = [
-  { label: 'Settings', icon: Settings },
-  { label: 'Support', icon: LifeBuoy },
+  { label: 'Settings', icon: Settings, to: '/settings' },
+  { label: 'Support', icon: LifeBuoy, to: '/support' },
 ]
 
-export function Sidebar() {
+export function Sidebar({
+  userEmail,
+  userName,
+  userPlan = 'free',
+}: {
+  userEmail?: string | null
+  userName?: string | null
+  userPlan?: PlanTier
+}) {
+  const displayName = userName ?? (userEmail ? userEmail.split('@')[0] : 'Guest')
+  const initials = displayName.slice(0, 2).toUpperCase()
+
   return (
     <aside className="hidden w-60 shrink-0 flex-col border-r bg-sidebar lg:flex">
       <div className="flex h-16 items-center px-6">
@@ -60,18 +70,15 @@ export function Sidebar() {
       <Separator />
       <div className="flex items-center gap-3 p-4">
         <Avatar className="size-9">
-          <AvatarImage src="" alt="Sam Hari" />
-          <AvatarFallback>SH</AvatarFallback>
+          <AvatarFallback>{initials}</AvatarFallback>
         </Avatar>
         <div className="min-w-0 flex-1">
-          <p className="truncate text-sm font-medium">Sam Hari</p>
+          <p className="truncate text-sm font-medium capitalize">{displayName}</p>
           <p className="truncate text-xs text-muted-foreground">
-            sam@allein.ai
+            {userEmail ?? 'Not signed in'}
           </p>
         </div>
-        <Badge variant="secondary" className="shrink-0">
-          Pro
-        </Badge>
+        <PlanBadge tier={userPlan} className="shrink-0" />
       </div>
     </aside>
   )
@@ -80,8 +87,8 @@ export function Sidebar() {
 function NavLink({ item }: { item: NavItem }) {
   const Icon = item.icon
   return (
-    <a
-      href="#"
+    <Link
+      to={item.to}
       aria-current={item.active ? 'page' : undefined}
       className={cn(
         'flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors',
@@ -92,6 +99,6 @@ function NavLink({ item }: { item: NavItem }) {
     >
       <Icon className="size-4" />
       {item.label}
-    </a>
+    </Link>
   )
 }
