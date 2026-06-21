@@ -7,7 +7,7 @@ import {
   CardTitle,
 } from '@/components/ui/card'
 import { cn } from '@/lib/utils'
-import type { Stat } from '@/data/mock'
+import type { Stat } from '@/lib/types'
 
 export function StatCard({ stat }: { stat: Stat }) {
   const Icon = stat.icon

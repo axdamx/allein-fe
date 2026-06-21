@@ -6,8 +6,11 @@ import {
   LifeBuoy,
   Settings,
   Users,
+  TrendingUp,
+  MessageSquare,
+  Brain,
 } from 'lucide-react'
-import { Link } from '@tanstack/react-router'
+import { Link, useRouterState } from '@tanstack/react-router'
 
 import { Brand } from '@/components/brand'
 import { PlanBadge } from '@/components/billing/plan-badge'
@@ -20,20 +23,27 @@ interface NavItem {
   label: string
   icon: ComponentType<{ className?: string }>
   to: string
-  active?: boolean
 }
 
 const mainNav: NavItem[] = [
-  { label: 'Dashboard', icon: LayoutDashboard, to: '/dashboard', active: true },
+  { label: 'Dashboard', icon: LayoutDashboard, to: '/dashboard' },
+  { label: 'Chat', icon: MessageSquare, to: '/chat' },
   { label: 'Agents', icon: Bot, to: '/agents' },
-  { label: 'Team', icon: Users, to: '/team' },
-  { label: 'Analytics', icon: BarChart3, to: '/analytics' },
+  { label: 'Knowledge Base', icon: Brain, to: '/knowledge-base' },
+  { label: 'Leads', icon: Users, to: '/crm/leads' },
+  { label: 'Pipeline', icon: TrendingUp, to: '/crm/pipeline' },
+  { label: 'Analytics', icon: BarChart3, to: '/dashboard' },
 ]
 
 const footerNav: NavItem[] = [
   { label: 'Settings', icon: Settings, to: '/settings' },
   { label: 'Support', icon: LifeBuoy, to: '/support' },
 ]
+
+/** Determine if a nav item matches the current path. */
+function isActive(currentPath: string, to: string): boolean {
+  return currentPath === to || currentPath.startsWith(`${to}/`)
+}
 
 export function Sidebar({
   userEmail,
@@ -46,6 +56,7 @@ export function Sidebar({
 }) {
   const displayName = userName ?? (userEmail ? userEmail.split('@')[0] : 'Guest')
   const initials = displayName.slice(0, 2).toUpperCase()
+  const currentPath = useRouterState({ select: (s) => s.location.pathname })
 
   return (
     <aside className="hidden w-60 shrink-0 flex-col border-r bg-sidebar lg:flex">
@@ -58,13 +69,21 @@ export function Sidebar({
           General
         </p>
         {mainNav.map((item) => (
-          <NavLink key={item.label} item={item} />
+          <NavLink
+            key={item.label}
+            item={item}
+            active={isActive(currentPath, item.to)}
+          />
         ))}
       </nav>
       <Separator />
       <nav className="flex flex-col gap-1 p-4">
         {footerNav.map((item) => (
-          <NavLink key={item.label} item={item} />
+          <NavLink
+            key={item.label}
+            item={item}
+            active={isActive(currentPath, item.to)}
+          />
         ))}
       </nav>
       <Separator />
@@ -84,15 +103,15 @@ export function Sidebar({
   )
 }
 
-function NavLink({ item }: { item: NavItem }) {
+function NavLink({ item, active }: { item: NavItem; active?: boolean }) {
   const Icon = item.icon
   return (
     <Link
       to={item.to}
-      aria-current={item.active ? 'page' : undefined}
+      aria-current={active ? 'page' : undefined}
       className={cn(
         'flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors',
-        item.active
+        active
           ? 'bg-sidebar-accent text-sidebar-accent-foreground'
           : 'text-muted-foreground hover:bg-sidebar-accent/60 hover:text-sidebar-accent-foreground',
       )}

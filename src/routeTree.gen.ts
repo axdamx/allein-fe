@@ -14,7 +14,14 @@ import { Route as LogoutRouteImport } from './routes/logout'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as AuthedRouteImport } from './routes/_authed'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as AuthedSettingsRouteImport } from './routes/_authed.settings'
+import { Route as AuthedKnowledgeBaseRouteImport } from './routes/_authed.knowledge-base'
 import { Route as AuthedDashboardRouteImport } from './routes/_authed.dashboard'
+import { Route as AuthedChatRouteImport } from './routes/_authed.chat'
+import { Route as AuthedAgentsRouteImport } from './routes/_authed.agents'
+import { Route as AuthedCrmPipelineRouteImport } from './routes/_authed.crm.pipeline'
+import { Route as AuthedCrmLeadsRouteImport } from './routes/_authed.crm.leads'
+import { Route as AuthedCrmLeadsLeadIdRouteImport } from './routes/_authed.crm.leads.$leadId'
 
 const PricingRoute = PricingRouteImport.update({
   id: '/pricing',
@@ -40,10 +47,45 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AuthedSettingsRoute = AuthedSettingsRouteImport.update({
+  id: '/settings',
+  path: '/settings',
+  getParentRoute: () => AuthedRoute,
+} as any)
+const AuthedKnowledgeBaseRoute = AuthedKnowledgeBaseRouteImport.update({
+  id: '/knowledge-base',
+  path: '/knowledge-base',
+  getParentRoute: () => AuthedRoute,
+} as any)
 const AuthedDashboardRoute = AuthedDashboardRouteImport.update({
   id: '/dashboard',
   path: '/dashboard',
   getParentRoute: () => AuthedRoute,
+} as any)
+const AuthedChatRoute = AuthedChatRouteImport.update({
+  id: '/chat',
+  path: '/chat',
+  getParentRoute: () => AuthedRoute,
+} as any)
+const AuthedAgentsRoute = AuthedAgentsRouteImport.update({
+  id: '/agents',
+  path: '/agents',
+  getParentRoute: () => AuthedRoute,
+} as any)
+const AuthedCrmPipelineRoute = AuthedCrmPipelineRouteImport.update({
+  id: '/crm/pipeline',
+  path: '/crm/pipeline',
+  getParentRoute: () => AuthedRoute,
+} as any)
+const AuthedCrmLeadsRoute = AuthedCrmLeadsRouteImport.update({
+  id: '/crm/leads',
+  path: '/crm/leads',
+  getParentRoute: () => AuthedRoute,
+} as any)
+const AuthedCrmLeadsLeadIdRoute = AuthedCrmLeadsLeadIdRouteImport.update({
+  id: '/$leadId',
+  path: '/$leadId',
+  getParentRoute: () => AuthedCrmLeadsRoute,
 } as any)
 
 export interface FileRoutesByFullPath {
@@ -51,14 +93,28 @@ export interface FileRoutesByFullPath {
   '/login': typeof LoginRoute
   '/logout': typeof LogoutRoute
   '/pricing': typeof PricingRoute
+  '/agents': typeof AuthedAgentsRoute
+  '/chat': typeof AuthedChatRoute
   '/dashboard': typeof AuthedDashboardRoute
+  '/knowledge-base': typeof AuthedKnowledgeBaseRoute
+  '/settings': typeof AuthedSettingsRoute
+  '/crm/leads': typeof AuthedCrmLeadsRouteWithChildren
+  '/crm/pipeline': typeof AuthedCrmPipelineRoute
+  '/crm/leads/$leadId': typeof AuthedCrmLeadsLeadIdRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/login': typeof LoginRoute
   '/logout': typeof LogoutRoute
   '/pricing': typeof PricingRoute
+  '/agents': typeof AuthedAgentsRoute
+  '/chat': typeof AuthedChatRoute
   '/dashboard': typeof AuthedDashboardRoute
+  '/knowledge-base': typeof AuthedKnowledgeBaseRoute
+  '/settings': typeof AuthedSettingsRoute
+  '/crm/leads': typeof AuthedCrmLeadsRouteWithChildren
+  '/crm/pipeline': typeof AuthedCrmPipelineRoute
+  '/crm/leads/$leadId': typeof AuthedCrmLeadsLeadIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -67,13 +123,44 @@ export interface FileRoutesById {
   '/login': typeof LoginRoute
   '/logout': typeof LogoutRoute
   '/pricing': typeof PricingRoute
+  '/_authed/agents': typeof AuthedAgentsRoute
+  '/_authed/chat': typeof AuthedChatRoute
   '/_authed/dashboard': typeof AuthedDashboardRoute
+  '/_authed/knowledge-base': typeof AuthedKnowledgeBaseRoute
+  '/_authed/settings': typeof AuthedSettingsRoute
+  '/_authed/crm/leads': typeof AuthedCrmLeadsRouteWithChildren
+  '/_authed/crm/pipeline': typeof AuthedCrmPipelineRoute
+  '/_authed/crm/leads/$leadId': typeof AuthedCrmLeadsLeadIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/login' | '/logout' | '/pricing' | '/dashboard'
+  fullPaths:
+    | '/'
+    | '/login'
+    | '/logout'
+    | '/pricing'
+    | '/agents'
+    | '/chat'
+    | '/dashboard'
+    | '/knowledge-base'
+    | '/settings'
+    | '/crm/leads'
+    | '/crm/pipeline'
+    | '/crm/leads/$leadId'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/login' | '/logout' | '/pricing' | '/dashboard'
+  to:
+    | '/'
+    | '/login'
+    | '/logout'
+    | '/pricing'
+    | '/agents'
+    | '/chat'
+    | '/dashboard'
+    | '/knowledge-base'
+    | '/settings'
+    | '/crm/leads'
+    | '/crm/pipeline'
+    | '/crm/leads/$leadId'
   id:
     | '__root__'
     | '/'
@@ -81,7 +168,14 @@ export interface FileRouteTypes {
     | '/login'
     | '/logout'
     | '/pricing'
+    | '/_authed/agents'
+    | '/_authed/chat'
     | '/_authed/dashboard'
+    | '/_authed/knowledge-base'
+    | '/_authed/settings'
+    | '/_authed/crm/leads'
+    | '/_authed/crm/pipeline'
+    | '/_authed/crm/leads/$leadId'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -129,6 +223,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/_authed/settings': {
+      id: '/_authed/settings'
+      path: '/settings'
+      fullPath: '/settings'
+      preLoaderRoute: typeof AuthedSettingsRouteImport
+      parentRoute: typeof AuthedRoute
+    }
+    '/_authed/knowledge-base': {
+      id: '/_authed/knowledge-base'
+      path: '/knowledge-base'
+      fullPath: '/knowledge-base'
+      preLoaderRoute: typeof AuthedKnowledgeBaseRouteImport
+      parentRoute: typeof AuthedRoute
+    }
     '/_authed/dashboard': {
       id: '/_authed/dashboard'
       path: '/dashboard'
@@ -136,15 +244,74 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthedDashboardRouteImport
       parentRoute: typeof AuthedRoute
     }
+    '/_authed/chat': {
+      id: '/_authed/chat'
+      path: '/chat'
+      fullPath: '/chat'
+      preLoaderRoute: typeof AuthedChatRouteImport
+      parentRoute: typeof AuthedRoute
+    }
+    '/_authed/agents': {
+      id: '/_authed/agents'
+      path: '/agents'
+      fullPath: '/agents'
+      preLoaderRoute: typeof AuthedAgentsRouteImport
+      parentRoute: typeof AuthedRoute
+    }
+    '/_authed/crm/pipeline': {
+      id: '/_authed/crm/pipeline'
+      path: '/crm/pipeline'
+      fullPath: '/crm/pipeline'
+      preLoaderRoute: typeof AuthedCrmPipelineRouteImport
+      parentRoute: typeof AuthedRoute
+    }
+    '/_authed/crm/leads': {
+      id: '/_authed/crm/leads'
+      path: '/crm/leads'
+      fullPath: '/crm/leads'
+      preLoaderRoute: typeof AuthedCrmLeadsRouteImport
+      parentRoute: typeof AuthedRoute
+    }
+    '/_authed/crm/leads/$leadId': {
+      id: '/_authed/crm/leads/$leadId'
+      path: '/$leadId'
+      fullPath: '/crm/leads/$leadId'
+      preLoaderRoute: typeof AuthedCrmLeadsLeadIdRouteImport
+      parentRoute: typeof AuthedCrmLeadsRoute
+    }
   }
 }
 
+interface AuthedCrmLeadsRouteChildren {
+  AuthedCrmLeadsLeadIdRoute: typeof AuthedCrmLeadsLeadIdRoute
+}
+
+const AuthedCrmLeadsRouteChildren: AuthedCrmLeadsRouteChildren = {
+  AuthedCrmLeadsLeadIdRoute: AuthedCrmLeadsLeadIdRoute,
+}
+
+const AuthedCrmLeadsRouteWithChildren = AuthedCrmLeadsRoute._addFileChildren(
+  AuthedCrmLeadsRouteChildren,
+)
+
 interface AuthedRouteChildren {
+  AuthedAgentsRoute: typeof AuthedAgentsRoute
+  AuthedChatRoute: typeof AuthedChatRoute
   AuthedDashboardRoute: typeof AuthedDashboardRoute
+  AuthedKnowledgeBaseRoute: typeof AuthedKnowledgeBaseRoute
+  AuthedSettingsRoute: typeof AuthedSettingsRoute
+  AuthedCrmLeadsRoute: typeof AuthedCrmLeadsRouteWithChildren
+  AuthedCrmPipelineRoute: typeof AuthedCrmPipelineRoute
 }
 
 const AuthedRouteChildren: AuthedRouteChildren = {
+  AuthedAgentsRoute: AuthedAgentsRoute,
+  AuthedChatRoute: AuthedChatRoute,
   AuthedDashboardRoute: AuthedDashboardRoute,
+  AuthedKnowledgeBaseRoute: AuthedKnowledgeBaseRoute,
+  AuthedSettingsRoute: AuthedSettingsRoute,
+  AuthedCrmLeadsRoute: AuthedCrmLeadsRouteWithChildren,
+  AuthedCrmPipelineRoute: AuthedCrmPipelineRoute,
 }
 
 const AuthedRouteWithChildren =
