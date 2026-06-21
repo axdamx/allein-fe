@@ -18,6 +18,11 @@ export default defineConfig(({ mode }) => {
     }
   }
 
+  // Suppress AI SDK warnings about unsupported provider features.
+  // ZAI/GLM doesn't support responseFormat (json_schema) but generateObject
+  // still works via prompt-based JSON fallback.
+  process.env.AI_SDK_LOG_WARNINGS = 'false'
+
   return {
     server: {
       port: 3000,

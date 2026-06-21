@@ -14,6 +14,7 @@ import { Route as LogoutRouteImport } from './routes/logout'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as AuthedRouteImport } from './routes/_authed'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as AuthedStudioRouteImport } from './routes/_authed.studio'
 import { Route as AuthedSettingsRouteImport } from './routes/_authed.settings'
 import { Route as AuthedKnowledgeBaseRouteImport } from './routes/_authed.knowledge-base'
 import { Route as AuthedDashboardRouteImport } from './routes/_authed.dashboard'
@@ -46,6 +47,11 @@ const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRouteImport,
+} as any)
+const AuthedStudioRoute = AuthedStudioRouteImport.update({
+  id: '/studio',
+  path: '/studio',
+  getParentRoute: () => AuthedRoute,
 } as any)
 const AuthedSettingsRoute = AuthedSettingsRouteImport.update({
   id: '/settings',
@@ -98,6 +104,7 @@ export interface FileRoutesByFullPath {
   '/dashboard': typeof AuthedDashboardRoute
   '/knowledge-base': typeof AuthedKnowledgeBaseRoute
   '/settings': typeof AuthedSettingsRoute
+  '/studio': typeof AuthedStudioRoute
   '/crm/leads': typeof AuthedCrmLeadsRouteWithChildren
   '/crm/pipeline': typeof AuthedCrmPipelineRoute
   '/crm/leads/$leadId': typeof AuthedCrmLeadsLeadIdRoute
@@ -112,6 +119,7 @@ export interface FileRoutesByTo {
   '/dashboard': typeof AuthedDashboardRoute
   '/knowledge-base': typeof AuthedKnowledgeBaseRoute
   '/settings': typeof AuthedSettingsRoute
+  '/studio': typeof AuthedStudioRoute
   '/crm/leads': typeof AuthedCrmLeadsRouteWithChildren
   '/crm/pipeline': typeof AuthedCrmPipelineRoute
   '/crm/leads/$leadId': typeof AuthedCrmLeadsLeadIdRoute
@@ -128,6 +136,7 @@ export interface FileRoutesById {
   '/_authed/dashboard': typeof AuthedDashboardRoute
   '/_authed/knowledge-base': typeof AuthedKnowledgeBaseRoute
   '/_authed/settings': typeof AuthedSettingsRoute
+  '/_authed/studio': typeof AuthedStudioRoute
   '/_authed/crm/leads': typeof AuthedCrmLeadsRouteWithChildren
   '/_authed/crm/pipeline': typeof AuthedCrmPipelineRoute
   '/_authed/crm/leads/$leadId': typeof AuthedCrmLeadsLeadIdRoute
@@ -144,6 +153,7 @@ export interface FileRouteTypes {
     | '/dashboard'
     | '/knowledge-base'
     | '/settings'
+    | '/studio'
     | '/crm/leads'
     | '/crm/pipeline'
     | '/crm/leads/$leadId'
@@ -158,6 +168,7 @@ export interface FileRouteTypes {
     | '/dashboard'
     | '/knowledge-base'
     | '/settings'
+    | '/studio'
     | '/crm/leads'
     | '/crm/pipeline'
     | '/crm/leads/$leadId'
@@ -173,6 +184,7 @@ export interface FileRouteTypes {
     | '/_authed/dashboard'
     | '/_authed/knowledge-base'
     | '/_authed/settings'
+    | '/_authed/studio'
     | '/_authed/crm/leads'
     | '/_authed/crm/pipeline'
     | '/_authed/crm/leads/$leadId'
@@ -222,6 +234,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
+    }
+    '/_authed/studio': {
+      id: '/_authed/studio'
+      path: '/studio'
+      fullPath: '/studio'
+      preLoaderRoute: typeof AuthedStudioRouteImport
+      parentRoute: typeof AuthedRoute
     }
     '/_authed/settings': {
       id: '/_authed/settings'
@@ -300,6 +319,7 @@ interface AuthedRouteChildren {
   AuthedDashboardRoute: typeof AuthedDashboardRoute
   AuthedKnowledgeBaseRoute: typeof AuthedKnowledgeBaseRoute
   AuthedSettingsRoute: typeof AuthedSettingsRoute
+  AuthedStudioRoute: typeof AuthedStudioRoute
   AuthedCrmLeadsRoute: typeof AuthedCrmLeadsRouteWithChildren
   AuthedCrmPipelineRoute: typeof AuthedCrmPipelineRoute
 }
@@ -310,6 +330,7 @@ const AuthedRouteChildren: AuthedRouteChildren = {
   AuthedDashboardRoute: AuthedDashboardRoute,
   AuthedKnowledgeBaseRoute: AuthedKnowledgeBaseRoute,
   AuthedSettingsRoute: AuthedSettingsRoute,
+  AuthedStudioRoute: AuthedStudioRoute,
   AuthedCrmLeadsRoute: AuthedCrmLeadsRouteWithChildren,
   AuthedCrmPipelineRoute: AuthedCrmPipelineRoute,
 }

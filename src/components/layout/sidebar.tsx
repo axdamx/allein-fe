@@ -9,6 +9,7 @@ import {
   TrendingUp,
   MessageSquare,
   Brain,
+  Sparkles,
 } from 'lucide-react'
 import { Link, useRouterState } from '@tanstack/react-router'
 
@@ -29,6 +30,7 @@ const mainNav: NavItem[] = [
   { label: 'Dashboard', icon: LayoutDashboard, to: '/dashboard' },
   { label: 'Chat', icon: MessageSquare, to: '/chat' },
   { label: 'Agents', icon: Bot, to: '/agents' },
+  { label: 'Studio', icon: Sparkles, to: '/studio' },
   { label: 'Knowledge Base', icon: Brain, to: '/knowledge-base' },
   { label: 'Leads', icon: Users, to: '/crm/leads' },
   { label: 'Pipeline', icon: TrendingUp, to: '/crm/pipeline' },
