@@ -8,6 +8,8 @@ const LABELS: Record<LimitMetric, string> = {
   posts: 'Posts',
   documents: 'Documents',
   leads: 'Leads',
+  whatsappMessages: 'WhatsApp messages',
+  telegramMessages: 'Telegram messages',
 }
 
 export function showUsageWarning({

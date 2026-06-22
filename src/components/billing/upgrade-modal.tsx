@@ -38,6 +38,8 @@ const METRIC_LABELS: Record<LimitMetric, string> = {
   posts: 'marketing posts',
   documents: 'knowledge documents',
   leads: 'CRM leads',
+  whatsappMessages: 'WhatsApp messages',
+  telegramMessages: 'Telegram messages',
 }
 
 const FEATURE_LABELS: Record<FeatureKey, string> = {
@@ -51,6 +53,8 @@ const FEATURE_LABELS: Record<FeatureKey, string> = {
   apiAccess: 'API access',
   whiteLabel: 'White-label',
   prioritySupport: 'Priority support',
+  whatsappBroadcast: 'WhatsApp broadcast',
+  telegramBot: 'Telegram bot',
 }
 
 export function UpgradeModal({

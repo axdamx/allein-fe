@@ -21,6 +21,7 @@ export default defineConfig(({ mode }) => {
   return {
     server: {
       port: 3000,
+      allowedHosts: true, // allow cloudflared / ngrok tunnels in dev
     },
     resolve: {
       tsconfigPaths: true,

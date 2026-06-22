@@ -19,6 +19,8 @@ const METRIC_LABELS: Record<LimitMetric, { singular: string; plural: string }> =
     posts: { singular: 'post', plural: 'posts' },
     documents: { singular: 'document', plural: 'documents' },
     leads: { singular: 'lead', plural: 'leads' },
+    whatsappMessages: { singular: 'WhatsApp message', plural: 'WhatsApp messages' },
+    telegramMessages: { singular: 'Telegram message', plural: 'Telegram messages' },
   }
 
 /**

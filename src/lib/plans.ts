@@ -17,6 +17,8 @@ export type LimitMetric =
   | 'posts'
   | 'documents'
   | 'leads'
+  | 'whatsappMessages'
+  | 'telegramMessages'
 
 export interface PlanLimit {
   /** Maximum value for this metric. `null` = unlimited. */
@@ -46,6 +48,8 @@ export interface PlanConfig {
     apiAccess: boolean
     whiteLabel: boolean
     prioritySupport: boolean
+    whatsappBroadcast: boolean
+    telegramBot: boolean
   }
   /** Accent color for badges / highlights. */
   accent: string
@@ -66,6 +70,8 @@ export const PLAN_CONFIGS: Record<PlanTier, PlanConfig> = {
       posts: { max: 5 },
       documents: { max: 3 },
       leads: { max: 10 },
+      whatsappMessages: { max: 0 },
+      telegramMessages: { max: 0 },
     },
     features: {
       crm: false,
@@ -78,6 +84,8 @@ export const PLAN_CONFIGS: Record<PlanTier, PlanConfig> = {
       apiAccess: false,
       whiteLabel: false,
       prioritySupport: false,
+      whatsappBroadcast: false,
+      telegramBot: false,
     },
   },
   lite: {
@@ -94,6 +102,8 @@ export const PLAN_CONFIGS: Record<PlanTier, PlanConfig> = {
       posts: { max: 30 },
       documents: { max: 25 },
       leads: { max: 500 },
+      whatsappMessages: { max: 50 },
+      telegramMessages: { max: 100 },
     },
     features: {
       crm: true,
@@ -106,6 +116,8 @@ export const PLAN_CONFIGS: Record<PlanTier, PlanConfig> = {
       apiAccess: false,
       whiteLabel: false,
       prioritySupport: false,
+      whatsappBroadcast: false,
+      telegramBot: true,
     },
   },
   pro: {
@@ -123,6 +135,8 @@ export const PLAN_CONFIGS: Record<PlanTier, PlanConfig> = {
       posts: { max: 150 },
       documents: { max: 200 },
       leads: { max: null },
+      whatsappMessages: { max: null },
+      telegramMessages: { max: null },
     },
     features: {
       crm: true,
@@ -135,6 +149,8 @@ export const PLAN_CONFIGS: Record<PlanTier, PlanConfig> = {
       apiAccess: true,
       whiteLabel: false,
       prioritySupport: true,
+      whatsappBroadcast: true,
+      telegramBot: true,
     },
   },
   custom: {
@@ -151,6 +167,8 @@ export const PLAN_CONFIGS: Record<PlanTier, PlanConfig> = {
       posts: { max: null },
       documents: { max: null },
       leads: { max: null },
+      whatsappMessages: { max: null },
+      telegramMessages: { max: null },
     },
     features: {
       crm: true,
@@ -163,6 +181,8 @@ export const PLAN_CONFIGS: Record<PlanTier, PlanConfig> = {
       apiAccess: true,
       whiteLabel: true,
       prioritySupport: true,
+      whatsappBroadcast: true,
+      telegramBot: true,
     },
   },
 }

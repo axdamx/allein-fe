@@ -13,6 +13,7 @@ export interface ProfileRow {
   plan: PlanTier
   role: 'member' | 'admin' | 'owner'
   agent_type: AgentTypeKey | null
+  telegram_chat_id: string | null
 }
 
 export const getProfile = createServerFn({ method: 'GET' }).handler(
@@ -29,6 +30,7 @@ export const updateProfile = createServerFn({ method: 'POST' })
       company?: string
       phone?: string
       avatarUrl?: string
+      telegramChatId?: string | null
     }) => d,
   )
   .handler(async ({ data }) => {

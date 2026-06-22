@@ -13,6 +13,7 @@ import { getSupabaseServerClient } from '@/lib/supabase/server.server'
 import { getDefaultModel } from '@/lib/ai-provider'
 import { agentTools } from '@/server/chat-tools'
 import { retrieveContext } from '@/server/documents.server'
+import type { SupabaseClient } from '@supabase/supabase-js'
 
 // ---------------------------------------------------------------------------
 // Types
@@ -48,6 +49,41 @@ export interface SendMessageResult {
     success: boolean
     message: string
   }>
+}
+
+/**
+ * Fetch the user's profile and build a context string to inject into the
+ * system prompt so the AI agent knows who it's talking to.
+ */
+async function buildUserContext(
+  userId: string,
+  supabase: SupabaseClient,
+): Promise<string> {
+  const { data: profile } = await supabase
+    .from('profiles')
+    .select('full_name, email, company, phone, plan, telegram_chat_id')
+    .eq('id', userId)
+    .single()
+
+  if (!profile) return ''
+
+  const parts: string[] = []
+  if (profile.full_name) parts.push(`Name: ${profile.full_name}`)
+  if (profile.email) parts.push(`Email: ${profile.email}`)
+  if (profile.company) parts.push(`Company: ${profile.company}`)
+  if (profile.phone) parts.push(`Phone: ${profile.phone}`)
+  if (profile.plan) parts.push(`Plan: ${profile.plan}`)
+  if (profile.telegram_chat_id) parts.push(`Telegram chat ID: ${profile.telegram_chat_id}`)
+
+  if (parts.length === 0) return ''
+
+  return `\n\n## User Context
+This is the person you are talking to. Use this information to personalise responses, fill in details when creating leads, and understand their business:
+
+${parts.join('\n')}
+
+Always refer to them by their name if available. When creating leads or reminders, use their company as default if the user doesn't specify one.
+## End of User Context`
 }
 
 // ---------------------------------------------------------------------------
@@ -240,12 +276,17 @@ ${contextText}
 ## End of Knowledge Base Context`
   }
 
-  const fullSystemPrompt = `${systemPrompt}${ragContext}
+  // 5. Inject user context so the agent knows who it's talking to
+  const userContext = await buildUserContext(user.id, supabase)
+
+  const fullSystemPrompt = `${systemPrompt}${userContext}${ragContext}
 
 ## About tools
-You have tools available to create leads and reminders. When the user asks you to save/add/record a contact, call the createLead tool with the details from the conversation. Resolve references like "this email" or "that person" to their actual values from the conversation history. Do NOT claim you've done something before calling the tool — call the tool and report its result.`
+You have tools available to create leads, reminders, and send messages. When the user asks you to save/add/record a contact, call the createLead tool with the details from the conversation. Resolve references like "this email" or "that person" to their actual values from the conversation history. Do NOT claim you've done something before calling the tool — call the tool and report its result.
 
-  // 5. Build messages for the AI SDK
+When the user asks you to send something to "my Telegram" or "my WhatsApp", use their contact info from User Context above — do NOT ask them for it.`
+
+  // 6. Build messages for the AI SDK
   const coreMessages = [
     ...(history ?? [])
       .filter((m) => m.role === 'user' || m.role === 'assistant')
@@ -256,7 +297,7 @@ You have tools available to create leads and reminders. When the user asks you t
     { role: 'user' as const, content: input.content },
   ]
 
-  // 6. Call the LLM with tools (native tool calling)
+  // 7. Call the LLM with tools (native tool calling)
   const model = getDefaultModel()
   const result = await generateText({
     model,
@@ -270,7 +311,7 @@ You have tools available to create leads and reminders. When the user asks you t
 
   const replyText = result.text
 
-  // 7. Collect tool call results (if any tools were called)
+  // 8. Collect tool call results (if any tools were called)
   const toolCalls: SendMessageResult['toolCalls'] = []
   for (const step of result.steps) {
     for (const tr of step.toolResults) {
@@ -288,7 +329,7 @@ You have tools available to create leads and reminders. When the user asks you t
     }
   }
 
-  // 8. Save assistant message
+  // 9. Save assistant message
   await supabase.from('messages').insert({
     conversation_id: input.conversationId,
     role: 'assistant',
@@ -296,7 +337,7 @@ You have tools available to create leads and reminders. When the user asks you t
     model: agent.model,
   })
 
-  // 9. Auto-generate title for new conversations
+  // 10. Auto-generate title for new conversations
   if (isFirstMessage) {
     try {
       const titleResult = await generateText({
@@ -321,6 +362,170 @@ You have tools available to create leads and reminders. When the user asks you t
   // Invalidate leads/reminders queries if tools were called
   if (toolCalls.length > 0) {
     // The client will refetch these
+  }
+
+  return {
+    reply: replyText,
+    toolCalls,
+  }
+}
+
+/**
+ * Send a message on behalf of a user (for webhooks — no cookie session).
+ *
+ * Uses the service-role Supabase client to bypass RLS, so the caller must
+ * pass a verified `ownerId`. This is the same AI processing as sendMessageImpl
+ * but designed for Telegram / WhatsApp inbound webhooks.
+ */
+export async function sendMessageForOwnerImpl(input: {
+  ownerId: string
+  agentId: string
+  conversationId: string
+  content: string
+}): Promise<SendMessageResult | { error: string }> {
+  const { getSupabaseServiceClient } = await import(
+    '@/lib/supabase/service.server'
+  )
+  const supabase = getSupabaseServiceClient()
+
+  // 1. Load agent
+  const { data: agent } = await supabase
+    .from('agents')
+    .select('id, type, name, system_prompt, model')
+    .eq('id', input.agentId)
+    .single()
+
+  if (!agent) return { error: 'Agent not found' }
+
+  // Load system prompt
+  let systemPrompt = agent.system_prompt
+  if (!systemPrompt) {
+    const { data: agentType } = await supabase
+      .from('agent_types')
+      .select('system_prompt')
+      .eq('key', agent.type)
+      .single()
+    systemPrompt = agentType?.system_prompt ?? 'You are a helpful AI assistant.'
+  }
+
+  // 2. Save user message
+  await supabase.from('messages').insert({
+    conversation_id: input.conversationId,
+    role: 'user',
+    content: input.content,
+  })
+
+  // 3. Load conversation history
+  const { data: history } = await supabase
+    .from('messages')
+    .select('role, content')
+    .eq('conversation_id', input.conversationId)
+    .order('created_at', { ascending: true })
+    .limit(20)
+
+  const isFirstMessage = (history?.filter((m: { role: string }) => m.role === 'user').length ?? 0) === 1
+
+  // 4. RAG
+  const { retrieveContext } = await import('@/server/documents.server')
+  const relevantChunks = await retrieveContext(input.content, agent.id, 5)
+
+  let ragContext = ''
+  if (relevantChunks.length > 0) {
+    const contextText = relevantChunks
+      .map(
+        (c, i) =>
+          `[Source ${i + 1}] (relevance: ${Math.round(c.similarity * 100)}%)\n${c.content}`,
+      )
+      .join('\n\n---\n\n')
+    ragContext = `\n\n## Knowledge Base Context
+The following is from the user's uploaded documents. This is YOUR data — the user expects you to know it. ALWAYS check this context before saying you don't know something. If the answer is anywhere below, use it:
+
+${contextText}
+
+## End of Knowledge Base Context`
+  }
+
+  // 5. Inject user context
+  const userContext = await buildUserContext(input.ownerId, supabase)
+
+  const fullSystemPrompt = `${systemPrompt}${userContext}${ragContext}
+
+## About tools
+You have tools available to create leads, reminders, and send messages. When the user asks you to save/add/record a contact, call the createLead tool with the details from the conversation. Resolve references like "this email" or "that person" to their actual values from the conversation history. Do NOT claim you've done something before calling the tool — call the tool and report its result.
+
+When the user asks you to send something to "my Telegram" or "my WhatsApp", use their contact info from User Context above — do NOT ask them for it.`
+
+  // 6. Build messages for AI
+  const coreMessages = [
+    ...(history ?? [])
+      .filter((m: { role: string; content: string }) => m.role === 'user' || m.role === 'assistant')
+      .map((m: { role: string; content: string }) => ({
+        role: m.role as 'user' | 'assistant',
+        content: m.content,
+      })),
+    { role: 'user' as const, content: input.content },
+  ]
+
+  // 7. Call LLM
+  const { getDefaultModel } = await import('@/lib/ai-provider')
+  const model = getDefaultModel()
+  const result = await generateText({
+    model,
+    system: fullSystemPrompt,
+    messages: coreMessages,
+    tools: agentTools,
+    stopWhen: stepCountIs(3),
+    temperature: 0.7,
+    maxOutputTokens: 4096,
+  })
+
+  const replyText = result.text
+
+  // 8. Collect tool results
+  const toolCalls: SendMessageResult['toolCalls'] = []
+  for (const step of result.steps) {
+    for (const tr of step.toolResults) {
+      const output = tr.output as {
+        success?: boolean
+        message?: string
+        error?: string
+      }
+      toolCalls.push({
+        name: tr.toolName,
+        success: output?.success !== false,
+        message: output?.message ?? output?.error ?? 'Completed',
+      })
+    }
+  }
+
+  // 9. Save assistant message
+  await supabase.from('messages').insert({
+    conversation_id: input.conversationId,
+    role: 'assistant',
+    content: replyText,
+    model: agent.model,
+  })
+
+  // 10. Auto-title
+  if (isFirstMessage) {
+    try {
+      const titleResult = await generateText({
+        model: getDefaultModel(),
+        system:
+          'Generate a short 3-5 word title for this conversation based on the user message. Return only the title, no quotes.',
+        messages: [{ role: 'user', content: input.content }],
+        maxOutputTokens: 30,
+        temperature: 0.3,
+      })
+      await supabase
+        .from('conversations')
+        .update({
+          title: titleResult.text.trim().replace(/["']/g, ''),
+        })
+        .eq('id', input.conversationId)
+    } catch {
+      // best-effort
+    }
   }
 
   return {

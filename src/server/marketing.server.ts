@@ -24,6 +24,7 @@ export type PostPlatform =
   | 'x'
   | 'tiktok'
   | 'whatsapp'
+  | 'telegram'
   | 'email'
 
 export type PostStatus =
@@ -100,6 +101,7 @@ export async function generatePostImpl(input: {
       x: 'X (Twitter): punchy, max 280 chars, 1-3 hashtags',
       tiktok: 'TikTok: trendy, casual, 3-5 hashtags, max 150 chars caption',
       whatsapp: 'WhatsApp: short, direct, no hashtags',
+      telegram: 'Telegram: conversational, medium length, can use hashtags sparingly',
       email: 'Email: subject line + body, professional, no hashtags',
     }
 

@@ -19,6 +19,7 @@ export type LeadStatus =
 export type LeadSourceType =
   | 'website'
   | 'whatsapp'
+  | 'telegram'
   | 'phone'
   | 'email'
   | 'social'

@@ -25,6 +25,8 @@ import { Route as AuthedChatRouteImport } from './routes/_authed.chat'
 import { Route as AuthedAnalyticsRouteImport } from './routes/_authed.analytics'
 import { Route as AuthedAgentsRouteImport } from './routes/_authed.agents'
 import { Route as AuthedAdminRouteImport } from './routes/_authed.admin'
+import { Route as ApiMessagingWhatsappRouteImport } from './routes/api/messaging/whatsapp'
+import { Route as ApiMessagingTelegramRouteImport } from './routes/api/messaging/telegram'
 import { Route as AuthedCrmPipelineRouteImport } from './routes/_authed.crm.pipeline'
 import { Route as AuthedCrmLeadsRouteImport } from './routes/_authed.crm.leads'
 import { Route as AuthedCrmLeadsLeadIdRouteImport } from './routes/_authed.crm.leads.$leadId'
@@ -108,6 +110,16 @@ const AuthedAdminRoute = AuthedAdminRouteImport.update({
   path: '/admin',
   getParentRoute: () => AuthedRoute,
 } as any)
+const ApiMessagingWhatsappRoute = ApiMessagingWhatsappRouteImport.update({
+  id: '/api/messaging/whatsapp',
+  path: '/api/messaging/whatsapp',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiMessagingTelegramRoute = ApiMessagingTelegramRouteImport.update({
+  id: '/api/messaging/telegram',
+  path: '/api/messaging/telegram',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AuthedCrmPipelineRoute = AuthedCrmPipelineRouteImport.update({
   id: '/pipeline',
   path: '/pipeline',
@@ -142,6 +154,8 @@ export interface FileRoutesByFullPath {
   '/support': typeof AuthedSupportRoute
   '/crm/leads': typeof AuthedCrmLeadsRouteWithChildren
   '/crm/pipeline': typeof AuthedCrmPipelineRoute
+  '/api/messaging/telegram': typeof ApiMessagingTelegramRoute
+  '/api/messaging/whatsapp': typeof ApiMessagingWhatsappRoute
   '/crm/leads/$leadId': typeof AuthedCrmLeadsLeadIdRoute
 }
 export interface FileRoutesByTo {
@@ -162,6 +176,8 @@ export interface FileRoutesByTo {
   '/support': typeof AuthedSupportRoute
   '/crm/leads': typeof AuthedCrmLeadsRouteWithChildren
   '/crm/pipeline': typeof AuthedCrmPipelineRoute
+  '/api/messaging/telegram': typeof ApiMessagingTelegramRoute
+  '/api/messaging/whatsapp': typeof ApiMessagingWhatsappRoute
   '/crm/leads/$leadId': typeof AuthedCrmLeadsLeadIdRoute
 }
 export interface FileRoutesById {
@@ -184,6 +200,8 @@ export interface FileRoutesById {
   '/_authed/support': typeof AuthedSupportRoute
   '/_authed/crm/leads': typeof AuthedCrmLeadsRouteWithChildren
   '/_authed/crm/pipeline': typeof AuthedCrmPipelineRoute
+  '/api/messaging/telegram': typeof ApiMessagingTelegramRoute
+  '/api/messaging/whatsapp': typeof ApiMessagingWhatsappRoute
   '/_authed/crm/leads/$leadId': typeof AuthedCrmLeadsLeadIdRoute
 }
 export interface FileRouteTypes {
@@ -206,6 +224,8 @@ export interface FileRouteTypes {
     | '/support'
     | '/crm/leads'
     | '/crm/pipeline'
+    | '/api/messaging/telegram'
+    | '/api/messaging/whatsapp'
     | '/crm/leads/$leadId'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -226,6 +246,8 @@ export interface FileRouteTypes {
     | '/support'
     | '/crm/leads'
     | '/crm/pipeline'
+    | '/api/messaging/telegram'
+    | '/api/messaging/whatsapp'
     | '/crm/leads/$leadId'
   id:
     | '__root__'
@@ -247,6 +269,8 @@ export interface FileRouteTypes {
     | '/_authed/support'
     | '/_authed/crm/leads'
     | '/_authed/crm/pipeline'
+    | '/api/messaging/telegram'
+    | '/api/messaging/whatsapp'
     | '/_authed/crm/leads/$leadId'
   fileRoutesById: FileRoutesById
 }
@@ -256,6 +280,8 @@ export interface RootRouteChildren {
   LoginRoute: typeof LoginRoute
   LogoutRoute: typeof LogoutRoute
   PricingRoute: typeof PricingRoute
+  ApiMessagingTelegramRoute: typeof ApiMessagingTelegramRoute
+  ApiMessagingWhatsappRoute: typeof ApiMessagingWhatsappRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -372,6 +398,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthedAdminRouteImport
       parentRoute: typeof AuthedRoute
     }
+    '/api/messaging/whatsapp': {
+      id: '/api/messaging/whatsapp'
+      path: '/api/messaging/whatsapp'
+      fullPath: '/api/messaging/whatsapp'
+      preLoaderRoute: typeof ApiMessagingWhatsappRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/messaging/telegram': {
+      id: '/api/messaging/telegram'
+      path: '/api/messaging/telegram'
+      fullPath: '/api/messaging/telegram'
+      preLoaderRoute: typeof ApiMessagingTelegramRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/_authed/crm/pipeline': {
       id: '/_authed/crm/pipeline'
       path: '/pipeline'
@@ -459,6 +499,8 @@ const rootRouteChildren: RootRouteChildren = {
   LoginRoute: LoginRoute,
   LogoutRoute: LogoutRoute,
   PricingRoute: PricingRoute,
+  ApiMessagingTelegramRoute: ApiMessagingTelegramRoute,
+  ApiMessagingWhatsappRoute: ApiMessagingWhatsappRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

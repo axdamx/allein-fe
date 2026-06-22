@@ -57,6 +57,7 @@ const PLATFORMS: { value: PostPlatform; label: string; emoji: string }[] = [
   { value: 'x', label: 'X (Twitter)', emoji: '🐦' },
   { value: 'tiktok', label: 'TikTok', emoji: '🎵' },
   { value: 'whatsapp', label: 'WhatsApp', emoji: '💬' },
+  { value: 'telegram', label: 'Telegram', emoji: '✈️' },
   { value: 'email', label: 'Email', emoji: '✉️' },
 ]
 

@@ -13,6 +13,7 @@ export interface ProfileRow {
   plan: PlanTier
   role: 'member' | 'admin' | 'owner'
   agent_type: AgentTypeKey | null
+  telegram_chat_id: string | null
 }
 
 /** Fetch the current user's profile. */
@@ -25,7 +26,7 @@ export async function getProfileImpl(): Promise<ProfileRow | null> {
 
   const { data, error } = await supabase
     .from('profiles')
-    .select('id, email, full_name, avatar_url, company, phone, plan, role, agent_type')
+    .select('id, email, full_name, avatar_url, company, phone, plan, role, agent_type, telegram_chat_id')
     .eq('id', user.id)
     .single()
 
@@ -39,6 +40,7 @@ export async function updateProfileImpl(input: {
   company?: string
   phone?: string
   avatarUrl?: string
+  telegramChatId?: string | null
 }): Promise<{ error: string } | null> {
   const supabase = getSupabaseServerClient()
   const {
@@ -51,6 +53,7 @@ export async function updateProfileImpl(input: {
   if (input.company !== undefined) updates.company = input.company
   if (input.phone !== undefined) updates.phone = input.phone
   if (input.avatarUrl !== undefined) updates.avatar_url = input.avatarUrl
+  if (input.telegramChatId !== undefined) updates.telegram_chat_id = input.telegramChatId
 
   const { error } = await supabase
     .from('profiles')

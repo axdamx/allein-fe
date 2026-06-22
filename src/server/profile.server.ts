@@ -22,7 +22,7 @@ export async function getCurrentUserProfile() {
   const { data: profile, error } = await supabase
     .from('profiles')
     .select(
-      'id, email, plan, role, agents_count, conversations_count, messages_count, posts_count, documents_count, agent_type',
+      'id, email, plan, role, agents_count, conversations_count, messages_count, posts_count, documents_count, whatsapp_messages_count, telegram_messages_count, agent_type',
     )
     .eq('id', user.id)
     .single()
@@ -57,6 +57,8 @@ export function buildPlanState(
     messages_count: number
     posts_count: number
     documents_count: number
+    whatsapp_messages_count?: number
+    telegram_messages_count?: number
   },
   leadsCount: number = 0,
 ): PlanState {
@@ -69,6 +71,8 @@ export function buildPlanState(
     posts: profile.posts_count ?? 0,
     documents: profile.documents_count ?? 0,
     leads: leadsCount,
+    whatsappMessages: profile.whatsapp_messages_count ?? 0,
+    telegramMessages: profile.telegram_messages_count ?? 0,
   }
 
   const remaining: Record<LimitMetric, number | null> = {
@@ -81,6 +85,14 @@ export function buildPlanState(
     posts: computeRemaining(usage.posts, config.limits.posts.max),
     documents: computeRemaining(usage.documents, config.limits.documents.max),
     leads: computeRemaining(usage.leads, config.limits.leads.max),
+    whatsappMessages: computeRemaining(
+      usage.whatsappMessages,
+      config.limits.whatsappMessages.max,
+    ),
+    telegramMessages: computeRemaining(
+      usage.telegramMessages,
+      config.limits.telegramMessages.max,
+    ),
   }
 
   return {
@@ -134,7 +146,11 @@ export async function enforceLimitImpl(metric: LimitMetric): Promise<void> {
           ? profile.messages_count
           : metric === 'posts'
             ? profile.posts_count
-            : profile.documents_count
+            : metric === 'whatsappMessages'
+              ? profile.whatsapp_messages_count ?? 0
+              : metric === 'telegramMessages'
+                ? profile.telegram_messages_count ?? 0
+                : profile.documents_count
 
   if (used >= max) {
     const requiredTier = minTierForLimit(metric, used + 1)

@@ -25,6 +25,7 @@ import type { LeadSourceType } from '@/server/crm'
 const SOURCES: { value: LeadSourceType; label: string }[] = [
   { value: 'website', label: 'Website' },
   { value: 'whatsapp', label: 'WhatsApp' },
+  { value: 'telegram', label: 'Telegram' },
   { value: 'phone', label: 'Phone' },
   { value: 'email', label: 'Email' },
   { value: 'social', label: 'Social' },
