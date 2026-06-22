@@ -29,6 +29,7 @@ import { Route as ApiMessagingWhatsappRouteImport } from './routes/api/messaging
 import { Route as ApiMessagingTelegramRouteImport } from './routes/api/messaging/telegram'
 import { Route as AuthedCrmPipelineRouteImport } from './routes/_authed.crm.pipeline'
 import { Route as AuthedCrmLeadsRouteImport } from './routes/_authed.crm.leads'
+import { Route as AuthedCrmLeadsIndexRouteImport } from './routes/_authed.crm.leads.index'
 import { Route as AuthedCrmLeadsLeadIdRouteImport } from './routes/_authed.crm.leads.$leadId'
 
 const PricingRoute = PricingRouteImport.update({
@@ -130,6 +131,11 @@ const AuthedCrmLeadsRoute = AuthedCrmLeadsRouteImport.update({
   path: '/leads',
   getParentRoute: () => AuthedCrmRoute,
 } as any)
+const AuthedCrmLeadsIndexRoute = AuthedCrmLeadsIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => AuthedCrmLeadsRoute,
+} as any)
 const AuthedCrmLeadsLeadIdRoute = AuthedCrmLeadsLeadIdRouteImport.update({
   id: '/$leadId',
   path: '/$leadId',
@@ -157,6 +163,7 @@ export interface FileRoutesByFullPath {
   '/api/messaging/telegram': typeof ApiMessagingTelegramRoute
   '/api/messaging/whatsapp': typeof ApiMessagingWhatsappRoute
   '/crm/leads/$leadId': typeof AuthedCrmLeadsLeadIdRoute
+  '/crm/leads/': typeof AuthedCrmLeadsIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -174,11 +181,11 @@ export interface FileRoutesByTo {
   '/settings': typeof AuthedSettingsRoute
   '/studio': typeof AuthedStudioRoute
   '/support': typeof AuthedSupportRoute
-  '/crm/leads': typeof AuthedCrmLeadsRouteWithChildren
   '/crm/pipeline': typeof AuthedCrmPipelineRoute
   '/api/messaging/telegram': typeof ApiMessagingTelegramRoute
   '/api/messaging/whatsapp': typeof ApiMessagingWhatsappRoute
   '/crm/leads/$leadId': typeof AuthedCrmLeadsLeadIdRoute
+  '/crm/leads': typeof AuthedCrmLeadsIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -203,6 +210,7 @@ export interface FileRoutesById {
   '/api/messaging/telegram': typeof ApiMessagingTelegramRoute
   '/api/messaging/whatsapp': typeof ApiMessagingWhatsappRoute
   '/_authed/crm/leads/$leadId': typeof AuthedCrmLeadsLeadIdRoute
+  '/_authed/crm/leads/': typeof AuthedCrmLeadsIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -227,6 +235,7 @@ export interface FileRouteTypes {
     | '/api/messaging/telegram'
     | '/api/messaging/whatsapp'
     | '/crm/leads/$leadId'
+    | '/crm/leads/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -244,11 +253,11 @@ export interface FileRouteTypes {
     | '/settings'
     | '/studio'
     | '/support'
-    | '/crm/leads'
     | '/crm/pipeline'
     | '/api/messaging/telegram'
     | '/api/messaging/whatsapp'
     | '/crm/leads/$leadId'
+    | '/crm/leads'
   id:
     | '__root__'
     | '/'
@@ -272,6 +281,7 @@ export interface FileRouteTypes {
     | '/api/messaging/telegram'
     | '/api/messaging/whatsapp'
     | '/_authed/crm/leads/$leadId'
+    | '/_authed/crm/leads/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -426,6 +436,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthedCrmLeadsRouteImport
       parentRoute: typeof AuthedCrmRoute
     }
+    '/_authed/crm/leads/': {
+      id: '/_authed/crm/leads/'
+      path: '/'
+      fullPath: '/crm/leads/'
+      preLoaderRoute: typeof AuthedCrmLeadsIndexRouteImport
+      parentRoute: typeof AuthedCrmLeadsRoute
+    }
     '/_authed/crm/leads/$leadId': {
       id: '/_authed/crm/leads/$leadId'
       path: '/$leadId'
@@ -438,10 +455,12 @@ declare module '@tanstack/react-router' {
 
 interface AuthedCrmLeadsRouteChildren {
   AuthedCrmLeadsLeadIdRoute: typeof AuthedCrmLeadsLeadIdRoute
+  AuthedCrmLeadsIndexRoute: typeof AuthedCrmLeadsIndexRoute
 }
 
 const AuthedCrmLeadsRouteChildren: AuthedCrmLeadsRouteChildren = {
   AuthedCrmLeadsLeadIdRoute: AuthedCrmLeadsLeadIdRoute,
+  AuthedCrmLeadsIndexRoute: AuthedCrmLeadsIndexRoute,
 }
 
 const AuthedCrmLeadsRouteWithChildren = AuthedCrmLeadsRoute._addFileChildren(

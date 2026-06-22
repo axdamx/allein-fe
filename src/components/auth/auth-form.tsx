@@ -4,7 +4,6 @@ import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { Loader2 } from 'lucide-react'
 import { toast } from 'sonner'
 
-import { Brand } from '@/components/brand'
 import { Button } from '@/components/ui/button'
 import {
   Card,
@@ -67,23 +66,19 @@ export function AuthForm() {
       : signupMutation.status === 'pending'
 
   return (
-    <div className="flex min-h-svh items-center justify-center bg-gradient-to-b from-muted/50 to-background p-4">
-      <div className="w-full max-w-sm">
-        <div className="mb-6 flex justify-center">
-          <Brand />
-        </div>
-        <Card>
-          <CardHeader className="text-center">
-            <CardTitle className="text-xl">
-              {mode === 'login' ? 'Welcome back' : 'Create your account'}
-            </CardTitle>
-            <CardDescription>
-              {mode === 'login'
-                ? 'Sign in to your Allein workspace'
-                : 'Start building with AI agents in minutes'}
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
+    <div className="w-full max-w-sm">
+      <Card>
+        <CardHeader className="text-center">
+          <CardTitle className="text-xl">
+            {mode === 'login' ? 'Welcome back' : 'Create your account'}
+          </CardTitle>
+          <CardDescription>
+            {mode === 'login'
+              ? 'Sign in to your Allein workspace'
+              : 'Start building with AI agents in minutes'}
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
             <Tabs
               value={mode}
               onValueChange={(v) => setMode(v as Mode)}
@@ -180,7 +175,6 @@ export function AuthForm() {
           </a>
         </p>
       </div>
-    </div>
   )
 }
 

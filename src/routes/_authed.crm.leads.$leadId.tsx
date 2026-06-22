@@ -1,17 +1,22 @@
-import { useState } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import {
   ArrowLeft,
   Bell,
   Calendar,
+  DollarSign,
+  Edit3,
   Mail,
+  MessageSquare,
   Phone,
   Plus,
   Building2,
+  Tag,
+  Check,
+  X,
 } from 'lucide-react'
 import { format, formatDistanceToNow } from 'date-fns'
 import { createFileRoute, Link } from '@tanstack/react-router'
 
-import { DashboardShell } from '@/components/layout/dashboard-shell'
 import { LeadStatusBadge } from '@/components/crm/lead-status-badge'
 import { Button } from '@/components/ui/button'
 import {
@@ -28,63 +33,75 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { Input } from '@/components/ui/input'
+import { Textarea } from '@/components/ui/textarea'
 import { Skeleton } from '@/components/ui/skeleton'
-import { useLeads, useUpdateLead } from '@/hooks/use-crm'
+import { Badge } from '@/components/ui/badge'
 import {
+  useLeads,
+  useUpdateLead,
   useReminders,
   useCreateReminder,
   useUpdateReminderStatus,
+  useDeals,
 } from '@/hooks/use-crm'
 import { LEAD_STATUSES } from '@/server/crm'
-import type { LeadStatus } from '@/server/crm'
+import type { LeadSourceType } from '@/server/crm'
 import { cn } from '@/lib/utils'
 
 export const Route = createFileRoute('/_authed/crm/leads/$leadId')({
   component: LeadDetailPage,
 })
 
+const SOURCE_OPTIONS: { value: LeadSourceType; label: string }[] = [
+  { value: 'website', label: 'Website' },
+  { value: 'referral', label: 'Referral' },
+  { value: 'social', label: 'Social' },
+  { value: 'whatsapp', label: 'WhatsApp' },
+  { value: 'telegram', label: 'Telegram' },
+  { value: 'email', label: 'Email' },
+  { value: 'phone', label: 'Phone' },
+  { value: 'other', label: 'Other' },
+]
+
 function LeadDetailPage() {
   const { leadId } = Route.useParams()
-  const { user } = Route.useRouteContext()
   const { data: leads, isLoading } = useLeads()
   const { data: reminders } = useReminders()
+  const { data: deals } = useDeals()
 
   const lead = leads?.find((l) => l.id === leadId)
   const leadReminders = (reminders ?? []).filter(
     (r) => r.lead_id === leadId,
   )
+  const leadDeals = (deals ?? []).filter(
+    (d) => d.lead_id === leadId,
+  )
 
   if (isLoading) {
     return (
-      <DashboardShell userEmail={user?.email}>
-        <div className="space-y-4">
-          <Skeleton className="h-8 w-48" />
-          <Skeleton className="h-64 w-full" />
-        </div>
-      </DashboardShell>
+      <div className="space-y-4">
+        <Skeleton className="h-8 w-48" />
+        <Skeleton className="h-64 w-full" />
+      </div>
     )
   }
 
   if (!lead) {
     return (
-      <DashboardShell userEmail={user?.email}>
-        <Card>
-          <CardContent className="py-12 text-center">
-            <p className="text-muted-foreground">Lead not found.</p>
-            <Button asChild variant="link">
-              <Link to="/crm/leads">Back to leads</Link>
-            </Button>
-          </CardContent>
-        </Card>
-      </DashboardShell>
+      <Card>
+        <CardContent className="py-12 text-center">
+          <p className="text-muted-foreground">Lead not found.</p>
+          <Button asChild variant="link">
+            <Link to="/crm/leads">Back to leads</Link>
+          </Button>
+        </CardContent>
+      </Card>
     )
   }
 
   return (
-    <DashboardShell
-      userEmail={user?.email}
-      userName={user?.email?.split('@')[0]}
-    >
+    <div>
+      {/* Back + header */}
       <div className="mb-6">
         <Button asChild variant="ghost" size="sm" className="mb-2">
           <Link to="/crm/leads">
@@ -92,96 +109,318 @@ function LeadDetailPage() {
           </Link>
         </Button>
         <div className="flex items-center justify-between gap-3">
-          <div>
+          <div className="min-w-0 flex-1">
             <div className="flex items-center gap-3">
-              <h1 className="text-2xl font-semibold tracking-tight">
+              <h1 className="truncate text-2xl font-semibold tracking-tight">
                 {lead.name}
               </h1>
               <LeadStatusBadge status={lead.status} />
             </div>
             <p className="text-sm text-muted-foreground">
               Added {formatDistanceToNow(new Date(lead.created_at), { addSuffix: true })}
+              {lead.last_contacted_at && (
+                <> &middot; Last contacted {formatDistanceToNow(new Date(lead.last_contacted_at), { addSuffix: true })}</>
+              )}
             </p>
           </div>
-          <LeadStatusDropdown leadId={lead.id} current={lead.status} />
+          <LeadStatusDropdown leadId={lead.id} />
         </div>
       </div>
 
+      {/* Main grid */}
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
-        {/* Contact info */}
-        <Card className="lg:col-span-2">
-          <CardHeader>
-            <CardTitle className="text-base">Contact information</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            <InfoRow
-              icon={<Mail className="size-4" />}
-              label="Email"
-              value={lead.email}
-            />
-            <InfoRow
-              icon={<Phone className="size-4" />}
-              label="Phone"
-              value={lead.phone}
-            />
-            <InfoRow
-              icon={<Building2 className="size-4" />}
-              label="Company"
-              value={lead.company}
-            />
-            <InfoRow
-              icon={<Calendar className="size-4" />}
-              label="Source"
-              value={lead.source}
-              capitalize
-            />
-            <InfoRow
-              icon={<Calendar className="size-4" />}
-              label="Deal value"
-              value={
-                lead.value > 0 ? `$${Number(lead.value).toLocaleString()}` : null
-              }
-            />
-            {lead.notes && (
-              <div className="border-t pt-3">
-                <p className="mb-1 text-xs font-medium text-muted-foreground">
-                  Notes
-                </p>
-                <p className="text-sm">{lead.notes}</p>
-              </div>
-            )}
-          </CardContent>
-        </Card>
+        {/* Left column: Contact info + Notes */}
+        <div className="space-y-4 lg:col-span-2">
+          {/* Contact info */}
+          <EditableContactCard lead={lead} />
 
-        {/* Reminders */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-base">
-              <Bell className="size-4" /> Reminders
-            </CardTitle>
-            <CardDescription>
-              Follow-ups and tasks for this lead
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <NewReminderForm leadId={lead.id} />
-            <div className="mt-3 space-y-2">
-              {leadReminders.length > 0 ? (
-                leadReminders.map((r) => (
-                  <ReminderItem key={r.id} reminder={r} />
-                ))
-              ) : (
-                <p className="py-4 text-center text-xs text-muted-foreground">
-                  No reminders yet.
-                </p>
-              )}
-            </div>
-          </CardContent>
-        </Card>
+          {/* Notes */}
+          <EditableNotesCard lead={lead} />
+
+          {/* Deals */}
+          {leadDeals.length > 0 && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2 text-base">
+                  <DollarSign className="size-4" /> Deals
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="divide-y">
+                  {leadDeals.map((deal) => (
+                    <div key={deal.id} className="flex items-center justify-between py-2">
+                      <div>
+                        <p className="text-sm font-medium">{deal.title}</p>
+                        <p className="text-xs text-muted-foreground">
+                          {deal.stage.replace(/_/g, ' ')} &middot; {deal.probability}%
+                        </p>
+                      </div>
+                      <span className="text-sm font-semibold">
+                        ${Number(deal.value).toLocaleString()}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          )}
+        </div>
+
+        {/* Right column: Reminders */}
+        <div className="space-y-4">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-base">
+                <Bell className="size-4" /> Reminders
+              </CardTitle>
+              <CardDescription>
+                Follow-ups and tasks for this lead
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <NewReminderForm leadId={lead.id} />
+              <div className="mt-3 space-y-2">
+                {leadReminders.length > 0 ? (
+                  leadReminders.map((r) => (
+                    <ReminderItem key={r.id} reminder={r} />
+                  ))
+                ) : (
+                  <p className="py-4 text-center text-xs text-muted-foreground">
+                    No reminders yet.
+                  </p>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+        </div>
       </div>
-    </DashboardShell>
+    </div>
   )
 }
+
+// ---------------------------------------------------------------------------
+// Editable contact info card
+// ---------------------------------------------------------------------------
+
+function EditableContactCard({ lead }: { lead: { id: string; name: string; email: string | null; phone: string | null; company: string | null; source: string; value: number; tags: string[] } }) {
+  const updateLead = useUpdateLead()
+  const [editing, setEditing] = useState(false)
+  const [name, setName] = useState(lead.name)
+  const [email, setEmail] = useState(lead.email ?? '')
+  const [phone, setPhone] = useState(lead.phone ?? '')
+  const [company, setCompany] = useState(lead.company ?? '')
+  const [source, setSource] = useState(lead.source)
+  const [value, setValue] = useState(String(lead.value || ''))
+
+  useEffect(() => {
+    setName(lead.name)
+    setEmail(lead.email ?? '')
+    setPhone(lead.phone ?? '')
+    setCompany(lead.company ?? '')
+    setSource(lead.source)
+    setValue(String(lead.value || ''))
+  }, [lead])
+
+  function handleSave() {
+    updateLead.mutate({
+      id: lead.id,
+      name,
+      email: email || undefined,
+      phone: phone || undefined,
+      company: company || undefined,
+      source: source as LeadSourceType,
+      value: Number(value) || 0,
+    })
+    setEditing(false)
+  }
+
+  function handleCancel() {
+    setName(lead.name)
+    setEmail(lead.email ?? '')
+    setPhone(lead.phone ?? '')
+    setCompany(lead.company ?? '')
+    setSource(lead.source)
+    setValue(String(lead.value || ''))
+    setEditing(false)
+  }
+
+  if (editing) {
+    return (
+      <Card>
+        <CardHeader className="flex flex-row items-center justify-between">
+          <CardTitle className="text-base">Contact information</CardTitle>
+          <div className="flex gap-1">
+            <Button size="sm" variant="ghost" onClick={handleCancel}>
+              <X className="size-3.5" />
+            </Button>
+            <Button size="sm" onClick={handleSave}>
+              <Check className="size-3.5" /> Save
+            </Button>
+          </div>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <InlineField label="Name" icon={<Edit3 className="size-4" />}>
+              <Input value={name} onChange={(e) => setName(e.target.value)} className="h-8 text-sm" />
+            </InlineField>
+            <InlineField label="Email" icon={<Mail className="size-4" />}>
+              <Input value={email} onChange={(e) => setEmail(e.target.value)} className="h-8 text-sm" />
+            </InlineField>
+            <InlineField label="Phone" icon={<Phone className="size-4" />}>
+              <Input value={phone} onChange={(e) => setPhone(e.target.value)} className="h-8 text-sm" />
+            </InlineField>
+            <InlineField label="Company" icon={<Building2 className="size-4" />}>
+              <Input value={company} onChange={(e) => setCompany(e.target.value)} className="h-8 text-sm" />
+            </InlineField>
+            <InlineField label="Source" icon={<Calendar className="size-4" />}>
+              <select
+                value={source}
+                onChange={(e) => setSource(e.target.value)}
+                className="flex h-8 w-full rounded-md border border-input bg-transparent px-2 text-sm"
+              >
+                {SOURCE_OPTIONS.map((opt) => (
+                  <option key={opt.value} value={opt.value}>{opt.label}</option>
+                ))}
+              </select>
+            </InlineField>
+            <InlineField label="Deal value" icon={<DollarSign className="size-4" />}>
+              <Input value={value} onChange={(e) => setValue(e.target.value)} className="h-8 text-sm" type="number" />
+            </InlineField>
+          </div>
+        </CardContent>
+      </Card>
+    )
+  }
+
+  return (
+    <Card>
+      <CardHeader className="flex flex-row items-center justify-between">
+        <CardTitle className="text-base">Contact information</CardTitle>
+        <Button size="sm" variant="ghost" onClick={() => setEditing(true)}>
+          <Edit3 className="size-3.5" /> Edit
+        </Button>
+      </CardHeader>
+      <CardContent>
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+          <InfoRow icon={<Edit3 className="size-4" />} label="Name" value={lead.name} />
+          <InfoRow icon={<Mail className="size-4" />} label="Email" value={lead.email} />
+          <InfoRow icon={<Phone className="size-4" />} label="Phone" value={lead.phone} />
+          <InfoRow icon={<Building2 className="size-4" />} label="Company" value={lead.company} />
+          <InfoRow icon={<Calendar className="size-4" />} label="Source" value={lead.source} capitalize />
+          <InfoRow icon={<DollarSign className="size-4" />} label="Deal value" value={lead.value > 0 ? `$${Number(lead.value).toLocaleString()}` : null} />
+          {lead.tags && lead.tags.length > 0 && (
+            <div className="col-span-full flex items-center gap-2 text-sm text-muted-foreground">
+              <Tag className="size-4 shrink-0" />
+              <span className="flex flex-wrap gap-1">
+                {lead.tags.map((t) => (
+                  <Badge key={t} variant="secondary" className="text-[10px]">{t}</Badge>
+                ))}
+              </span>
+            </div>
+          )}
+        </div>
+      </CardContent>
+    </Card>
+  )
+}
+
+// ---------------------------------------------------------------------------
+// Editable notes card
+// ---------------------------------------------------------------------------
+
+function EditableNotesCard({ lead }: { lead: { id: string; notes: string | null } }) {
+  const updateLead = useUpdateLead()
+  const [editing, setEditing] = useState(false)
+  const [notes, setNotes] = useState(lead.notes ?? '')
+  const textareaRef = useRef<HTMLTextAreaElement>(null)
+
+  useEffect(() => {
+    setNotes(lead.notes ?? '')
+  }, [lead])
+
+  useEffect(() => {
+    if (editing && textareaRef.current) {
+      textareaRef.current.focus()
+    }
+  }, [editing])
+
+  function handleSave() {
+    updateLead.mutate({ id: lead.id, notes: notes || undefined })
+    setEditing(false)
+  }
+
+  function handleCancel() {
+    setNotes(lead.notes ?? '')
+    setEditing(false)
+  }
+
+  if (!editing && !lead.notes) {
+    return (
+      <Card>
+        <CardHeader className="flex flex-row items-center justify-between">
+          <CardTitle className="text-base">Notes</CardTitle>
+          <Button size="sm" variant="ghost" onClick={() => setEditing(true)}>
+            <Plus className="size-3.5" /> Add note
+          </Button>
+        </CardHeader>
+        <CardContent>
+          <button
+            onClick={() => setEditing(true)}
+            className="w-full rounded-md border border-dashed px-3 py-6 text-center text-sm text-muted-foreground hover:border-solid hover:bg-muted/50"
+          >
+            <MessageSquare className="mx-auto mb-1 size-4" />
+            Click to add notes
+          </button>
+        </CardContent>
+      </Card>
+    )
+  }
+
+  if (editing) {
+    return (
+      <Card>
+        <CardHeader className="flex flex-row items-center justify-between">
+          <CardTitle className="text-base">Notes</CardTitle>
+          <div className="flex gap-1">
+            <Button size="sm" variant="ghost" onClick={handleCancel}>
+              <X className="size-3.5" />
+            </Button>
+            <Button size="sm" onClick={handleSave}>
+              <Check className="size-3.5" /> Save
+            </Button>
+          </div>
+        </CardHeader>
+        <CardContent>
+          <Textarea
+            ref={textareaRef}
+            value={notes}
+            onChange={(e) => setNotes(e.target.value)}
+            placeholder="Add notes about this lead..."
+            rows={5}
+          />
+        </CardContent>
+      </Card>
+    )
+  }
+
+  return (
+    <Card>
+      <CardHeader className="flex flex-row items-center justify-between">
+        <CardTitle className="text-base">Notes</CardTitle>
+        <Button size="sm" variant="ghost" onClick={() => setEditing(true)}>
+          <Edit3 className="size-3.5" /> Edit
+        </Button>
+      </CardHeader>
+      <CardContent>
+        <p className="whitespace-pre-wrap text-sm">{lead.notes}</p>
+      </CardContent>
+    </Card>
+  )
+}
+
+// ---------------------------------------------------------------------------
+// Shared components
+// ---------------------------------------------------------------------------
 
 function InfoRow({
   icon,
@@ -195,14 +434,34 @@ function InfoRow({
   capitalize?: boolean
 }) {
   return (
-    <div className="flex items-center justify-between">
+    <div className="flex items-center justify-between gap-2">
       <div className="flex items-center gap-2 text-sm text-muted-foreground">
         {icon}
         {label}
       </div>
-      <span className={cn('text-sm font-medium', capitalize && 'capitalize')}>
+      <span className={cn('text-right text-sm font-medium truncate max-w-[60%]', capitalize && 'capitalize')}>
         {value || '—'}
       </span>
+    </div>
+  )
+}
+
+function InlineField({
+  label,
+  icon,
+  children,
+}: {
+  label: string
+  icon: React.ReactNode
+  children: React.ReactNode
+}) {
+  return (
+    <div className="space-y-1">
+      <label className="flex items-center gap-1.5 text-xs text-muted-foreground">
+        {icon}
+        {label}
+      </label>
+      {children}
     </div>
   )
 }
@@ -211,7 +470,6 @@ function LeadStatusDropdown({
   leadId,
 }: {
   leadId: string
-  current: LeadStatus
 }) {
   const updateLead = useUpdateLead()
   return (

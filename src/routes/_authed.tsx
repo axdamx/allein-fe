@@ -12,7 +12,11 @@ export const Route = createFileRoute('/_authed')({
   errorComponent: ({ error }) => {
     // If the redirect didn't catch it, show login form as fallback
     if (error.message === 'Not authenticated') {
-      return <AuthForm />
+      return (
+        <div className="flex min-h-svh items-center justify-center bg-gradient-to-b from-muted/50 to-background p-4">
+          <AuthForm />
+        </div>
+      )
     }
     throw error
   },

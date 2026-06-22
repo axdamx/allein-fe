@@ -70,20 +70,34 @@ export const createLeadTool = tool({
  */
 export const createReminderTool = tool({
   description:
-    'Create a follow-up reminder. Use when the user wants to be reminded, follow up, or schedule something for later.',
+    'Create a follow-up reminder. Use when the user wants to be reminded, follow up, or schedule something for later. If the reminder is about a specific person/lead, include their name in lead_name so it gets linked to their CRM record.',
   inputSchema: z.object({
     title: z.string().describe('Short title for the reminder'),
     description: z.string().optional().describe('Additional details'),
     due_at: z
       .string()
       .describe('When the reminder is due, ISO 8601 format (e.g. 2026-06-22T15:00:00Z)'),
+    lead_id: z.string().optional().describe('Lead ID to link this reminder to (if known)'),
+    lead_name: z.string().optional().describe('Name of the lead this reminder is about — used to look up the lead record if lead_id is not provided'),
   }),
-  execute: async ({ title, description, due_at }) => {
+  execute: async ({ title, description, due_at, lead_id, lead_name }) => {
     const supabase = getSupabaseServerClient()
     const {
       data: { user },
     } = await supabase.auth.getUser()
     if (!user) return { success: false, error: 'Not authenticated' }
+
+    let resolvedLeadId = lead_id
+
+    if (!resolvedLeadId && lead_name) {
+      const { data: lead } = await supabase
+        .from('leads')
+        .select('id')
+        .eq('owner_id', user.id)
+        .ilike('name', lead_name)
+        .maybeSingle()
+      if (lead) resolvedLeadId = lead.id
+    }
 
     const { data, error } = await supabase
       .from('reminders')
@@ -94,6 +108,7 @@ export const createReminderTool = tool({
         due_at,
         channel: 'in_app',
         status: 'pending',
+        lead_id: resolvedLeadId ?? null,
       })
       .select('id')
       .single()
