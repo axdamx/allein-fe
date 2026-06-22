@@ -4,6 +4,7 @@ import { Topbar } from '@/components/layout/topbar'
 import { usePlan } from '@/hooks/use-plan'
 import { useAgentTypes } from '@/hooks/use-agents'
 import { getProfile } from '@/server/settings'
+import { motion } from '@/lib/animations'
 
 export function DashboardShell({
   children,
@@ -36,7 +37,14 @@ export function DashboardShell({
       />
       <div className="flex min-w-0 flex-1 flex-col">
         <Topbar userEmail={userEmail} />
-        <main className="flex-1 overflow-y-auto p-4 lg:p-6">{children}</main>
+        <motion.main
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
+          className="flex-1 overflow-y-auto p-4 lg:p-6"
+        >
+          {children}
+        </motion.main>
       </div>
     </div>
   )

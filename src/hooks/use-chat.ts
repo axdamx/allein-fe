@@ -11,6 +11,9 @@ import {
   type MessageRow,
   type SendMessageResult,
 } from '@/server/chat'
+import { PLAN_CONFIGS } from '@/lib/plans'
+import { showUsageWarning } from '@/lib/usage-warnings'
+import type { PlanState } from '@/server/profile'
 
 // ---------------------------------------------------------------------------
 // Conversations
@@ -184,6 +187,21 @@ export function useChatStream(conversationId: string | null) {
         })
         qc.invalidateQueries({ queryKey: ['chat', 'conversations'] })
         qc.invalidateQueries({ queryKey: ['plan-state'] })
+
+        // Warn if nearing message limit (reads cached plan state — no extra fetch)
+        const ps = qc.getQueryData<PlanState>(['plan-state'])
+        if (ps) {
+          const max = PLAN_CONFIGS[ps.tier]?.limits?.messages?.max
+          if (max) {
+            const used = ps.usage?.messages ?? 0
+            showUsageWarning({
+              metric: 'messages',
+              percentUsed: Math.min(100, Math.round((used / max) * 100)),
+              remaining: ps.remaining?.messages ?? max,
+              tier: ps.tier,
+            })
+          }
+        }
       } catch (err) {
         const message = err instanceof Error ? err.message : 'Failed to send'
         setState({

@@ -16,6 +16,7 @@ export type LimitMetric =
   | 'messages'
   | 'posts'
   | 'documents'
+  | 'leads'
 
 export interface PlanLimit {
   /** Maximum value for this metric. `null` = unlimited. */
@@ -64,6 +65,7 @@ export const PLAN_CONFIGS: Record<PlanTier, PlanConfig> = {
       messages: { max: 100 },
       posts: { max: 5 },
       documents: { max: 3 },
+      leads: { max: 10 },
     },
     features: {
       crm: false,
@@ -91,6 +93,7 @@ export const PLAN_CONFIGS: Record<PlanTier, PlanConfig> = {
       messages: { max: 2000 },
       posts: { max: 30 },
       documents: { max: 25 },
+      leads: { max: 500 },
     },
     features: {
       crm: true,
@@ -119,6 +122,7 @@ export const PLAN_CONFIGS: Record<PlanTier, PlanConfig> = {
       messages: { max: null },
       posts: { max: 150 },
       documents: { max: 200 },
+      leads: { max: null },
     },
     features: {
       crm: true,
@@ -146,6 +150,7 @@ export const PLAN_CONFIGS: Record<PlanTier, PlanConfig> = {
       messages: { max: null },
       posts: { max: null },
       documents: { max: null },
+      leads: { max: null },
     },
     features: {
       crm: true,

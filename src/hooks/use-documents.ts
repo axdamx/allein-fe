@@ -6,6 +6,9 @@ import {
   deleteDocument,
   type DocumentRow,
 } from '@/server/documents'
+import { PLAN_CONFIGS } from '@/lib/plans'
+import { showUsageWarning } from '@/lib/usage-warnings'
+import type { PlanState } from '@/server/profile'
 
 export function useDocuments(agentId?: string) {
   return useQuery({
@@ -47,6 +50,21 @@ export function useUploadDocument() {
       toast.success('Document processed and ready for RAG')
       qc.invalidateQueries({ queryKey: ['documents'] })
       qc.invalidateQueries({ queryKey: ['plan-state'] })
+
+      // Warn if nearing document limit (reads cached plan state — no extra fetch)
+      const ps = qc.getQueryData<PlanState>(['plan-state'])
+      if (ps) {
+        const max = PLAN_CONFIGS[ps.tier]?.limits?.documents?.max
+        if (max) {
+          const used = ps.usage?.documents ?? 0
+          showUsageWarning({
+            metric: 'documents',
+            percentUsed: Math.min(100, Math.round((used / max) * 100)),
+            remaining: ps.remaining?.documents ?? max,
+            tier: ps.tier,
+          })
+        }
+      }
     },
     onError: (err: unknown) => {
       const msg = err instanceof Error ? err.message : 'Upload failed'

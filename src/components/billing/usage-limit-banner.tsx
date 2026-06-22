@@ -18,6 +18,7 @@ const METRIC_LABELS: Record<LimitMetric, { singular: string; plural: string }> =
     messages: { singular: 'message', plural: 'messages' },
     posts: { singular: 'post', plural: 'posts' },
     documents: { singular: 'document', plural: 'documents' },
+    leads: { singular: 'lead', plural: 'leads' },
   }
 
 /**
@@ -46,7 +47,7 @@ export function UsageLimitBanner({
   // Find which metric is closest to its limit (if not specified).
   const metrics: LimitMetric[] = metric
     ? [metric]
-    : ['agents', 'conversations', 'messages', 'posts', 'documents']
+    : ['agents', 'conversations', 'messages', 'posts', 'documents', 'leads']
 
   const triggered = metrics
     .map((m) => ({

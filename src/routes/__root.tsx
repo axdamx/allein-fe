@@ -70,7 +70,6 @@ function RootComponent() {
       attribute="class"
       defaultTheme="system"
       enableSystem
-      disableTransitionOnChange
     >
       <QueryClientProvider client={queryClient}>
         <html lang="en" suppressHydrationWarning>

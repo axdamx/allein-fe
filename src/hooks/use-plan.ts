@@ -38,6 +38,7 @@ export function usePlan() {
       messages: 0,
       posts: 0,
       documents: 0,
+      leads: 0,
     },
     remaining: state?.remaining ?? {
       agents: PLAN_CONFIGS.free.limits.agents.max,
@@ -45,6 +46,7 @@ export function usePlan() {
       messages: PLAN_CONFIGS.free.limits.messages.max,
       posts: PLAN_CONFIGS.free.limits.posts.max,
       documents: PLAN_CONFIGS.free.limits.documents.max,
+      leads: PLAN_CONFIGS.free.limits.leads.max,
     },
 
     /** True if the user can still perform one more of this metric. */

@@ -17,6 +17,7 @@ import {
 import { Skeleton } from '@/components/ui/skeleton'
 import { useDashboardStats } from '@/hooks/use-dashboard'
 import { useAgents } from '@/hooks/use-agents'
+import { motion } from '@/lib/animations'
 import type { Stat } from '@/lib/types'
 
 export const Route = createFileRoute('/_authed/dashboard')({
@@ -97,102 +98,114 @@ function DashboardPage() {
                 </CardContent>
               </Card>
             ))
-          : statCards.map((stat) => <StatCard key={stat.id} stat={stat} />)}
+          : statCards.map((stat, i) => <StatCard key={stat.id} stat={stat} index={i} />)}
       </div>
 
       <div className="mt-4 grid grid-cols-1 gap-4 lg:grid-cols-2">
         {/* Agents list */}
-        <Card className="lg:col-span-1">
-          <CardHeader className="flex flex-row items-center justify-between">
-            <div>
-              <CardTitle className="text-base">Your Agents</CardTitle>
-              <CardDescription>Active and paused agents</CardDescription>
-            </div>
-            <Button variant="ghost" size="sm" asChild>
-              <Link to="/agents">View all</Link>
-            </Button>
-          </CardHeader>
-          <CardContent>
-            {agentsLoading ? (
-              <div className="space-y-2">
-                {Array.from({ length: 3 }).map((_, i) => (
-                  <Skeleton key={i} className="h-12 w-full" />
-                ))}
+        <motion.div
+          initial={{ opacity: 0, y: 16 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1], delay: 0.2 }}
+        >
+          <Card className="lg:col-span-1">
+            <CardHeader className="flex flex-row items-center justify-between">
+              <div>
+                <CardTitle className="text-base">Your Agents</CardTitle>
+                <CardDescription>Active and paused agents</CardDescription>
               </div>
-            ) : agents && agents.length > 0 ? (
-              <ul className="space-y-1">
-                {agents.slice(0, 5).map((agent) => (
-                  <li
-                    key={agent.id}
-                    className="flex items-center justify-between rounded-md px-2 py-2 hover:bg-muted/50"
-                  >
-                    <div className="flex items-center gap-3">
-                      <div
-                        className="flex size-9 items-center justify-center rounded-md bg-primary/10 text-primary"
-                      >
-                        <Bot className="size-4" />
+              <Button variant="ghost" size="sm" asChild>
+                <Link to="/agents">View all</Link>
+              </Button>
+            </CardHeader>
+            <CardContent>
+              {agentsLoading ? (
+                <div className="space-y-2">
+                  {Array.from({ length: 3 }).map((_, i) => (
+                    <Skeleton key={i} className="h-12 w-full" />
+                  ))}
+                </div>
+              ) : agents && agents.length > 0 ? (
+                <ul className="space-y-1">
+                  {agents.slice(0, 5).map((agent) => (
+                    <li
+                      key={agent.id}
+                      className="flex items-center justify-between rounded-md px-2 py-2 hover:bg-muted/50"
+                    >
+                      <div className="flex items-center gap-3">
+                        <div
+                          className="flex size-9 items-center justify-center rounded-md bg-primary/10 text-primary"
+                        >
+                          <Bot className="size-4" />
+                        </div>
+                        <div>
+                          <p className="text-sm font-medium">{agent.name}</p>
+                          <p className="text-xs capitalize text-muted-foreground">
+                            {agent.type.replace('_', ' ')}
+                          </p>
+                        </div>
                       </div>
-                      <div>
-                        <p className="text-sm font-medium">{agent.name}</p>
-                        <p className="text-xs capitalize text-muted-foreground">
-                          {agent.type.replace('_', ' ')}
-                        </p>
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs text-muted-foreground">
+                          {agent.conversations_count} chats
+                        </span>
+                        <span
+                          className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium ${
+                            agent.status === 'active'
+                              ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400'
+                              : agent.status === 'paused'
+                                ? 'bg-amber-500/10 text-amber-600 dark:text-amber-400'
+                                : 'bg-muted text-muted-foreground'
+                          }`}
+                        >
+                          {agent.status}
+                        </span>
                       </div>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <span className="text-xs text-muted-foreground">
-                        {agent.conversations_count} chats
-                      </span>
-                      <span
-                        className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium ${
-                          agent.status === 'active'
-                            ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400'
-                            : agent.status === 'paused'
-                              ? 'bg-amber-500/10 text-amber-600 dark:text-amber-400'
-                              : 'bg-muted text-muted-foreground'
-                        }`}
-                      >
-                        {agent.status}
-                      </span>
-                    </div>
-                  </li>
-                ))}
-              </ul>
-            ) : (
-              <EmptyAgents onCreate={() => setNewAgentOpen(true)} />
-            )}
-          </CardContent>
-        </Card>
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <EmptyAgents onCreate={() => setNewAgentOpen(true)} />
+              )}
+            </CardContent>
+          </Card>
+        </motion.div>
 
         {/* Quick stats sidebar */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base">Overview</CardTitle>
-            <CardDescription>At a glance</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            <OverviewRow
-              icon={<MessageSquare className="size-4" />}
-              label="Messages sent"
-              value={formatNumber(stats?.messages ?? 0)}
-            />
-            <OverviewRow
-              icon={<Users className="size-4" />}
-              label="New leads"
-              value={String(stats?.new_leads ?? 0)}
-            />
-            <OverviewRow
-              icon={<TrendingUp className="size-4" />}
-              label="Open deals"
-              value={String(stats?.open_deals ?? 0)}
-            />
-            <OverviewRow
-              icon={<FileText className="size-4" />}
-              label="Documents"
-              value={String(stats?.documents ?? 0)}
-            />
-          </CardContent>
-        </Card>
+        <motion.div
+          initial={{ opacity: 0, y: 16 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1], delay: 0.3 }}
+        >
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base">Overview</CardTitle>
+              <CardDescription>At a glance</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <OverviewRow
+                icon={<MessageSquare className="size-4" />}
+                label="Messages sent"
+                value={formatNumber(stats?.messages ?? 0)}
+              />
+              <OverviewRow
+                icon={<Users className="size-4" />}
+                label="New leads"
+                value={String(stats?.new_leads ?? 0)}
+              />
+              <OverviewRow
+                icon={<TrendingUp className="size-4" />}
+                label="Open deals"
+                value={String(stats?.open_deals ?? 0)}
+              />
+              <OverviewRow
+                icon={<FileText className="size-4" />}
+                label="Documents"
+                value={String(stats?.documents ?? 0)}
+              />
+            </CardContent>
+          </Card>
+        </motion.div>
       </div>
 
       <NewAgentModal

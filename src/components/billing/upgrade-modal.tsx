@@ -37,6 +37,7 @@ const METRIC_LABELS: Record<LimitMetric, string> = {
   messages: 'AI messages',
   posts: 'marketing posts',
   documents: 'knowledge documents',
+  leads: 'CRM leads',
 }
 
 const FEATURE_LABELS: Record<FeatureKey, string> = {

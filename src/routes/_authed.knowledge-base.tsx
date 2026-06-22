@@ -23,6 +23,7 @@ import { Progress } from '@/components/ui/progress'
 import { Skeleton } from '@/components/ui/skeleton'
 import { useDocuments, useUploadDocument, useDeleteDocument } from '@/hooks/use-documents'
 import { cn } from '@/lib/utils'
+import { motion } from '@/lib/animations'
 
 export const Route = createFileRoute('/_authed/knowledge-base')({
   component: KnowledgeBasePage,
@@ -47,7 +48,6 @@ function KnowledgeBasePage() {
         file.type.includes('octet-stream') ||
         file.name.endsWith('.pdf')
 
-      // Read binary files as base64, text files as UTF-8
       let content: string
       if (isBinary) {
         const buffer = await file.arrayBuffer()
@@ -70,7 +70,6 @@ function KnowledgeBasePage() {
       })
     }
     setUploading(false)
-    // Reset input so the same file can be selected again
     if (fileInputRef.current) fileInputRef.current.value = ''
   }
 
@@ -106,64 +105,114 @@ function KnowledgeBasePage() {
               disabled={uploading}
             >
               {uploading ? (
-                <Loader2 className="size-4 animate-spin" />
+                <motion.span
+                  key="loading"
+                  initial={{ opacity: 0, scale: 0.5 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  className="flex items-center gap-2"
+                >
+                  <Loader2 className="size-4 animate-spin" />
+                  Uploading...
+                </motion.span>
               ) : (
-                <Upload className="size-4" />
+                <motion.span
+                  key="idle"
+                  initial={{ opacity: 0, scale: 0.5 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  className="flex items-center gap-2"
+                >
+                  <Upload className="size-4" />
+                  Upload
+                </motion.span>
               )}
-              Upload
             </Button>
           </div>
         </div>
 
         {/* Stats */}
-        <div className="mb-4 grid grid-cols-3 gap-3">
-          <Card>
-            <CardContent className="pt-4">
-              <div className="flex items-center gap-2">
-                <FileText className="size-4 text-muted-foreground" />
-                <span className="text-sm text-muted-foreground">Documents</span>
-              </div>
-              <p className="mt-1 text-2xl font-semibold">
-                {documents?.length ?? 0}
-              </p>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardContent className="pt-4">
-              <div className="flex items-center gap-2">
-                <CheckCircle2 className="size-4 text-emerald-500" />
-                <span className="text-sm text-muted-foreground">Ready</span>
-              </div>
-              <p className="mt-1 text-2xl font-semibold">{readyCount}</p>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardContent className="pt-4">
-              <div className="flex items-center gap-2">
-                <Brain className="size-4 text-primary" />
-                <span className="text-sm text-muted-foreground">
-                  Total chunks
-                </span>
-              </div>
-              <p className="mt-1 text-2xl font-semibold">{totalChunks}</p>
-            </CardContent>
-          </Card>
-        </div>
+        <motion.div
+          initial="hidden"
+          animate="visible"
+          variants={{
+            hidden: {},
+            visible: { transition: { staggerChildren: 0.08 } },
+          }}
+          className="mb-4 grid grid-cols-3 gap-3"
+        >
+          <motion.div
+            variants={{
+              hidden: { opacity: 0, y: 12 },
+              visible: { opacity: 1, y: 0, transition: { duration: 0.35, ease: [0.16, 1, 0.3, 1] } },
+            }}
+          >
+            <Card>
+              <CardContent className="pt-4">
+                <div className="flex items-center gap-2">
+                  <FileText className="size-4 text-muted-foreground" />
+                  <span className="text-sm text-muted-foreground">Documents</span>
+                </div>
+                <p className="mt-1 text-2xl font-semibold">
+                  {documents?.length ?? 0}
+                </p>
+              </CardContent>
+            </Card>
+          </motion.div>
+          <motion.div
+            variants={{
+              hidden: { opacity: 0, y: 12 },
+              visible: { opacity: 1, y: 0, transition: { duration: 0.35, ease: [0.16, 1, 0.3, 1] } },
+            }}
+          >
+            <Card>
+              <CardContent className="pt-4">
+                <div className="flex items-center gap-2">
+                  <CheckCircle2 className="size-4 text-emerald-500" />
+                  <span className="text-sm text-muted-foreground">Ready</span>
+                </div>
+                <p className="mt-1 text-2xl font-semibold">{readyCount}</p>
+              </CardContent>
+            </Card>
+          </motion.div>
+          <motion.div
+            variants={{
+              hidden: { opacity: 0, y: 12 },
+              visible: { opacity: 1, y: 0, transition: { duration: 0.35, ease: [0.16, 1, 0.3, 1] } },
+            }}
+          >
+            <Card>
+              <CardContent className="pt-4">
+                <div className="flex items-center gap-2">
+                  <Brain className="size-4 text-primary" />
+                  <span className="text-sm text-muted-foreground">
+                    Total chunks
+                  </span>
+                </div>
+                <p className="mt-1 text-2xl font-semibold">{totalChunks}</p>
+              </CardContent>
+            </Card>
+          </motion.div>
+        </motion.div>
 
         {/* How RAG works info banner */}
-        <Card className="mb-4 border-primary/20 bg-primary/5">
-          <CardContent className="flex items-start gap-3 py-3">
-            <Brain className="mt-0.5 size-5 shrink-0 text-primary" />
-            <div className="text-sm">
-              <p className="font-medium">How RAG works</p>
-              <p className="mt-0.5 text-muted-foreground">
-                When you chat with an agent, it searches these documents for
-                relevant context and includes it in the AI's prompt. The agent
-                answers using your data — no model fine-tuning required.
-              </p>
-            </div>
-          </CardContent>
-        </Card>
+        <motion.div
+          initial={{ opacity: 0, y: 12 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1], delay: 0.2 }}
+        >
+          <Card className="mb-4 border-primary/20 bg-primary/5">
+            <CardContent className="flex items-start gap-3 py-3">
+              <Brain className="mt-0.5 size-5 shrink-0 text-primary" />
+              <div className="text-sm">
+                <p className="font-medium">How RAG works</p>
+                <p className="mt-0.5 text-muted-foreground">
+                  When you chat with an agent, it searches these documents for
+                  relevant context and includes it in the AI's prompt. The agent
+                  answers using your data — no model fine-tuning required.
+                </p>
+              </div>
+            </CardContent>
+          </Card>
+        </motion.div>
 
         {/* Document list */}
         {isLoading ? (
@@ -173,71 +222,98 @@ function KnowledgeBasePage() {
             ))}
           </div>
         ) : documents && documents.length > 0 ? (
-          <div className="space-y-2">
+          <motion.div
+            initial="hidden"
+            animate="visible"
+            variants={{
+              hidden: {},
+              visible: { transition: { staggerChildren: 0.05 } },
+            }}
+            className="space-y-2"
+          >
             {documents.map((doc) => {
               const isProcessing = ['processing', 'extracting', 'chunking', 'embedding', 'storing'].includes(doc.status)
               return (
-                <Card key={doc.id}>
-                  <CardContent className="flex items-center justify-between py-3">
-                    <div className="flex min-w-0 flex-1 items-center gap-3">
-                      <div className={cn(
-                        "flex size-10 shrink-0 items-center justify-center rounded-lg",
-                        isProcessing ? "bg-primary/10" : "bg-muted",
-                      )}>
-                        {isProcessing ? (
-                          <Loader2 className="size-5 animate-spin text-primary" />
-                        ) : (
-                          <FileText className="size-5 text-muted-foreground" />
-                        )}
+                <motion.div
+                  key={doc.id}
+                  variants={{
+                    hidden: { opacity: 0, y: 8 },
+                    visible: { opacity: 1, y: 0, transition: { duration: 0.3, ease: [0.16, 1, 0.3, 1] } },
+                  }}
+                >
+                  <Card>
+                    <CardContent className="flex items-center justify-between py-3">
+                      <div className="flex min-w-0 flex-1 items-center gap-3">
+                        <div className={cn(
+                          "flex size-10 shrink-0 items-center justify-center rounded-lg",
+                          isProcessing ? "bg-primary/10" : "bg-muted",
+                        )}>
+                          {isProcessing ? (
+                            <Loader2 className="size-5 animate-spin text-primary" />
+                          ) : (
+                            <FileText className="size-5 text-muted-foreground" />
+                          )}
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <p className="truncate font-medium">{doc.name}</p>
+                          {isProcessing ? (
+                            <ProcessingProgress status={doc.status} chunkCount={doc.chunk_count} />
+                          ) : (
+                            <div className="flex items-center gap-3 text-xs text-muted-foreground">
+                              <StatusBadge status={doc.status} />
+                              <span>{doc.chunk_count} chunks</span>
+                              {doc.size_bytes && <span>{formatBytes(doc.size_bytes)}</span>}
+                              <span>
+                                {formatDistanceToNow(new Date(doc.created_at))}
+                              </span>
+                            </div>
+                          )}
+                        </div>
                       </div>
-                      <div className="min-w-0 flex-1">
-                        <p className="truncate font-medium">{doc.name}</p>
-                        {isProcessing ? (
-                          <ProcessingProgress status={doc.status} chunkCount={doc.chunk_count} />
-                        ) : (
-                          <div className="flex items-center gap-3 text-xs text-muted-foreground">
-                            <StatusBadge status={doc.status} />
-                            <span>{doc.chunk_count} chunks</span>
-                            {doc.size_bytes && <span>{formatBytes(doc.size_bytes)}</span>}
-                            <span>
-                              {formatDistanceToNow(new Date(doc.created_at))}
-                            </span>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="size-8 shrink-0 text-muted-foreground hover:text-destructive"
-                      onClick={() => deleteDoc.mutate(doc.id)}
-                      disabled={isProcessing}
-                    >
-                      <Trash2 className="size-4" />
-                    </Button>
-                  </CardContent>
-                </Card>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="size-8 shrink-0 text-muted-foreground hover:text-destructive"
+                        onClick={() => deleteDoc.mutate(doc.id)}
+                        disabled={isProcessing}
+                      >
+                        <Trash2 className="size-4" />
+                      </Button>
+                    </CardContent>
+                  </Card>
+                </motion.div>
               )
             })}
-          </div>
+          </motion.div>
         ) : (
-          <Card>
-            <CardContent className="flex flex-col items-center justify-center gap-3 py-16 text-center">
-              <div className="flex size-12 items-center justify-center rounded-full bg-muted">
-                <Upload className="size-5 text-muted-foreground" />
-              </div>
-              <div>
-                <p className="font-medium">No documents yet</p>
-                <p className="text-sm text-muted-foreground">
-                  Upload text files, markdown, or CSVs to build your knowledge
-                  base.
-                </p>
-              </div>
-              <Button onClick={() => fileInputRef.current?.click()}>
-                <Upload className="size-4" /> Upload your first document
-              </Button>
-            </CardContent>
-          </Card>
+          <motion.div
+            initial={{ opacity: 0, scale: 0.97 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1], delay: 0.15 }}
+          >
+            <Card>
+              <CardContent className="flex flex-col items-center justify-center gap-3 py-16 text-center">
+                <motion.div
+                  initial={{ scale: 0 }}
+                  animate={{ scale: 1 }}
+                  transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1], delay: 0.25, type: 'spring', stiffness: 200, damping: 15 }}
+                  className="flex size-12 items-center justify-center rounded-full bg-muted"
+                >
+                  <Upload className="size-5 text-muted-foreground" />
+                </motion.div>
+                <div>
+                  <p className="font-medium">No documents yet</p>
+                  <p className="text-sm text-muted-foreground">
+                    Upload text files, markdown, or CSVs to build your knowledge
+                    base.
+                  </p>
+                </div>
+                <Button onClick={() => fileInputRef.current?.click()}>
+                  <Upload className="size-4" /> Upload your first document
+                </Button>
+              </CardContent>
+            </Card>
+          </motion.div>
         )}
       </DashboardShell>
     </FeatureGate>

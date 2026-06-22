@@ -66,6 +66,9 @@ export const getMessages = createServerFn({ method: 'GET' })
 export const sendMessage = createServerFn({ method: 'POST' })
   .validator((d: { conversationId: string; content: string }) => d)
   .handler(async ({ data }) => {
+    const { enforceLimitImpl } = await import('./profile.server')
+    await enforceLimitImpl('messages')
+
     const { sendMessageImpl } = await import('./chat.server')
     return sendMessageImpl(data)
   })

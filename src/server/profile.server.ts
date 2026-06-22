@@ -32,20 +32,34 @@ export async function getCurrentUserProfile() {
   return profile
 }
 
+/** Count the user's leads for plan tracking (no DB column needed). */
+async function countUserLeads(userId: string): Promise<number> {
+  const supabase = getSupabaseServerClient()
+  const { count } = await supabase
+    .from('leads')
+    .select('*', { count: 'exact', head: true })
+    .eq('owner_id', userId)
+  return count ?? 0
+}
+
 function computeRemaining(used: number, max: number | null): number | null {
   if (max === null) return null
   return Math.max(0, max - used)
 }
 
-/** Build the PlanState object from a profile row. */
-export function buildPlanState(profile: {
-  plan: string
-  agents_count: number
-  conversations_count: number
-  messages_count: number
-  posts_count: number
-  documents_count: number
-}): PlanState {
+/** Build the PlanState object from a profile row and optional lead count. */
+export function buildPlanState(
+  profile: {
+    plan: string
+    id?: string
+    agents_count: number
+    conversations_count: number
+    messages_count: number
+    posts_count: number
+    documents_count: number
+  },
+  leadsCount: number = 0,
+): PlanState {
   const config = PLAN_CONFIGS[profile.plan as PlanTier] ?? PLAN_CONFIGS.free
 
   const usage: Record<LimitMetric, number> = {
@@ -54,6 +68,7 @@ export function buildPlanState(profile: {
     messages: profile.messages_count ?? 0,
     posts: profile.posts_count ?? 0,
     documents: profile.documents_count ?? 0,
+    leads: leadsCount,
   }
 
   const remaining: Record<LimitMetric, number | null> = {
@@ -65,6 +80,7 @@ export function buildPlanState(profile: {
     messages: computeRemaining(usage.messages, config.limits.messages.max),
     posts: computeRemaining(usage.posts, config.limits.posts.max),
     documents: computeRemaining(usage.documents, config.limits.documents.max),
+    leads: computeRemaining(usage.leads, config.limits.leads.max),
   }
 
   return {
@@ -79,7 +95,9 @@ export function buildPlanState(profile: {
 export async function getPlanStateImpl(): Promise<PlanState | null> {
   const profile = await getCurrentUserProfile()
   if (!profile) return null
-  return buildPlanState(profile)
+
+  const leadsCount = await countUserLeads(profile.id)
+  return buildPlanState(profile, leadsCount)
 }
 
 /** Implementation of enforceLimit — runs on server only. */
@@ -90,6 +108,22 @@ export async function enforceLimitImpl(metric: LimitMetric): Promise<void> {
   const config = PLAN_CONFIGS[profile.plan as PlanTier] ?? PLAN_CONFIGS.free
   const { max } = config.limits[metric]
   if (max === null) return
+
+  // For leads, count dynamically from the leads table
+  if (metric === 'leads') {
+    const leadsCount = await countUserLeads(profile.id)
+    if (leadsCount >= max) {
+      const requiredTier = minTierForLimit(metric, leadsCount + 1)
+      const err = new Error(
+        `Plan limit reached: ${metric} (${leadsCount}/${max}) on the ${profile.plan} plan.` +
+          (requiredTier ? ` Upgrade to ${requiredTier}.` : ''),
+      )
+      err.name = 'PlanLimitError'
+      Object.assign(err, { metric, currentTier: profile.plan, requiredTier, used: leadsCount, max })
+      throw err
+    }
+    return
+  }
 
   const used =
     metric === 'agents'

@@ -21,6 +21,9 @@ import {
   type DealStage,
   type ReminderStatusType,
 } from '@/server/crm'
+import { PLAN_CONFIGS } from '@/lib/plans'
+import { showUsageWarning } from '@/lib/usage-warnings'
+import type { PlanState } from '@/server/profile'
 
 // ---------------------------------------------------------------------------
 // Leads
@@ -46,6 +49,22 @@ export function useCreateLead() {
       toast.success('Lead created')
       qc.invalidateQueries({ queryKey: ['crm', 'leads'] })
       qc.invalidateQueries({ queryKey: ['dashboard-stats'] })
+      qc.invalidateQueries({ queryKey: ['plan-state'] })
+
+      // Warn if nearing lead limit (reads cached plan state — no extra fetch)
+      const ps = qc.getQueryData<PlanState>(['plan-state'])
+      if (ps) {
+        const max = PLAN_CONFIGS[ps.tier]?.limits?.leads?.max
+        if (max) {
+          const used = ps.usage?.leads ?? 0
+          showUsageWarning({
+            metric: 'leads',
+            percentUsed: Math.min(100, Math.round((used / max) * 100)),
+            remaining: ps.remaining?.leads ?? max,
+            tier: ps.tier,
+          })
+        }
+      }
     },
   })
 }

@@ -17,6 +17,7 @@ import {
 } from '@/components/ui/dropdown-menu'
 import { Input } from '@/components/ui/input'
 import { Separator } from '@/components/ui/separator'
+import { motion } from '@/lib/animations'
 
 function initialsFromEmail(email: string) {
   const name = email.split('@')[0]
@@ -47,7 +48,12 @@ export function Topbar({
   const initials = userEmail ? initialsFromEmail(userEmail) : '?'
 
   return (
-    <header className="flex h-16 items-center gap-3 border-b bg-background px-4 lg:px-6">
+    <motion.header
+      initial={{ opacity: 0, y: -12 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
+      className="flex h-16 items-center gap-3 border-b bg-background px-4 lg:px-6"
+    >
       <div className="relative max-w-md flex-1">
         <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
         <Input
@@ -97,6 +103,6 @@ export function Topbar({
           </DropdownMenuContent>
         </DropdownMenu>
       </div>
-    </header>
+    </motion.header>
   )
 }

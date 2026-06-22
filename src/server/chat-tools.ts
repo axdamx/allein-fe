@@ -32,6 +32,14 @@ export const createLeadTool = tool({
     } = await supabase.auth.getUser()
     if (!user) return { success: false, error: 'Not authenticated' }
 
+    // Enforce plan limit
+    const { enforceLimitImpl } = await import('@/server/profile.server')
+    try {
+      await enforceLimitImpl('leads')
+    } catch {
+      return { success: false, error: 'Lead limit reached on your current plan.' }
+    }
+
     const { data, error } = await supabase
       .from('leads')
       .insert({

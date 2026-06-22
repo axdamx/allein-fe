@@ -38,6 +38,9 @@ export const getLeads = createServerFn({ method: 'GET' }).handler(async () => {
 export const createLead = createServerFn({ method: 'POST' })
   .validator((d: CreateLeadInput) => d)
   .handler(async ({ data }) => {
+    const { enforceLimitImpl } = await import('./profile.server')
+    await enforceLimitImpl('leads')
+
     const { createLeadImpl } = await import('./crm.server')
     return createLeadImpl(data)
   })

@@ -36,6 +36,9 @@ export const uploadDocument = createServerFn({ method: 'POST' })
     }) => d,
   )
   .handler(async ({ data }) => {
+    const { enforceLimitImpl } = await import('./profile.server')
+    await enforceLimitImpl('documents')
+
     const { uploadDocumentImpl } = await import('./documents.server')
     return uploadDocumentImpl(data)
   })
