@@ -9,6 +9,12 @@
  */
 import { createOpenAICompatible } from '@ai-sdk/openai-compatible'
 
+// Suppress AI SDK warnings about unsupported provider features.
+// ZAI/GLM doesn't support responseFormat (json_schema), but generateObject
+// still works via prompt-based JSON fallback. This global must be set on
+// globalThis, not process.env — the AI SDK checks the global directly.
+;(globalThis as Record<string, unknown>).AI_SDK_LOG_WARNINGS = false
+
 const baseURL =
   process.env.LLM_BASE_URL || 'https://api.z.ai/api/paas/v4'
 

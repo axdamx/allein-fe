@@ -3,8 +3,6 @@ import { format } from 'date-fns'
 import { Plus, TrendingUp } from 'lucide-react'
 import { createFileRoute } from '@tanstack/react-router'
 
-import { DashboardShell } from '@/components/layout/dashboard-shell'
-import { FeatureGate } from '@/components/billing/feature-gate'
 import { Button } from '@/components/ui/button'
 import {
   Card,
@@ -27,7 +25,6 @@ export const Route = createFileRoute('/_authed/crm/pipeline')({
 })
 
 function PipelinePage() {
-  const { user } = Route.useRouteContext()
   const { data: deals, isLoading } = useDeals()
 
   // Group deals by stage
@@ -47,39 +44,22 @@ function PipelinePage() {
     .reduce((sum, d) => sum + Number(d.value), 0)
 
   return (
-    <FeatureGate feature="crm">
-      <DashboardShell
-        userEmail={user?.email}
-        userName={user?.email?.split('@')[0]}
-      >
-        <div className="mb-6 flex items-center justify-between gap-3">
-          <div>
-            <h1 className="text-2xl font-semibold tracking-tight">Pipeline</h1>
-            <p className="text-sm text-muted-foreground">
-              {deals?.length ?? 0} deals ·{' '}
-              <span className="font-medium text-foreground">
-                ${totalValue.toLocaleString()}
-              </span>{' '}
-              open
-            </p>
-          </div>
-          <Button disabled>
-            <Plus className="size-4" /> New Deal
-          </Button>
+    <>
+      <div className="mb-6 flex items-center justify-between gap-3">
+        <div>
+          <h1 className="text-2xl font-semibold tracking-tight">Pipeline</h1>
+          <p className="text-sm text-muted-foreground">
+            {deals?.length ?? 0} deals ·{' '}
+            <span className="font-medium text-foreground">
+              ${totalValue.toLocaleString()}
+            </span>{' '}
+            open
+          </p>
         </div>
-
-        {/* Sub-nav */}
-        <div className="mb-4 flex gap-1 border-b">
-          <a
-            href="/crm/leads"
-            className="px-4 py-2 text-sm text-muted-foreground hover:text-foreground"
-          >
-            Leads
-          </a>
-          <span className="border-b-2 border-primary px-4 py-2 text-sm font-medium">
-            Pipeline
-          </span>
-        </div>
+        <Button disabled>
+          <Plus className="size-4" /> New Deal
+        </Button>
+      </div>
 
         {isLoading ? (
           <div className="grid grid-cols-1 gap-4 md:grid-cols-3 xl:grid-cols-6">
@@ -132,8 +112,7 @@ function PipelinePage() {
             })}
           </div>
         )}
-      </DashboardShell>
-    </FeatureGate>
+    </>
   )
 }
 

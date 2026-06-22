@@ -1,6 +1,7 @@
 /** Server-only implementation for settings (profile + plan updates). */
 import { getSupabaseServerClient } from '@/lib/supabase/server.server'
 import type { PlanTier } from '@/lib/plans'
+import type { AgentTypeKey } from '@/lib/agent-types'
 
 export interface ProfileRow {
   id: string
@@ -11,6 +12,7 @@ export interface ProfileRow {
   phone: string | null
   plan: PlanTier
   role: 'member' | 'admin' | 'owner'
+  agent_type: AgentTypeKey | null
 }
 
 /** Fetch the current user's profile. */
@@ -23,7 +25,7 @@ export async function getProfileImpl(): Promise<ProfileRow | null> {
 
   const { data, error } = await supabase
     .from('profiles')
-    .select('id, email, full_name, avatar_url, company, phone, plan, role')
+    .select('id, email, full_name, avatar_url, company, phone, plan, role, agent_type')
     .eq('id', user.id)
     .single()
 
@@ -72,6 +74,25 @@ export async function updatePlanImpl(
   const { error } = await supabase
     .from('profiles')
     .update({ plan })
+    .eq('id', user.id)
+
+  if (error) return { error: error.message }
+  return null
+}
+
+/** Set the user's agent type during onboarding. */
+export async function updateUserAgentTypeImpl(
+  agentType: AgentTypeKey,
+): Promise<{ error: string } | null> {
+  const supabase = getSupabaseServerClient()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+  if (!user) return { error: 'Not authenticated' }
+
+  const { error } = await supabase
+    .from('profiles')
+    .update({ agent_type: agentType })
     .eq('id', user.id)
 
   if (error) return { error: error.message }

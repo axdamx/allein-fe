@@ -10,8 +10,6 @@ import {
   Wand2,
   Clock,
   Check,
-  ImageIcon,
-  Video,
 } from 'lucide-react'
 import { format } from 'date-fns'
 import { createFileRoute } from '@tanstack/react-router'
@@ -351,6 +349,26 @@ function PostPreview({
               </>
             )}
           </Button>
+        </div>
+
+        {/* Media generation */}
+        <div className="space-y-3 border-t pt-3">
+          <p className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
+            <Sparkles className="size-3" />
+            ENHANCE WITH MEDIA
+          </p>
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <MediaGenerator
+              mediaType="image"
+              caption={generated.caption}
+              onMediaGenerated={() => {}}
+            />
+            <MediaGenerator
+              mediaType="video"
+              caption={generated.caption}
+              onMediaGenerated={() => {}}
+            />
+          </div>
         </div>
 
         {/* Scheduling */}

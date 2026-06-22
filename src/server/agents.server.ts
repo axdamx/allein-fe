@@ -90,6 +90,18 @@ export async function createAgentImpl(
   } = await supabase.auth.getUser()
   if (!user) return { error: 'Not authenticated' }
 
+  // Fetch the user's profile to check agent_type
+  const { data: profile } = await supabase
+    .from('profiles')
+    .select('agent_type')
+    .eq('id', user.id)
+    .single()
+
+  // If the user has an agent_type set, enforce it
+  if (profile?.agent_type && profile.agent_type !== input.type) {
+    return { error: `You can only create ${profile.agent_type.replace('_', ' ')} agents.` }
+  }
+
   // Insert the agent
   const { data, error } = await supabase
     .from('agents')

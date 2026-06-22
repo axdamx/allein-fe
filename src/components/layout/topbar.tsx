@@ -1,5 +1,6 @@
 import { Bell, LogOut, Search, Settings, User } from 'lucide-react'
 import { useRouter } from '@tanstack/react-router'
+import { useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 
 import { logoutFn } from '@/server/auth'
@@ -28,6 +29,7 @@ export function Topbar({
   userEmail: string | null | undefined
 }) {
   const router = useRouter()
+  const queryClient = useQueryClient()
 
   async function handleSignOut() {
     const result = await logoutFn()
@@ -37,6 +39,7 @@ export function Topbar({
     }
     toast.success('Signed out')
     await router.invalidate()
+    queryClient.clear()
     router.navigate({ to: '/login' })
   }
 

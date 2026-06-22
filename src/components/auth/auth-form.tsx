@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useRouter } from '@tanstack/react-router'
-import { useMutation } from '@tanstack/react-query'
+import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { Loader2 } from 'lucide-react'
 import { toast } from 'sonner'
 
@@ -27,6 +27,7 @@ type Mode = 'login' | 'signup'
 
 export function AuthForm() {
   const router = useRouter()
+  const queryClient = useQueryClient()
   const [mode, setMode] = useState<Mode>('login')
 
   const loginMutation = useMutation({
@@ -39,6 +40,7 @@ export function AuthForm() {
       }
       toast.success('Welcome back!')
       await router.invalidate()
+      queryClient.clear()
       router.navigate({ to: '/dashboard' })
     },
   })
@@ -54,6 +56,7 @@ export function AuthForm() {
       }
       toast.success('Account created! Check your email to verify.')
       await router.invalidate()
+      queryClient.clear()
       router.navigate({ to: '/dashboard' })
     },
   })

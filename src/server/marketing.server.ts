@@ -2,10 +2,13 @@
  * Server-only implementation for the Marketing Studio.
  *
  * Handles: AI content generation, post CRUD, scheduling, calendar retrieval.
- * Uses Vercel AI SDK for structured content generation.
+ *
+ * Note: We use generateText + manual JSON parsing instead of generateObject
+ * because GLM-4.5-flash doesn't support responseFormat (json_schema). The
+ * schema-based approach fails silently — generateText with explicit JSON
+ * instructions is more reliable with this model.
  */
-import { generateObject } from 'ai'
-import { z } from 'zod'
+import { generateText } from 'ai'
 import { getSupabaseServerClient } from '@/lib/supabase/server.server'
 import { getDefaultModel } from '@/lib/ai-provider'
 import { retrieveContext } from '@/server/documents.server'
@@ -67,15 +70,6 @@ export interface CampaignRow {
 // AI Content Generation
 // ---------------------------------------------------------------------------
 
-/** Schema for structured post generation output. */
-const postSchema = z.object({
-  title: z.string().describe('A catchy title (max 60 chars)'),
-  caption: z.string().describe('The main post caption/body text'),
-  hashtags: z
-    .array(z.string())
-    .describe('Relevant hashtags WITHOUT the # symbol'),
-})
-
 export interface GeneratedPost {
   title: string
   caption: string
@@ -85,7 +79,10 @@ export interface GeneratedPost {
 /**
  * Generate social media content using AI.
  *
- * Uses generateObject for guaranteed-structured output (no JSON parsing).
+ * Uses generateText with explicit JSON output instructions, then parses
+ * the JSON from the response. This is more reliable than generateObject
+ * with GLM-4.5-flash (which doesn't support json_schema responseFormat).
+ *
  * Optionally retrieves RAG context from the user's knowledge base for
  * brand-consistent content.
  */
@@ -96,7 +93,6 @@ export async function generatePostImpl(input: {
   agentId?: string
 }): Promise<GeneratedPost | { error: string }> {
   try {
-    // Platform-specific constraints
     const platformGuides: Record<PostPlatform, string> = {
       instagram: 'Instagram: visual-first, use emojis, 5-10 hashtags, max 2200 chars',
       facebook: 'Facebook: conversational, 2-5 hashtags, max 2000 chars',
@@ -116,27 +112,48 @@ export async function generatePostImpl(input: {
             .join('\n---\n')}`
         : ''
 
-    const systemPrompt = `You are an expert social media content creator.
-Generate engaging content for the requested platform.
+    const systemPrompt = `You are an expert social media content creator. Generate engaging content for ${input.platform}.
 
 Platform guide: ${platformGuides[input.platform]}
 Tone: ${input.tone ?? 'professional yet engaging'}${ragContext}
 
-Generate a title, caption, and relevant hashtags based on the user's request.`
+CRITICAL: You must respond with ONLY a valid JSON object in this exact format (no markdown, no explanation, no other text):
+{"title":"A catchy title max 60 chars","caption":"The main post body text","hashtags":["tag1","tag2","tag3"]}
 
-    const { object } = await generateObject({
+Rules:
+- "title" must be a short catchy string (max 60 chars)
+- "caption" must be the full post body text (follow the platform guide for length)
+- "hashtags" must be an array of strings WITHOUT the # symbol
+- Output ONLY the JSON object, nothing else`
+
+    const result = await generateText({
       model: getDefaultModel(),
       system: systemPrompt,
       prompt: input.prompt,
-      schema: postSchema,
-      maxOutputTokens: 1000,
+      maxOutputTokens: 1500,
       temperature: 0.8,
     })
 
+    // Extract JSON from the response (handles markdown fences + reasoning)
+    const raw = result.text
+    const jsonMatch = raw.match(/\{[\s\S]*\}/)
+    if (!jsonMatch) {
+      return { error: 'AI did not return valid content. Please try again.' }
+    }
+
+    const parsed = JSON.parse(jsonMatch[0])
+
+    // Validate required fields
+    if (!parsed.title || !parsed.caption) {
+      return { error: 'Generated content was incomplete. Please try again.' }
+    }
+
     return {
-      title: object.title,
-      caption: object.caption,
-      hashtags: object.hashtags.map((h) => h.replace(/^#/, '')),
+      title: String(parsed.title).slice(0, 100),
+      caption: String(parsed.caption),
+      hashtags: Array.isArray(parsed.hashtags)
+        ? parsed.hashtags.map((h: string) => String(h).replace(/^#/, '')).slice(0, 15)
+        : [],
     }
   } catch (err) {
     return {

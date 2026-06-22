@@ -5,6 +5,7 @@ import { routeTree } from './routeTree.gen'
 export interface AppUser {
   id: string
   email: string
+  agent_type: string | null
 }
 
 export interface RouterContext {

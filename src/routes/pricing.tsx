@@ -1,5 +1,6 @@
 import { ArrowLeft, Check, Sparkles } from 'lucide-react'
 import { Link, createFileRoute } from '@tanstack/react-router'
+import { useQuery } from '@tanstack/react-query'
 
 import { Brand } from '@/components/brand'
 import { PlanBadge } from '@/components/billing/plan-badge'
@@ -11,6 +12,7 @@ import {
   PLAN_ORDER,
   type PlanTier,
 } from '@/lib/plans'
+import { getProfile } from '@/server/settings'
 
 export const Route = createFileRoute('/pricing')({
   beforeLoad: ({ context }) => {
@@ -36,7 +38,15 @@ const ALL_FEATURES: { key: string; label: string }[] = [
 
 function PricingPage() {
   const user = Route.useRouteContext().user
-  const currentTier: PlanTier = 'pro' // will be dynamic in Phase 2
+  const { data: profile } = useQuery({
+    queryKey: ['profile'],
+    queryFn: () => getProfile(),
+    enabled: !!user,
+    staleTime: 5 * 60 * 1000,
+  })
+  const currentTier: PlanTier = profile?.plan ?? 'free'
+  const currentIdx = PLAN_ORDER.indexOf(currentTier)
+  const nextTier = currentIdx < PLAN_ORDER.length - 1 ? PLAN_ORDER[currentIdx + 1] : null
 
   return (
     <div className="min-h-svh bg-gradient-to-b from-muted/30 to-background">
@@ -74,16 +84,28 @@ function PricingPage() {
           {PLAN_ORDER.map((tier) => {
             const cfg = PLAN_CONFIGS[tier]
             const isCurrent = Boolean(user) && tier === currentTier
+            const isNext = Boolean(user) && tier === nextTier && !isCurrent
+            const showMostPopular = cfg.featured && !user
+
             return (
               <Card
                 key={tier}
                 className={cn(
-                  'relative flex flex-col',
-                  cfg.featured && 'border-primary shadow-lg ring-1 ring-primary',
+                  'relative flex flex-col transition-shadow',
+                  isCurrent && 'border-muted-foreground/20',
+                  isNext && 'border-primary shadow-lg ring-1 ring-primary',
+                  showMostPopular && 'border-primary shadow-lg ring-1 ring-primary',
                 )}
               >
-                {cfg.featured && (
-                  <div className="absolute -top-3 left-1/2 -translate-x-1/2">
+                {isNext && (
+                  <div className="absolute -top-3 left-1/2 -translate-x-1/2 z-10">
+                    <span className="inline-flex items-center gap-1 rounded-full bg-primary px-3 py-1 text-xs font-medium text-primary-foreground">
+                      <Sparkles className="size-3" /> Recommended upgrade
+                    </span>
+                  </div>
+                )}
+                {showMostPopular && (
+                  <div className="absolute -top-3 left-1/2 -translate-x-1/2 z-10">
                     <span className="inline-flex items-center gap-1 rounded-full bg-primary px-3 py-1 text-xs font-medium text-primary-foreground">
                       <Sparkles className="size-3" /> Most popular
                     </span>
@@ -151,16 +173,18 @@ function PricingPage() {
                   </ul>
 
                   <Button
-                    variant={cfg.featured ? 'default' : 'outline'}
+                    variant={
+                      isNext || showMostPopular ? 'default' : 'outline'
+                    }
                     className="w-full"
                     disabled={isCurrent}
                     asChild={isCurrent}
                   >
                     {isCurrent ? (
-                      <span>Current plan</span>
+                      <span className="text-muted-foreground">Current plan</span>
                     ) : (
                       <Link to={user ? '/dashboard' : '/login'}>
-                        {cfg.cta}
+                        {isNext ? `Upgrade to ${cfg.label}` : cfg.cta}
                       </Link>
                     )}
                   </Button>

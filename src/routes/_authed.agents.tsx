@@ -169,7 +169,11 @@ function AgentsPage() {
         </Card>
       )}
 
-      <NewAgentModal open={newAgentOpen} onOpenChange={setNewAgentOpen} />
+      <NewAgentModal
+        open={newAgentOpen}
+        onOpenChange={setNewAgentOpen}
+        userAgentType={user?.agent_type}
+      />
     </DashboardShell>
   )
 }

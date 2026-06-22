@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Loader2 } from 'lucide-react'
 
 import { Button } from '@/components/ui/button'
@@ -39,9 +39,11 @@ function Icon({
 export function NewAgentModal({
   open,
   onOpenChange,
+  userAgentType,
 }: {
   open: boolean
   onOpenChange: (open: boolean) => void
+  userAgentType?: string | null
 }) {
   const { data: agentTypes, isLoading: typesLoading } = useAgentTypes()
   const createAgent = useCreateAgent()
@@ -53,6 +55,20 @@ export function NewAgentModal({
 
   const agentsRemaining = config.limits.agents.max
   const atLimit = !canDo('agents')
+
+  // Filter to the user's allowed agent type, or show all if not set
+  const availableTypes =
+    userAgentType
+      ? agentTypes?.filter((t) => t.key === userAgentType) ?? []
+      : agentTypes ?? []
+
+  // Auto-select when there's only one available type
+  useEffect(() => {
+    if (open && availableTypes.length === 1 && !selectedType) {
+      setSelectedType(availableTypes[0])
+      setAgentName(`My ${availableTypes[0].label}`)
+    }
+  }, [open, availableTypes, selectedType])
 
   function handleClose() {
     setSelectedType(null)
@@ -113,7 +129,7 @@ export function NewAgentModal({
               </div>
             ) : (
               <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
-                {agentTypes?.map((type) => (
+                {availableTypes.map((type) => (
                   <button
                     key={type.key}
                     onClick={() => handleSelectType(type)}

@@ -23,9 +23,16 @@ const fetchUser = createServerFn({ method: 'GET' }).handler(async () => {
 
   if (!user) return null
 
+  const { data: profile } = await supabase
+    .from('profiles')
+    .select('agent_type')
+    .eq('id', user.id)
+    .single()
+
   return {
     id: user.id,
     email: user.email,
+    agent_type: profile?.agent_type ?? null,
   }
 })
 

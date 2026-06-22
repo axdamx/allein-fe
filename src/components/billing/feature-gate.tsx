@@ -1,10 +1,15 @@
 import { useState, type ReactNode } from 'react'
 import { Lock } from 'lucide-react'
+import { Link } from '@tanstack/react-router'
 
 import { Button } from '@/components/ui/button'
+import {
+  Card,
+  CardContent,
+} from '@/components/ui/card'
 import { UpgradeModal } from '@/components/billing/upgrade-modal'
 import { usePlan } from '@/hooks/use-plan'
-import { PLAN_CONFIGS } from '@/lib/plans'
+import { PLAN_CONFIGS, PLAN_ORDER } from '@/lib/plans'
 import type { FeatureKey, LimitMetric } from '@/lib/plans'
 
 /**
@@ -26,8 +31,7 @@ export function FeatureGate({
   /** Optional custom fallback instead of the default locked card. */
   fallback?: ReactNode
 }) {
-  const { hasFeature, tier } = usePlan()
-  const [upgradeOpen, setUpgradeOpen] = useState(false)
+  const { hasFeature } = usePlan()
 
   if (hasFeature(feature)) {
     return <>{children}</>
@@ -35,30 +39,41 @@ export function FeatureGate({
 
   if (fallback) return <>{fallback}</>
 
+  const minTier = PLAN_ORDER.find((t) => PLAN_CONFIGS[t].features[feature])
+  const minTierLabel = minTier ? PLAN_CONFIGS[minTier].label : 'a higher'
+  const featureLabel = FEATURE_LABELS[feature] ?? feature
+
   return (
-    <>
-      <div className="flex min-h-[200px] flex-col items-center justify-center gap-3 rounded-lg border border-dashed p-8 text-center">
-        <div className="flex size-12 items-center justify-center rounded-full bg-muted">
-          <Lock className="size-5 text-muted-foreground" />
-        </div>
-        <div>
-          <p className="font-medium">Available on higher plans</p>
+    <div className="flex min-h-svh items-center justify-center p-4">
+      <Card className="max-w-md">
+        <CardContent className="pt-6 text-center">
+          <div className="mx-auto flex size-12 items-center justify-center rounded-full bg-muted">
+            <Lock className="size-5 text-muted-foreground" />
+          </div>
+          <h2 className="mt-3 font-semibold">{featureLabel} is a paid feature</h2>
           <p className="mt-1 text-sm text-muted-foreground">
-            {PLAN_CONFIGS[tier].label} plan doesn't include this feature.
+            Upgrade to {minTierLabel} or higher to unlock this feature.
           </p>
-        </div>
-        <Button onClick={() => setUpgradeOpen(true)}>
-          <Lock className="size-4" /> Upgrade to unlock
-        </Button>
-      </div>
-      <UpgradeModal
-        open={upgradeOpen}
-        onOpenChange={setUpgradeOpen}
-        currentTier={tier}
-        reason={{ kind: 'feature', feature }}
-      />
-    </>
+          <Button asChild className="mt-4">
+            <Link to="/pricing">View pricing</Link>
+          </Button>
+        </CardContent>
+      </Card>
+    </div>
   )
+}
+
+const FEATURE_LABELS: Partial<Record<FeatureKey, string>> = {
+  crm: 'CRM',
+  marketingStudio: 'Marketing Studio',
+  ragDocuments: 'Knowledge Base',
+  aiImageGen: 'AI Image Generation',
+  aiVideoGen: 'AI Video Generation',
+  scheduledPosts: 'Scheduled Posts',
+  teamSeats: 'Team Seats',
+  apiAccess: 'API Access',
+  whiteLabel: 'White Label',
+  prioritySupport: 'Priority Support',
 }
 
 /**

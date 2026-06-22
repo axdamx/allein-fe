@@ -34,6 +34,8 @@ import {
   useQuery,
 } from '@tanstack/react-query'
 import { getProfile, updateProfile, updatePlan } from '@/server/settings'
+import { useAgentTypes } from '@/hooks/use-agents'
+import { getLucideIcon } from '@/lib/icons'
 
 export const Route = createFileRoute('/_authed/settings')({
   component: SettingsPage,
@@ -92,12 +94,16 @@ function ProfileTab({
     company: string | null
     phone: string | null
     email: string
+    agent_type: string | null
   }
 }) {
   const qc = useQueryClient()
+  const { data: agentTypes } = useAgentTypes()
   const [fullName, setFullName] = useState(profile.full_name ?? '')
   const [company, setCompany] = useState(profile.company ?? '')
   const [phone, setPhone] = useState(profile.phone ?? '')
+
+  const agentTypeInfo = agentTypes?.find((t) => t.key === profile.agent_type)
 
   const mutation = useMutation({
     mutationFn: (data: {
@@ -142,6 +148,9 @@ function ProfileTab({
               placeholder="Your name"
             />
           </div>
+          {profile.agent_type && agentTypeInfo && (
+            <AgentTypeField typeInfo={agentTypeInfo} />
+          )}
           <div className="space-y-2">
             <Label htmlFor="company">Company</Label>
             <Input
@@ -167,6 +176,43 @@ function ProfileTab({
         </form>
       </CardContent>
     </Card>
+  )
+}
+
+function AgentTypeField({
+  typeInfo,
+}: {
+  typeInfo: {
+    key: string
+    label: string
+    description: string | null
+    icon: string | null
+    accent_color: string
+  }
+}) {
+  const Icon = getLucideIcon(typeInfo.icon)
+  return (
+    <div className="space-y-2">
+      <Label>Agent Type</Label>
+      <div
+        className="flex items-center gap-3 rounded-lg border p-3"
+        style={{ borderColor: `${typeInfo.accent_color}30` }}
+      >
+        <div
+          className="flex size-10 items-center justify-center rounded-lg"
+          style={{ backgroundColor: `${typeInfo.accent_color}20` }}
+        >
+          <Icon className="size-5" style={{ color: typeInfo.accent_color }} />
+        </div>
+        <div className="flex-1">
+          <p className="text-sm font-medium">{typeInfo.label}</p>
+          <p className="text-xs text-muted-foreground">
+            {typeInfo.description}
+          </p>
+        </div>
+        <span className="text-xs text-muted-foreground">Locked</span>
+      </div>
+    </div>
   )
 }
 
