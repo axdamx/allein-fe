@@ -11,6 +11,7 @@ import {
   Brain,
   Sparkles,
   Shield,
+  Target,
 } from "lucide-react";
 import { Link, useRouterState } from "@tanstack/react-router";
 
@@ -31,6 +32,7 @@ interface NavItem {
 const mainNav: NavItem[] = [
   { label: "Dashboard", icon: LayoutDashboard, to: "/dashboard" },
   { label: "Planner", icon: Calendar, to: "/planner" },
+  { label: "Goals", icon: Target, to: "/goals" },
   { label: "Chat", icon: MessageSquare, to: "/chat" },
   { label: "Agents", icon: Bot, to: "/agents" },
   { label: "Studio", icon: Sparkles, to: "/studio" },

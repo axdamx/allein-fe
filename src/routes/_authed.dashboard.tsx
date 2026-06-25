@@ -6,6 +6,7 @@ import { isPast, parseISO } from 'date-fns'
 import { StatCard } from '@/components/dashboard/stat-card'
 import { UsageLimitBanner } from '@/components/billing/usage-limit-banner'
 import { NewAgentModal } from '@/components/agents/new-agent-modal'
+import { GoalsDashboardCard } from '@/components/goals/goals-dashboard-card'
 import { DashboardShell } from '@/components/layout/dashboard-shell'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -106,6 +107,10 @@ function DashboardPage() {
       </div>
 
       <TodaysBox />
+
+      <div className="mt-4">
+        <GoalsDashboardCard />
+      </div>
 
       <div className="mt-4 grid grid-cols-1 gap-4 lg:grid-cols-2">
         {/* Agents list */}

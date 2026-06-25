@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query'
 import { Sidebar } from '@/components/layout/sidebar'
 import { Topbar } from '@/components/layout/topbar'
+import { GoalsFab } from '@/components/goals/goals-fab'
 import { usePlan } from '@/hooks/use-plan'
 import { useAgentTypes } from '@/hooks/use-agents'
 import { getProfile } from '@/server/settings'
@@ -46,6 +47,7 @@ export function DashboardShell({
           {children}
         </motion.main>
       </div>
+      <GoalsFab />
     </div>
   )
 }

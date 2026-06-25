@@ -19,6 +19,7 @@ import { Route as AuthedStudioRouteImport } from './routes/_authed.studio'
 import { Route as AuthedSettingsRouteImport } from './routes/_authed.settings'
 import { Route as AuthedPlannerRouteImport } from './routes/_authed.planner'
 import { Route as AuthedKnowledgeBaseRouteImport } from './routes/_authed.knowledge-base'
+import { Route as AuthedGoalsRouteImport } from './routes/_authed.goals'
 import { Route as AuthedDashboardRouteImport } from './routes/_authed.dashboard'
 import { Route as AuthedCrmRouteImport } from './routes/_authed.crm'
 import { Route as AuthedChatRouteImport } from './routes/_authed.chat'
@@ -80,6 +81,11 @@ const AuthedPlannerRoute = AuthedPlannerRouteImport.update({
 const AuthedKnowledgeBaseRoute = AuthedKnowledgeBaseRouteImport.update({
   id: '/knowledge-base',
   path: '/knowledge-base',
+  getParentRoute: () => AuthedRoute,
+} as any)
+const AuthedGoalsRoute = AuthedGoalsRouteImport.update({
+  id: '/goals',
+  path: '/goals',
   getParentRoute: () => AuthedRoute,
 } as any)
 const AuthedDashboardRoute = AuthedDashboardRouteImport.update({
@@ -159,6 +165,7 @@ export interface FileRoutesByFullPath {
   '/chat': typeof AuthedChatRoute
   '/crm': typeof AuthedCrmRouteWithChildren
   '/dashboard': typeof AuthedDashboardRoute
+  '/goals': typeof AuthedGoalsRoute
   '/knowledge-base': typeof AuthedKnowledgeBaseRoute
   '/planner': typeof AuthedPlannerRoute
   '/settings': typeof AuthedSettingsRoute
@@ -183,6 +190,7 @@ export interface FileRoutesByTo {
   '/chat': typeof AuthedChatRoute
   '/crm': typeof AuthedCrmRouteWithChildren
   '/dashboard': typeof AuthedDashboardRoute
+  '/goals': typeof AuthedGoalsRoute
   '/knowledge-base': typeof AuthedKnowledgeBaseRoute
   '/planner': typeof AuthedPlannerRoute
   '/settings': typeof AuthedSettingsRoute
@@ -208,6 +216,7 @@ export interface FileRoutesById {
   '/_authed/chat': typeof AuthedChatRoute
   '/_authed/crm': typeof AuthedCrmRouteWithChildren
   '/_authed/dashboard': typeof AuthedDashboardRoute
+  '/_authed/goals': typeof AuthedGoalsRoute
   '/_authed/knowledge-base': typeof AuthedKnowledgeBaseRoute
   '/_authed/planner': typeof AuthedPlannerRoute
   '/_authed/settings': typeof AuthedSettingsRoute
@@ -234,6 +243,7 @@ export interface FileRouteTypes {
     | '/chat'
     | '/crm'
     | '/dashboard'
+    | '/goals'
     | '/knowledge-base'
     | '/planner'
     | '/settings'
@@ -258,6 +268,7 @@ export interface FileRouteTypes {
     | '/chat'
     | '/crm'
     | '/dashboard'
+    | '/goals'
     | '/knowledge-base'
     | '/planner'
     | '/settings'
@@ -282,6 +293,7 @@ export interface FileRouteTypes {
     | '/_authed/chat'
     | '/_authed/crm'
     | '/_authed/dashboard'
+    | '/_authed/goals'
     | '/_authed/knowledge-base'
     | '/_authed/planner'
     | '/_authed/settings'
@@ -376,6 +388,13 @@ declare module '@tanstack/react-router' {
       path: '/knowledge-base'
       fullPath: '/knowledge-base'
       preLoaderRoute: typeof AuthedKnowledgeBaseRouteImport
+      parentRoute: typeof AuthedRoute
+    }
+    '/_authed/goals': {
+      id: '/_authed/goals'
+      path: '/goals'
+      fullPath: '/goals'
+      preLoaderRoute: typeof AuthedGoalsRouteImport
       parentRoute: typeof AuthedRoute
     }
     '/_authed/dashboard': {
@@ -509,6 +528,7 @@ interface AuthedRouteChildren {
   AuthedChatRoute: typeof AuthedChatRoute
   AuthedCrmRoute: typeof AuthedCrmRouteWithChildren
   AuthedDashboardRoute: typeof AuthedDashboardRoute
+  AuthedGoalsRoute: typeof AuthedGoalsRoute
   AuthedKnowledgeBaseRoute: typeof AuthedKnowledgeBaseRoute
   AuthedPlannerRoute: typeof AuthedPlannerRoute
   AuthedSettingsRoute: typeof AuthedSettingsRoute
@@ -523,6 +543,7 @@ const AuthedRouteChildren: AuthedRouteChildren = {
   AuthedChatRoute: AuthedChatRoute,
   AuthedCrmRoute: AuthedCrmRouteWithChildren,
   AuthedDashboardRoute: AuthedDashboardRoute,
+  AuthedGoalsRoute: AuthedGoalsRoute,
   AuthedKnowledgeBaseRoute: AuthedKnowledgeBaseRoute,
   AuthedPlannerRoute: AuthedPlannerRoute,
   AuthedSettingsRoute: AuthedSettingsRoute,
