@@ -29,6 +29,7 @@ import { Route as ApiMessagingWhatsappRouteImport } from './routes/api/messaging
 import { Route as ApiMessagingTelegramRouteImport } from './routes/api/messaging/telegram'
 import { Route as AuthedCrmPipelineRouteImport } from './routes/_authed.crm.pipeline'
 import { Route as AuthedCrmLeadsRouteImport } from './routes/_authed.crm.leads'
+import { Route as AuthedCrmClientsRouteImport } from './routes/_authed.crm.clients'
 import { Route as AuthedCrmLeadsIndexRouteImport } from './routes/_authed.crm.leads.index'
 import { Route as AuthedCrmLeadsLeadIdRouteImport } from './routes/_authed.crm.leads.$leadId'
 
@@ -131,6 +132,11 @@ const AuthedCrmLeadsRoute = AuthedCrmLeadsRouteImport.update({
   path: '/leads',
   getParentRoute: () => AuthedCrmRoute,
 } as any)
+const AuthedCrmClientsRoute = AuthedCrmClientsRouteImport.update({
+  id: '/clients',
+  path: '/clients',
+  getParentRoute: () => AuthedCrmRoute,
+} as any)
 const AuthedCrmLeadsIndexRoute = AuthedCrmLeadsIndexRouteImport.update({
   id: '/',
   path: '/',
@@ -158,6 +164,7 @@ export interface FileRoutesByFullPath {
   '/settings': typeof AuthedSettingsRoute
   '/studio': typeof AuthedStudioRoute
   '/support': typeof AuthedSupportRoute
+  '/crm/clients': typeof AuthedCrmClientsRoute
   '/crm/leads': typeof AuthedCrmLeadsRouteWithChildren
   '/crm/pipeline': typeof AuthedCrmPipelineRoute
   '/api/messaging/telegram': typeof ApiMessagingTelegramRoute
@@ -181,6 +188,7 @@ export interface FileRoutesByTo {
   '/settings': typeof AuthedSettingsRoute
   '/studio': typeof AuthedStudioRoute
   '/support': typeof AuthedSupportRoute
+  '/crm/clients': typeof AuthedCrmClientsRoute
   '/crm/pipeline': typeof AuthedCrmPipelineRoute
   '/api/messaging/telegram': typeof ApiMessagingTelegramRoute
   '/api/messaging/whatsapp': typeof ApiMessagingWhatsappRoute
@@ -205,6 +213,7 @@ export interface FileRoutesById {
   '/_authed/settings': typeof AuthedSettingsRoute
   '/_authed/studio': typeof AuthedStudioRoute
   '/_authed/support': typeof AuthedSupportRoute
+  '/_authed/crm/clients': typeof AuthedCrmClientsRoute
   '/_authed/crm/leads': typeof AuthedCrmLeadsRouteWithChildren
   '/_authed/crm/pipeline': typeof AuthedCrmPipelineRoute
   '/api/messaging/telegram': typeof ApiMessagingTelegramRoute
@@ -230,6 +239,7 @@ export interface FileRouteTypes {
     | '/settings'
     | '/studio'
     | '/support'
+    | '/crm/clients'
     | '/crm/leads'
     | '/crm/pipeline'
     | '/api/messaging/telegram'
@@ -253,6 +263,7 @@ export interface FileRouteTypes {
     | '/settings'
     | '/studio'
     | '/support'
+    | '/crm/clients'
     | '/crm/pipeline'
     | '/api/messaging/telegram'
     | '/api/messaging/whatsapp'
@@ -276,6 +287,7 @@ export interface FileRouteTypes {
     | '/_authed/settings'
     | '/_authed/studio'
     | '/_authed/support'
+    | '/_authed/crm/clients'
     | '/_authed/crm/leads'
     | '/_authed/crm/pipeline'
     | '/api/messaging/telegram'
@@ -436,6 +448,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthedCrmLeadsRouteImport
       parentRoute: typeof AuthedCrmRoute
     }
+    '/_authed/crm/clients': {
+      id: '/_authed/crm/clients'
+      path: '/clients'
+      fullPath: '/crm/clients'
+      preLoaderRoute: typeof AuthedCrmClientsRouteImport
+      parentRoute: typeof AuthedCrmRoute
+    }
     '/_authed/crm/leads/': {
       id: '/_authed/crm/leads/'
       path: '/'
@@ -468,11 +487,13 @@ const AuthedCrmLeadsRouteWithChildren = AuthedCrmLeadsRoute._addFileChildren(
 )
 
 interface AuthedCrmRouteChildren {
+  AuthedCrmClientsRoute: typeof AuthedCrmClientsRoute
   AuthedCrmLeadsRoute: typeof AuthedCrmLeadsRouteWithChildren
   AuthedCrmPipelineRoute: typeof AuthedCrmPipelineRoute
 }
 
 const AuthedCrmRouteChildren: AuthedCrmRouteChildren = {
+  AuthedCrmClientsRoute: AuthedCrmClientsRoute,
   AuthedCrmLeadsRoute: AuthedCrmLeadsRouteWithChildren,
   AuthedCrmPipelineRoute: AuthedCrmPipelineRoute,
 }

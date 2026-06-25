@@ -11,6 +11,7 @@ export const Route = createFileRoute('/_authed/crm')({
 const TABS = [
   { label: 'Leads', to: '/crm/leads' },
   { label: 'Pipeline', to: '/crm/pipeline' },
+  { label: 'Clients', to: '/crm/clients' },
 ]
 
 function CrmLayout() {

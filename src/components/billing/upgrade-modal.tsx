@@ -44,6 +44,7 @@ const METRIC_LABELS: Record<LimitMetric, string> = {
 
 const FEATURE_LABELS: Record<FeatureKey, string> = {
   crm: 'CRM pipeline',
+  clients: 'Client database',
   marketingStudio: 'Marketing Studio',
   aiImageGen: 'AI image generation',
   aiVideoGen: 'AI video generation',

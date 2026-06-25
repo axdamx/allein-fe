@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import {
   getLeads,
+  getTodaysLeads,
   createLead,
   updateLead,
   deleteLead,
@@ -33,6 +34,14 @@ export function useLeads() {
   return useQuery({
     queryKey: ['crm', 'leads'],
     queryFn: () => getLeads(),
+    staleTime: 20 * 1000,
+  })
+}
+
+export function useTodaysLeads() {
+  return useQuery({
+    queryKey: ['crm', 'leads', 'today'],
+    queryFn: () => getTodaysLeads(),
     staleTime: 20 * 1000,
   })
 }

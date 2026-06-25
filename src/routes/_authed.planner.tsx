@@ -9,6 +9,7 @@ import {
   Plus,
   Sparkles,
   Trash2,
+  Users,
   WandSparkles,
 } from 'lucide-react'
 import {
@@ -22,7 +23,7 @@ import {
   format,
   formatDistanceToNow,
 } from 'date-fns'
-import { createFileRoute } from '@tanstack/react-router'
+import { createFileRoute, Link } from '@tanstack/react-router'
 
 import { DashboardShell } from '@/components/layout/dashboard-shell'
 import { Badge } from '@/components/ui/badge'
@@ -71,9 +72,12 @@ import {
   type TimeFrame,
 } from '@/hooks/use-planner'
 import {
+  useLeads,
   useReminders,
   useUpdateReminderStatus,
 } from '@/hooks/use-crm'
+import { LeadStatusBadge } from '@/components/crm/lead-status-badge'
+import type { LeadRow } from '@/server/crm'
 
 export const Route = createFileRoute('/_authed/planner')({
   component: PlannerPage,
@@ -503,9 +507,11 @@ function AddTaskDialog({ timeFrame }: { timeFrame: TimeFrame }) {
 // ---------------------------------------------------------------------------
 
 function CalendarView({ timeFrame }: { timeFrame: TimeFrame }) {
-  const { data: tasks, isLoading } = useTasks(timeFrame)
+  const { data: tasks, isLoading: tasksLoading } = useTasks(timeFrame)
+  const { data: leads } = useLeads()
   const today = new Date()
 
+  const isLoading = tasksLoading
   if (isLoading) {
     return (
       <div className="space-y-3">
@@ -517,16 +523,17 @@ function CalendarView({ timeFrame }: { timeFrame: TimeFrame }) {
   }
 
   const taskList = tasks && !('error' in tasks) ? tasks : []
+  const scheduledLeads = (leads ?? []).filter((l) => l.scheduled_date)
 
   switch (timeFrame) {
     case 'day':
-      return <DayView tasks={taskList} date={today} />
+      return <DayView tasks={taskList} leads={scheduledLeads} date={today} />
     case 'week':
-      return <WeekView tasks={taskList} />
+      return <WeekView tasks={taskList} leads={scheduledLeads} />
     case 'month':
-      return <MonthView tasks={taskList} />
+      return <MonthView tasks={taskList} leads={scheduledLeads} />
     case 'quarter':
-      return <QuarterView tasks={taskList} />
+      return <QuarterView tasks={taskList} leads={scheduledLeads} />
   }
 }
 
@@ -534,9 +541,10 @@ function CalendarView({ timeFrame }: { timeFrame: TimeFrame }) {
 // Day View
 // ---------------------------------------------------------------------------
 
-function DayView({ tasks, date }: { tasks: TaskRow[]; date: Date }) {
+function DayView({ tasks, leads, date }: { tasks: TaskRow[]; leads: LeadRow[]; date: Date }) {
   const dateStr = format(date, 'yyyy-MM-dd')
   const dayTasks = tasks.filter((t) => t.planned_date === dateStr)
+  const dayLeads = leads.filter((l) => l.scheduled_date === dateStr)
 
   return (
     <div className="space-y-3">
@@ -546,17 +554,43 @@ function DayView({ tasks, date }: { tasks: TaskRow[]; date: Date }) {
           {format(date, 'EEEE, MMMM d, yyyy')}
         </h2>
         <Badge variant="secondary" className="text-xs">
-          {dayTasks.length} tasks
+          {dayTasks.length + dayLeads.length} items
         </Badge>
       </div>
 
-      {dayTasks.length === 0 ? (
+      {dayLeads.length > 0 && (
         <Card>
-          <CardContent className="py-8 text-center text-sm text-muted-foreground">
-            No tasks planned for today
+          <CardHeader className="py-2">
+            <CardTitle className="flex items-center gap-2 text-sm font-medium">
+              <Users className="size-3.5 text-primary" />
+              Leads in today's slot
+              <Badge variant="secondary" className="ml-auto text-xs">{dayLeads.length}</Badge>
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="pb-2 pt-0">
+            <div className="space-y-1">
+              {dayLeads.map((lead) => (
+                <Link
+                  key={lead.id}
+                  to="/crm/leads/$leadId"
+                  params={{ leadId: lead.id }}
+                  className="flex items-center gap-3 rounded-lg border px-3 py-2 hover:bg-muted/50"
+                >
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm font-medium">{lead.name}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {lead.company || lead.email || '—'} · <span className="capitalize">{lead.status}</span>
+                    </p>
+                  </div>
+                  <LeadStatusBadge status={lead.status} />
+                </Link>
+              ))}
+            </div>
           </CardContent>
         </Card>
-      ) : (
+      )}
+
+      {dayTasks.length > 0 ? (
         <div className="space-y-1">
           {dayTasks.map((task, i) => (
             <div key={task.id} className="flex items-center gap-3 rounded-lg border px-3 py-2.5">
@@ -574,6 +608,12 @@ function DayView({ tasks, date }: { tasks: TaskRow[]; date: Date }) {
             </div>
           ))}
         </div>
+      ) : (
+        <Card>
+          <CardContent className="py-8 text-center text-sm text-muted-foreground">
+            No tasks planned for today
+          </CardContent>
+        </Card>
       )}
     </div>
   )
@@ -583,7 +623,7 @@ function DayView({ tasks, date }: { tasks: TaskRow[]; date: Date }) {
 // Week View
 // ---------------------------------------------------------------------------
 
-function WeekView({ tasks }: { tasks: TaskRow[] }) {
+function WeekView({ tasks, leads }: { tasks: TaskRow[]; leads: LeadRow[] }) {
   const today = new Date()
   const weekStart = startOfWeek(today, { weekStartsOn: 1 })
   const days = Array.from({ length: 7 }, (_, i) => addDays(weekStart, i))
@@ -601,6 +641,7 @@ function WeekView({ tasks }: { tasks: TaskRow[] }) {
         {days.map((day) => {
           const dateStr = format(day, 'yyyy-MM-dd')
           const dayTasks = tasks.filter((t) => t.planned_date === dateStr)
+          const dayLeads = leads.filter((l) => l.scheduled_date === dateStr)
           const isToday = isSameDay(day, today)
 
           return (
@@ -620,7 +661,14 @@ function WeekView({ tasks }: { tasks: TaskRow[] }) {
                 </p>
               </div>
               <div className="flex flex-col gap-1">
-                {dayTasks.slice(0, 3).map((task) => (
+                {dayLeads.length > 0 && (
+                  <div className="mb-1 rounded bg-primary/10 px-1 py-0.5">
+                    <p className="text-[9px] font-medium text-primary">
+                      {dayLeads.length} lead{dayLeads.length === 1 ? '' : 's'}
+                    </p>
+                  </div>
+                )}
+                {dayTasks.slice(0, Math.max(0, 3 - (dayLeads.length > 0 ? 1 : 0))).map((task) => (
                   <div
                     key={task.id}
                     className="truncate rounded bg-muted/50 px-1 py-0.5 text-[10px] font-medium"
@@ -629,9 +677,9 @@ function WeekView({ tasks }: { tasks: TaskRow[] }) {
                     {task.title}
                   </div>
                 ))}
-                {dayTasks.length > 3 && (
+                {dayTasks.length + (dayLeads.length > 0 ? 1 : 0) > 3 && (
                   <p className="text-center text-[10px] text-muted-foreground">
-                    +{dayTasks.length - 3} more
+                    +{dayTasks.length + dayLeads.length - 3} more
                   </p>
                 )}
               </div>
@@ -647,7 +695,7 @@ function WeekView({ tasks }: { tasks: TaskRow[] }) {
 // Month View
 // ---------------------------------------------------------------------------
 
-function MonthView({ tasks }: { tasks: TaskRow[] }) {
+function MonthView({ tasks, leads }: { tasks: TaskRow[]; leads: LeadRow[] }) {
   const today = new Date()
   const monthStart = startOfMonth(today)
   const monthEnd = endOfMonth(today)
@@ -673,6 +721,7 @@ function MonthView({ tasks }: { tasks: TaskRow[] }) {
         {days.map((day) => {
           const dateStr = format(day, 'yyyy-MM-dd')
           const dayTasks = tasks.filter((t) => t.planned_date === dateStr)
+          const dayLeads = leads.filter((l) => l.scheduled_date === dateStr)
           const isToday = isSameDay(day, today)
 
           return (
@@ -687,7 +736,14 @@ function MonthView({ tasks }: { tasks: TaskRow[] }) {
                 {format(day, 'd')}
               </p>
               <div className="flex flex-col gap-0.5">
-                {dayTasks.slice(0, 2).map((task) => (
+                {dayLeads.length > 0 && (
+                  <div className="truncate rounded px-1 py-0.5 text-[9px] font-medium leading-tight text-primary"
+                    style={{ backgroundColor: 'rgb(59 130 246 / 0.1)' }}
+                  >
+                    {dayLeads.length} lead{dayLeads.length === 1 ? '' : 's'}
+                  </div>
+                )}
+                {dayTasks.slice(0, dayLeads.length > 0 ? 1 : 2).map((task) => (
                   <div
                     key={task.id}
                     className="truncate rounded px-1 py-0.5 text-[9px] font-medium leading-tight"
@@ -697,8 +753,10 @@ function MonthView({ tasks }: { tasks: TaskRow[] }) {
                     {task.title}
                   </div>
                 ))}
-                {dayTasks.length > 2 && (
-                  <p className="text-[9px] text-muted-foreground">+{dayTasks.length - 2}</p>
+                {(dayTasks.length + (dayLeads.length > 0 ? 1 : 0)) > 2 && (
+                  <p className="text-[9px] text-muted-foreground">
+                    +{dayTasks.length + dayLeads.length - 2}
+                  </p>
                 )}
               </div>
             </div>
@@ -713,7 +771,7 @@ function MonthView({ tasks }: { tasks: TaskRow[] }) {
 // Quarter View
 // ---------------------------------------------------------------------------
 
-function QuarterView({ tasks }: { tasks: TaskRow[] }) {
+function QuarterView({ tasks, leads }: { tasks: TaskRow[]; leads: LeadRow[] }) {
   const today = new Date()
   const quarterStartMonth = Math.floor(today.getMonth() / 3) * 3
   const months = Array.from({ length: 3 }, (_, i) => new Date(today.getFullYear(), quarterStartMonth + i, 1))
@@ -731,6 +789,7 @@ function QuarterView({ tasks }: { tasks: TaskRow[] }) {
         {months.map((month) => {
           const monthStr = format(month, 'yyyy-MM')
           const monthTasks = tasks.filter((t) => t.planned_date?.startsWith(monthStr))
+          const monthLeads = leads.filter((l) => l.scheduled_date?.startsWith(monthStr))
           const todo = monthTasks.filter((t) => t.status === 'todo').length
           const inProgress = monthTasks.filter((t) => t.status === 'in_progress').length
           const done = monthTasks.filter((t) => t.status === 'done').length
@@ -739,8 +798,8 @@ function QuarterView({ tasks }: { tasks: TaskRow[] }) {
             <Card key={monthStr}>
               <CardContent className="pt-4">
                 <h3 className="text-sm font-semibold">{format(month, 'MMMM')}</h3>
-                <p className="mt-3 text-2xl font-semibold tabular-nums">{monthTasks.length}</p>
-                <p className="text-xs text-muted-foreground">total tasks</p>
+                <p className="mt-3 text-2xl font-semibold tabular-nums">{monthTasks.length + monthLeads.length}</p>
+                <p className="text-xs text-muted-foreground">{monthLeads.length} scheduled lead{monthLeads.length === 1 ? '' : 's'} · {monthTasks.length} tasks</p>
                 <div className="mt-3 flex gap-2 text-xs">
                   <span className="text-slate-500">{todo} todo</span>
                   <span className="text-blue-500">{inProgress} in progress</span>

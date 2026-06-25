@@ -11,13 +11,15 @@ import {
 import {
   ArrowDown,
   ArrowUp,
+  Calendar,
+  CalendarDays,
   ChevronDown,
   MoreHorizontal,
   Plus,
   Search,
   Users,
 } from 'lucide-react'
-import { formatDistanceToNow } from 'date-fns'
+import { format, formatDistanceToNow, isToday, isPast, parseISO } from 'date-fns'
 import { createFileRoute, Link } from '@tanstack/react-router'
 
 import { LeadStatusBadge } from '@/components/crm/lead-status-badge'
@@ -35,6 +37,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
+import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
 import { Skeleton } from '@/components/ui/skeleton'
 import {
@@ -56,11 +59,28 @@ export const Route = createFileRoute('/_authed/crm/leads/')({
 
 const STATUS_OPTIONS = LEAD_STATUSES
 
+type FilterMode = 'all' | 'today'
+
 function LeadsPage() {
   const { data: leads, isLoading } = useLeads()
   const [newLeadOpen, setNewLeadOpen] = useState(false)
   const [sorting, setSorting] = useState<SortingState>([])
   const [globalFilter, setGlobalFilter] = useState('')
+  const [filterMode, setFilterMode] = useState<FilterMode>('all')
+
+  const todayStr = new Date().toISOString().split('T')[0]
+
+  const filteredLeads = useMemo(() => {
+    if (!leads) return []
+    if (filterMode === 'today') {
+      return leads.filter((l) => l.scheduled_date === todayStr)
+    }
+    return leads
+  }, [leads, filterMode, todayStr])
+
+  const todayCount = useMemo(() => {
+    return (leads ?? []).filter((l) => l.scheduled_date === todayStr).length
+  }, [leads, todayStr])
 
   const columns = useMemo<ColumnDef<LeadRow>[]>(
     () => [
@@ -69,14 +89,20 @@ function LeadsPage() {
         header: 'Name',
         cell: ({ row }) => {
           const lead = row.original
+          const isDueToday = lead.scheduled_date === todayStr
           return (
-            <Link
-              to="/crm/leads/$leadId"
-              params={{ leadId: lead.id }}
-              className="font-medium hover:underline"
-            >
-              {lead.name}
-            </Link>
+            <div className="flex items-center gap-2">
+              {isDueToday && (
+                <span className="size-1.5 shrink-0 rounded-full bg-primary" />
+              )}
+              <Link
+                to="/crm/leads/$leadId"
+                params={{ leadId: lead.id }}
+                className={cn('font-medium hover:underline', isDueToday && 'text-primary')}
+              >
+                {lead.name}
+              </Link>
+            </div>
           )
         },
       },
@@ -105,6 +131,35 @@ function LeadsPage() {
             {row.getValue('source')}
           </span>
         ),
+      },
+      {
+        accessorKey: 'scheduled_date',
+        header: 'Scheduled',
+        cell: ({ row }) => {
+          const date = row.getValue<string | null>('scheduled_date')
+          if (!date) return <span className="text-sm text-muted-foreground">—</span>
+          const d = parseISO(date)
+          const dueToday = isToday(d)
+          const overdue = isPast(d) && !isToday(d)
+          return (
+            <span
+              className={cn(
+                'inline-flex items-center gap-1 text-sm',
+                dueToday && 'font-medium text-primary',
+                overdue && 'text-red-500',
+              )}
+            >
+              <CalendarDays className="size-3" />
+              {format(d, 'MMM d')}
+              {dueToday && <Badge className="ml-1 h-4 px-1 text-[9px]">Today</Badge>}
+            </span>
+          )
+        },
+        sortingFn: (a, b) => {
+          const aDate = a.original.scheduled_date ?? ''
+          const bDate = b.original.scheduled_date ?? ''
+          return aDate.localeCompare(bDate)
+        },
       },
       {
         accessorKey: 'status',
@@ -141,11 +196,11 @@ function LeadsPage() {
         cell: ({ row }) => <ActionsCell lead={row.original} />,
       },
     ],
-    [],
+    [todayStr],
   )
 
   const table = useReactTable({
-    data: leads ?? [],
+    data: filteredLeads,
     columns,
     state: { sorting, globalFilter },
     onSortingChange: setSorting,
@@ -161,8 +216,7 @@ function LeadsPage() {
         <div>
           <h1 className="text-2xl font-semibold tracking-tight">Leads</h1>
           <p className="text-sm text-muted-foreground">
-            {leads?.length ?? 0} prospect{leads?.length === 1 ? '' : 's'} in
-            your pipeline
+            {leads?.length ?? 0} prospect{leads?.length === 1 ? '' : 's'} in your pipeline
           </p>
         </div>
         <Button onClick={() => setNewLeadOpen(true)}>
@@ -172,27 +226,55 @@ function LeadsPage() {
 
       <Card>
         <CardContent className="p-0">
-          {/* Toolbar */}
           <div className="flex items-center gap-2 border-b p-3">
             <div className="relative max-w-xs flex-1">
               <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
               <Input
-                placeholder="Search leads…"
+                placeholder="Search leads..."
                 value={globalFilter}
                 onChange={(e) => setGlobalFilter(e.target.value)}
                 className="pl-9"
               />
             </div>
+            <div className="flex items-center rounded-lg border bg-muted/30 p-0.5">
+              <button
+                onClick={() => setFilterMode('all')}
+                className={cn(
+                  'inline-flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-xs font-medium transition-colors',
+                  filterMode === 'all'
+                    ? 'bg-background text-foreground shadow-sm'
+                    : 'text-muted-foreground hover:text-foreground',
+                )}
+              >
+                All
+              </button>
+              <button
+                onClick={() => setFilterMode('today')}
+                className={cn(
+                  'inline-flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-xs font-medium transition-colors',
+                  filterMode === 'today'
+                    ? 'bg-background text-foreground shadow-sm'
+                    : 'text-muted-foreground hover:text-foreground',
+                )}
+              >
+                <Calendar className="size-3.5" />
+                Today
+                {todayCount > 0 && (
+                  <span className="flex size-4 items-center justify-center rounded-full bg-primary text-[9px] font-bold text-primary-foreground">
+                    {todayCount}
+                  </span>
+                )}
+              </button>
+            </div>
           </div>
 
-          {/* Table */}
           {isLoading ? (
             <div className="space-y-2 p-4">
               {Array.from({ length: 5 }).map((_, i) => (
                 <Skeleton key={i} className="h-10 w-full" />
               ))}
             </div>
-          ) : leads && leads.length > 0 ? (
+          ) : filteredLeads.length > 0 ? (
             <Table>
               <TableHeader>
                 {table.getHeaderGroups().map((hg) => (
@@ -241,7 +323,7 @@ function LeadsPage() {
               </TableBody>
             </Table>
           ) : (
-            <EmptyLeads onCreate={() => setNewLeadOpen(true)} />
+            <EmptyLeads onCreate={() => setNewLeadOpen(true)} filterMode={filterMode} />
           )}
         </CardContent>
       </Card>
@@ -279,6 +361,10 @@ function StatusCell({ lead }: { lead: LeadRow }) {
 
 function ActionsCell({ lead }: { lead: LeadRow }) {
   const deleteLead = useDeleteLead()
+  const updateLead = useUpdateLead()
+  const todayStr = new Date().toISOString().split('T')[0]
+  const isScheduledToday = lead.scheduled_date === todayStr
+
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
@@ -293,10 +379,16 @@ function ActionsCell({ lead }: { lead: LeadRow }) {
             View details
           </Link>
         </DropdownMenuItem>
-        <DropdownMenuItem asChild>
-          <Link to="/crm/leads/$leadId" params={{ leadId: lead.id }}>
-            Add reminder
-          </Link>
+        <DropdownMenuItem
+          onClick={() =>
+            updateLead.mutate({
+              id: lead.id,
+              scheduled_date: isScheduledToday ? null : todayStr,
+            })
+          }
+        >
+          <Calendar className="mr-2 size-3.5" />
+          {isScheduledToday ? 'Remove from today' : 'Add to today'}
         </DropdownMenuItem>
         <DropdownMenuSeparator />
         <DropdownMenuItem
@@ -310,7 +402,26 @@ function ActionsCell({ lead }: { lead: LeadRow }) {
   )
 }
 
-function EmptyLeads({ onCreate }: { onCreate: () => void }) {
+function EmptyLeads({ onCreate, filterMode }: { onCreate: () => void; filterMode: FilterMode }) {
+  if (filterMode === 'today') {
+    return (
+      <div className="flex flex-col items-center justify-center gap-3 py-16 text-center">
+        <div className="flex size-12 items-center justify-center rounded-full bg-muted">
+          <CalendarDays className="size-5 text-muted-foreground" />
+        </div>
+        <div>
+          <p className="font-medium">Nothing scheduled for today</p>
+          <p className="text-sm text-muted-foreground">
+            Place a lead card in today's slot to see it here.
+          </p>
+        </div>
+        <Button onClick={() => window.location.href = '/crm/leads'} variant="outline" size="sm">
+          View all leads
+        </Button>
+      </div>
+    )
+  }
+
   return (
     <div className="flex flex-col items-center justify-center gap-3 py-16 text-center">
       <div className="flex size-12 items-center justify-center rounded-full bg-muted">

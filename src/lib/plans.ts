@@ -39,6 +39,7 @@ export interface PlanConfig {
   /** Feature flags (boolean gates, not metered). */
   features: {
     crm: boolean
+    clients: boolean
     marketingStudio: boolean
     aiImageGen: boolean
     aiVideoGen: boolean
@@ -75,6 +76,7 @@ export const PLAN_CONFIGS: Record<PlanTier, PlanConfig> = {
     },
     features: {
       crm: false,
+      clients: false,
       marketingStudio: false,
       aiImageGen: false,
       aiVideoGen: false,
@@ -107,6 +109,7 @@ export const PLAN_CONFIGS: Record<PlanTier, PlanConfig> = {
     },
     features: {
       crm: true,
+      clients: true,
       marketingStudio: true,
       aiImageGen: false,
       aiVideoGen: false,
@@ -140,6 +143,7 @@ export const PLAN_CONFIGS: Record<PlanTier, PlanConfig> = {
     },
     features: {
       crm: true,
+      clients: true,
       marketingStudio: true,
       aiImageGen: true,
       aiVideoGen: false,
@@ -172,6 +176,7 @@ export const PLAN_CONFIGS: Record<PlanTier, PlanConfig> = {
     },
     features: {
       crm: true,
+      clients: true,
       marketingStudio: true,
       aiImageGen: true,
       aiVideoGen: true,

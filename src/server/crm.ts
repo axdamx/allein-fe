@@ -59,6 +59,11 @@ export const deleteLead = createServerFn({ method: 'POST' })
     return deleteLeadImpl(data.id)
   })
 
+export const getTodaysLeads = createServerFn({ method: 'GET' }).handler(async () => {
+  const { getTodaysLeadsImpl } = await import('./crm.server')
+  return getTodaysLeadsImpl()
+})
+
 // ---- Deals ----
 export const getDeals = createServerFn({ method: 'GET' }).handler(async () => {
   const { getDealsImpl } = await import('./crm.server')

@@ -3,6 +3,8 @@ import {
   ArrowLeft,
   Bell,
   Calendar,
+  CalendarDays,
+  Check,
   DollarSign,
   Edit3,
   Mail,
@@ -11,10 +13,9 @@ import {
   Plus,
   Building2,
   Tag,
-  Check,
   X,
 } from 'lucide-react'
-import { format, formatDistanceToNow } from 'date-fns'
+import { addDays, format, formatDistanceToNow, isToday, isPast, parseISO } from 'date-fns'
 import { createFileRoute, Link } from '@tanstack/react-router'
 
 import { LeadStatusBadge } from '@/components/crm/lead-status-badge'
@@ -36,6 +37,11 @@ import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Badge } from '@/components/ui/badge'
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@/components/ui/popover'
 import {
   useLeads,
   useUpdateLead,
@@ -61,6 +67,13 @@ const SOURCE_OPTIONS: { value: LeadSourceType; label: string }[] = [
   { value: 'email', label: 'Email' },
   { value: 'phone', label: 'Phone' },
   { value: 'other', label: 'Other' },
+]
+
+const QUICK_DATES = [
+  { label: 'Today', days: 0 },
+  { label: 'Tomorrow', days: 1 },
+  { label: '+3 days', days: 3 },
+  { label: '+7 days', days: 7 },
 ]
 
 function LeadDetailPage() {
@@ -101,7 +114,6 @@ function LeadDetailPage() {
 
   return (
     <div>
-      {/* Back + header */}
       <div className="mb-6">
         <Button asChild variant="ghost" size="sm" className="mb-2">
           <Link to="/crm/leads">
@@ -127,17 +139,11 @@ function LeadDetailPage() {
         </div>
       </div>
 
-      {/* Main grid */}
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
-        {/* Left column: Contact info + Notes */}
         <div className="space-y-4 lg:col-span-2">
-          {/* Contact info */}
           <EditableContactCard lead={lead} />
-
-          {/* Notes */}
           <EditableNotesCard lead={lead} />
 
-          {/* Deals */}
           {leadDeals.length > 0 && (
             <Card>
               <CardHeader>
@@ -166,32 +172,9 @@ function LeadDetailPage() {
           )}
         </div>
 
-        {/* Right column: Reminders */}
         <div className="space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2 text-base">
-                <Bell className="size-4" /> Reminders
-              </CardTitle>
-              <CardDescription>
-                Follow-ups and tasks for this lead
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <NewReminderForm leadId={lead.id} />
-              <div className="mt-3 space-y-2">
-                {leadReminders.length > 0 ? (
-                  leadReminders.map((r) => (
-                    <ReminderItem key={r.id} reminder={r} />
-                  ))
-                ) : (
-                  <p className="py-4 text-center text-xs text-muted-foreground">
-                    No reminders yet.
-                  </p>
-                )}
-              </div>
-            </CardContent>
-          </Card>
+          <CardSlot leadId={lead.id} lead={lead} />
+          <RemindersCard leadId={lead.id} reminders={leadReminders} />
         </div>
       </div>
     </div>
@@ -199,10 +182,212 @@ function LeadDetailPage() {
 }
 
 // ---------------------------------------------------------------------------
+// Card Slot — the "place this card in a date slot" UX
+// ---------------------------------------------------------------------------
+
+function CardSlot({ leadId, lead }: { leadId: string; lead: { scheduled_date: string | null; name: string } }) {
+  const updateLead = useUpdateLead()
+  const [customDate, setCustomDate] = useState('')
+
+  const scheduled = lead.scheduled_date
+  const hasSlot = !!scheduled
+  const slotIsToday = scheduled ? isToday(parseISO(scheduled)) : false
+  const slotIsPast = scheduled ? isPast(parseISO(scheduled)) && !isToday(parseISO(scheduled)) : false
+
+  function placeCard(daysFromNow: number) {
+    const date = addDays(new Date(), daysFromNow)
+    updateLead.mutate({
+      id: leadId,
+      scheduled_date: format(date, 'yyyy-MM-dd'),
+    })
+  }
+
+  function placeCustomDate() {
+    if (!customDate) return
+    updateLead.mutate({
+      id: leadId,
+      scheduled_date: customDate,
+    })
+    setCustomDate('')
+  }
+
+  function removeFromSlot() {
+    updateLead.mutate({
+      id: leadId,
+      scheduled_date: null,
+    })
+  }
+
+  return (
+    <Card className={cn(hasSlot && 'border-primary/30')}>
+      <CardHeader className="pb-3">
+        <CardTitle className="flex items-center gap-2 text-base">
+          <CalendarDays className="size-4" /> Card Slot
+        </CardTitle>
+        <CardDescription>
+          Choose a date to pull this card from the box
+        </CardDescription>
+      </CardHeader>
+      <CardContent>
+        {hasSlot ? (
+          <div className="space-y-3">
+            <div
+              className={cn(
+                'rounded-lg border-2 p-3 text-center transition-colors',
+                slotIsToday
+                  ? 'border-primary bg-primary/5'
+                  : slotIsPast
+                    ? 'border-red-200 bg-red-50 dark:border-red-900 dark:bg-red-950/20'
+                    : 'border-muted bg-muted/30',
+              )}
+            >
+              <p className="text-xs text-muted-foreground">Placed in slot</p>
+              <p className={cn('mt-1 text-lg font-semibold', slotIsToday && 'text-primary')}>
+                {scheduled && format(parseISO(scheduled), 'EEEE, MMM d, yyyy')}
+              </p>
+              <p className="mt-0.5 text-xs text-muted-foreground">
+                {slotIsToday
+                  ? 'Due today — time to work this card!'
+                  : slotIsPast
+                    ? 'Overdue — move it to a new date'
+                    : formatDistanceToNow(parseISO(scheduled!), { addSuffix: true })}
+              </p>
+            </div>
+            <div className="flex gap-2">
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button size="sm" variant="outline" className="flex-1">
+                    <Calendar className="size-3.5" /> Move
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-56 p-3" align="start">
+                  <div className="space-y-2">
+                    <p className="text-xs font-medium text-muted-foreground">Quick dates</p>
+                    <div className="grid grid-cols-2 gap-1">
+                      {QUICK_DATES.map((qd) => (
+                        <Button
+                          key={qd.label}
+                          size="sm"
+                          variant="ghost"
+                          className="justify-start text-xs"
+                          onClick={() => placeCard(qd.days)}
+                        >
+                          {qd.label}
+                        </Button>
+                      ))}
+                    </div>
+                    <div className="border-t pt-2">
+                      <p className="mb-1 text-xs font-medium text-muted-foreground">Custom date</p>
+                      <div className="flex gap-1">
+                        <Input
+                          type="date"
+                          value={customDate}
+                          onChange={(e) => setCustomDate(e.target.value)}
+                          className="h-8 text-xs"
+                        />
+                        <Button
+                          size="sm"
+                          onClick={placeCustomDate}
+                          disabled={!customDate}
+                          className="h-8 shrink-0"
+                        >
+                          <Check className="size-3" />
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+                </PopoverContent>
+              </Popover>
+              <Button
+                size="sm"
+                variant="ghost"
+                className="shrink-0 text-muted-foreground"
+                onClick={removeFromSlot}
+              >
+                <X className="size-3.5" /> Clear
+              </Button>
+            </div>
+          </div>
+        ) : (
+          <div className="space-y-3">
+            <div className="rounded-lg border-2 border-dashed border-muted-foreground/25 p-4 text-center">
+              <CalendarDays className="mx-auto mb-1 size-5 text-muted-foreground/50" />
+              <p className="text-xs text-muted-foreground">
+                This card is not in any date slot
+              </p>
+            </div>
+            <p className="text-xs font-medium text-muted-foreground">Place in slot:</p>
+            <div className="grid grid-cols-2 gap-1.5">
+              {QUICK_DATES.map((qd) => (
+                <Button
+                  key={qd.label}
+                  size="sm"
+                  variant="outline"
+                  onClick={() => placeCard(qd.days)}
+                  className="text-xs"
+                >
+                  {qd.label}
+                </Button>
+              ))}
+            </div>
+            <div className="flex gap-1">
+              <Input
+                type="date"
+                value={customDate}
+                onChange={(e) => setCustomDate(e.target.value)}
+                className="h-8 text-xs"
+                placeholder="Pick a date"
+              />
+              <Button
+                size="sm"
+                onClick={placeCustomDate}
+                disabled={!customDate}
+                className="h-8 shrink-0"
+              >
+                <Plus className="size-3.5" />
+              </Button>
+            </div>
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  )
+}
+
+// ---------------------------------------------------------------------------
+// Reminders Card
+// ---------------------------------------------------------------------------
+
+function RemindersCard({ leadId, reminders }: { leadId: string; reminders: { id: string; title: string; due_at: string; status: string; description: string | null }[] }) {
+  return (
+    <Card>
+      <CardHeader className="pb-3">
+        <CardTitle className="flex items-center gap-2 text-base">
+          <Bell className="size-4" /> Follow-ups
+        </CardTitle>
+        <CardDescription>Time-specific reminders for this lead</CardDescription>
+      </CardHeader>
+      <CardContent>
+        <NewReminderForm leadId={leadId} />
+        <div className="mt-3 space-y-2">
+          {reminders.length > 0 ? (
+            reminders.map((r) => <ReminderItem key={r.id} reminder={r} />)
+          ) : (
+            <p className="py-4 text-center text-xs text-muted-foreground">
+              No follow-ups yet.
+            </p>
+          )}
+        </div>
+      </CardContent>
+    </Card>
+  )
+}
+
+// ---------------------------------------------------------------------------
 // Editable contact info card
 // ---------------------------------------------------------------------------
 
-function EditableContactCard({ lead }: { lead: { id: string; name: string; email: string | null; phone: string | null; company: string | null; source: string; value: number; tags: string[] } }) {
+function EditableContactCard({ lead }: { lead: { id: string; name: string; email: string | null; phone: string | null; company: string | null; source: string; value: number; tags: string[]; scheduled_date: string | null } }) {
   const updateLead = useUpdateLead()
   const [editing, setEditing] = useState(false)
   const [name, setName] = useState(lead.name)
@@ -308,6 +493,15 @@ function EditableContactCard({ lead }: { lead: { id: string; name: string; email
           <InfoRow icon={<Building2 className="size-4" />} label="Company" value={lead.company} />
           <InfoRow icon={<Calendar className="size-4" />} label="Source" value={lead.source} capitalize />
           <InfoRow icon={<DollarSign className="size-4" />} label="Deal value" value={lead.value > 0 ? `$${Number(lead.value).toLocaleString()}` : null} />
+          {lead.scheduled_date && (
+            <div className="col-span-full">
+              <InfoRow
+                icon={<CalendarDays className="size-4" />}
+                label="Scheduled"
+                value={format(parseISO(lead.scheduled_date), 'MMM d, yyyy')}
+              />
+            </div>
+          )}
           {lead.tags && lead.tags.length > 0 && (
             <div className="col-span-full flex items-center gap-2 text-sm text-muted-foreground">
               <Tag className="size-4 shrink-0" />
@@ -521,7 +715,7 @@ function NewReminderForm({ leadId }: { leadId: string }) {
   return (
     <form onSubmit={handleSubmit} className="space-y-2">
       <Input
-        placeholder="Reminder title…"
+        placeholder="Follow-up task..."
         value={title}
         onChange={(e) => setTitle(e.target.value)}
         className="h-8 text-sm"

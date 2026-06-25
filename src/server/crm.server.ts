@@ -50,6 +50,7 @@ export interface LeadRow {
   notes: string | null
   tags: string[]
   last_contacted_at: string | null
+  scheduled_date: string | null
   created_at: string
   updated_at: string
 }
@@ -115,6 +116,7 @@ export interface CreateLeadInput {
   value?: number
   notes?: string
   tags?: string[]
+  scheduled_date?: string
 }
 
 export async function createLeadImpl(
@@ -139,6 +141,7 @@ export async function createLeadImpl(
       value: input.value ?? 0,
       notes: input.notes ?? null,
       tags: input.tags ?? [],
+      scheduled_date: input.scheduled_date ?? null,
     })
     .select('id')
     .single()
@@ -158,6 +161,7 @@ export interface UpdateLeadInput {
   value?: number
   notes?: string
   tags?: string[]
+  scheduled_date?: string | null
 }
 
 export async function updateLeadImpl(
@@ -176,6 +180,7 @@ export async function updateLeadImpl(
   if (updates.value !== undefined) cleanUpdates.value = updates.value
   if (updates.notes !== undefined) cleanUpdates.notes = updates.notes
   if (updates.tags !== undefined) cleanUpdates.tags = updates.tags
+  if (updates.scheduled_date !== undefined) cleanUpdates.scheduled_date = updates.scheduled_date
   cleanUpdates.last_contacted_at = new Date().toISOString()
 
   const { error } = await supabase
@@ -194,6 +199,26 @@ export async function deleteLeadImpl(
   const { error } = await supabase.from('leads').delete().eq('id', leadId)
   if (error) return { error: error.message }
   return null
+}
+
+export async function getTodaysLeadsImpl(): Promise<LeadRow[]> {
+  const supabase = getSupabaseServerClient()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+  if (!user) return []
+
+  const today = new Date().toISOString().split('T')[0]
+
+  const { data, error } = await supabase
+    .from('leads')
+    .select('*')
+    .eq('owner_id', user.id)
+    .eq('scheduled_date', today)
+    .order('created_at', { ascending: false })
+
+  if (error || !data) return []
+  return data as unknown as LeadRow[]
 }
 
 // ---------------------------------------------------------------------------

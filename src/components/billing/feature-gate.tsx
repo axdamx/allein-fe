@@ -65,6 +65,7 @@ export function FeatureGate({
 
 const FEATURE_LABELS: Partial<Record<FeatureKey, string>> = {
   crm: 'CRM',
+  clients: 'Clients',
   marketingStudio: 'Marketing Studio',
   ragDocuments: 'Knowledge Base',
   aiImageGen: 'AI Image Generation',
