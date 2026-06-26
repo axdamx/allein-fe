@@ -2,7 +2,7 @@ import { createServerFn } from '@tanstack/react-start'
 import type { TaskPriority, TaskStatus, TimeFrame } from '@/server/planner.server'
 
 export type { TaskPriority, TaskStatus, TimeFrame }
-export type { TaskRow, GeneratePlanInput } from '@/server/planner.server'
+export type { TaskRow, GeneratePlanInput, CalendarEventRow } from '@/server/planner.server'
 
 export const getTasks = createServerFn({ method: 'GET' })
   .validator((d: { timeFrame?: string; plannedDate?: string }) => d)
@@ -70,4 +70,24 @@ export const reorderTasks = createServerFn({ method: 'POST' })
   .handler(async ({ data }) => {
     const { reorderTasksImpl } = await import('./planner.server')
     return reorderTasksImpl(data)
+  })
+
+export const importCalendarEvents = createServerFn({ method: 'POST' })
+  .validator((d: { icsContent: string }) => d)
+  .handler(async ({ data }) => {
+    const { importCalendarEventsImpl } = await import('./planner.server')
+    return importCalendarEventsImpl(data.icsContent)
+  })
+
+export const getCalendarEvents = createServerFn({ method: 'GET' })
+  .handler(async () => {
+    const { getCalendarEventsImpl } = await import('./planner.server')
+    return getCalendarEventsImpl()
+  })
+
+export const deleteCalendarEvent = createServerFn({ method: 'POST' })
+  .validator((d: { id: string }) => d)
+  .handler(async ({ data }) => {
+    const { deleteCalendarEventImpl } = await import('./planner.server')
+    return deleteCalendarEventImpl(data.id)
   })

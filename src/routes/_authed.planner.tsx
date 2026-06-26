@@ -9,6 +9,7 @@ import {
   Plus,
   Sparkles,
   Trash2,
+  Upload,
   Users,
   WandSparkles,
 } from 'lucide-react'
@@ -78,6 +79,11 @@ import {
 } from '@/hooks/use-crm'
 import { LeadStatusBadge } from '@/components/crm/lead-status-badge'
 import type { LeadRow } from '@/server/crm'
+import {
+  useCalendarEvents,
+  useImportCalendarEvents,
+  type CalendarEventRow,
+} from '@/hooks/use-calendar-events'
 
 export const Route = createFileRoute('/_authed/planner')({
   component: PlannerPage,
@@ -120,6 +126,7 @@ function PlannerPage() {
           </div>
           <div className="flex items-center gap-2">
             <GeneratePlanDialog timeFrame={timeFrame} />
+            <ImportCalendarDialog />
             <AddTaskDialog timeFrame={timeFrame} />
           </div>
         </div>
@@ -342,81 +349,13 @@ function TaskCard({
         </div>
       </div>
 
-      <Dialog open={showDetail} onOpenChange={setShowDetail}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>{task.title}</DialogTitle>
-            {task.description && (
-              <DialogDescription>{task.description}</DialogDescription>
-            )}
-          </DialogHeader>
-          <div className="space-y-3 text-sm">
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <span className="text-muted-foreground">Status</span>
-                <Select
-                  value={task.status}
-                  onValueChange={(v) => {
-                    updateTask.mutate({ taskId: task.id, status: v as TaskStatus })
-                    setShowDetail(false)
-                  }}
-                >
-                  <SelectTrigger className="mt-1">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="todo">To Do</SelectItem>
-                    <SelectItem value="in_progress">In Progress</SelectItem>
-                    <SelectItem value="done">Done</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div>
-                <span className="text-muted-foreground">Priority</span>
-                <Select
-                  value={task.priority}
-                  onValueChange={(v) => {
-                    updateTask.mutate({ taskId: task.id, priority: v as TaskPriority })
-                  }}
-                >
-                  <SelectTrigger className="mt-1">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="low">Low</SelectItem>
-                    <SelectItem value="medium">Medium</SelectItem>
-                    <SelectItem value="high">High</SelectItem>
-                    <SelectItem value="urgent">Urgent</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-            {task.planned_date && (
-              <p className="text-xs text-muted-foreground">
-                Planned for {format(new Date(task.planned_date), 'MMM d, yyyy')}
-              </p>
-            )}
-            {task.created_at && (
-              <p className="text-xs text-muted-foreground">
-                Created {formatDistanceToNow(new Date(task.created_at))} ago
-                {task.generated && ' · AI-generated'}
-              </p>
-            )}
-          </div>
-          <DialogFooter className="gap-2">
-            <Button
-              variant="destructive"
-              size="sm"
-              onClick={() => {
-                deleteTask.mutate(task.id)
-                setShowDetail(false)
-              }}
-            >
-              <Trash2 className="size-3.5" /> Delete
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <TaskDetailDialog
+        task={task}
+        open={showDetail}
+        onClose={() => setShowDetail(false)}
+        onUpdate={(updates) => updateTask.mutate({ taskId: task.id, ...updates })}
+        onDelete={() => { deleteTask.mutate(task.id); setShowDetail(false) }}
+      />
     </>
   )
 }
@@ -503,12 +442,92 @@ function AddTaskDialog({ timeFrame }: { timeFrame: TimeFrame }) {
 }
 
 // ---------------------------------------------------------------------------
+// Import Calendar Dialog
+// ---------------------------------------------------------------------------
+
+function ImportCalendarDialog() {
+  const [open, setOpen] = useState(false)
+  const [icsText, setIcsText] = useState('')
+  const [fileName, setFileName] = useState('')
+  const importEvents = useImportCalendarEvents()
+
+  function handleFile(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    if (!file) return
+    setFileName(file.name)
+    const reader = new FileReader()
+    reader.onload = (ev) => setIcsText((ev.target?.result as string) ?? '')
+    reader.readAsText(file)
+  }
+
+  function handleImport() {
+    if (!icsText.trim()) return
+    importEvents.mutate(icsText, {
+      onSuccess: (result) => {
+        if (!('error' in result)) {
+          setOpen(false)
+          setIcsText('')
+          setFileName('')
+        }
+      },
+    })
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger asChild>
+        <Button size="sm" variant="outline">
+          <Upload className="size-4" /> Import Calendar
+        </Button>
+      </DialogTrigger>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Import Calendar (ICS)</DialogTitle>
+          <DialogDescription>
+            Upload an .ics file exported from Google Calendar or Apple Calendar.
+          </DialogDescription>
+        </DialogHeader>
+        <div className="space-y-4 py-4">
+          <div className="flex items-center gap-2">
+            <Input
+              type="file"
+              accept=".ics"
+              onChange={handleFile}
+              className="file:mr-3 file:rounded file:border-0 file:bg-primary file:px-3 file:py-1 file:text-xs file:text-primary-foreground"
+            />
+          </div>
+          {fileName && (
+            <div className="rounded-md bg-muted/50 p-3 text-sm">
+              <p className="font-medium">{fileName}</p>
+              <p className="mt-1 text-xs text-muted-foreground">{icsText.length.toLocaleString()} characters loaded</p>
+            </div>
+          )}
+          {icsText && icsText.length > 0 && !icsText.includes('BEGIN:VCALENDAR') && (
+            <p className="text-xs text-red-500">This doesn't look like a valid ICS file.</p>
+          )}
+        </div>
+        <DialogFooter>
+          <Button
+            onClick={handleImport}
+            disabled={!icsText.trim() || !icsText.includes('BEGIN:VCALENDAR') || importEvents.isPending}
+          >
+            {importEvents.isPending && <Loader2 className="size-4 animate-spin" />}
+            Import Events
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  )
+}
+
+// ---------------------------------------------------------------------------
 // Calendar View
 // ---------------------------------------------------------------------------
 
 function CalendarView({ timeFrame }: { timeFrame: TimeFrame }) {
   const { data: tasks, isLoading: tasksLoading } = useTasks(timeFrame)
   const { data: leads } = useLeads()
+  const { data: calEvents } = useCalendarEvents()
   const today = new Date()
 
   const isLoading = tasksLoading
@@ -524,14 +543,15 @@ function CalendarView({ timeFrame }: { timeFrame: TimeFrame }) {
 
   const taskList = tasks && !('error' in tasks) ? tasks : []
   const scheduledLeads = (leads ?? []).filter((l) => l.scheduled_date)
+  const calendarEvents: CalendarEventRow[] = calEvents && !('error' in calEvents) ? calEvents : []
 
   switch (timeFrame) {
     case 'day':
-      return <DayView tasks={taskList} leads={scheduledLeads} date={today} />
+      return <DayView tasks={taskList} leads={scheduledLeads} calendarEvents={calendarEvents} date={today} />
     case 'week':
-      return <WeekView tasks={taskList} leads={scheduledLeads} />
+      return <WeekView tasks={taskList} leads={scheduledLeads} calendarEvents={calendarEvents} />
     case 'month':
-      return <MonthView tasks={taskList} leads={scheduledLeads} />
+      return <MonthView tasks={taskList} leads={scheduledLeads} calendarEvents={calendarEvents} />
     case 'quarter':
       return <QuarterView tasks={taskList} leads={scheduledLeads} />
   }
@@ -541,10 +561,14 @@ function CalendarView({ timeFrame }: { timeFrame: TimeFrame }) {
 // Day View
 // ---------------------------------------------------------------------------
 
-function DayView({ tasks, leads, date }: { tasks: TaskRow[]; leads: LeadRow[]; date: Date }) {
+function DayView({ tasks, leads, calendarEvents, date }: { tasks: TaskRow[]; leads: LeadRow[]; calendarEvents: CalendarEventRow[]; date: Date }) {
   const dateStr = format(date, 'yyyy-MM-dd')
   const dayTasks = tasks.filter((t) => t.planned_date === dateStr)
   const dayLeads = leads.filter((l) => l.scheduled_date === dateStr)
+  const dayCalEvents = calendarEvents.filter((e) => e.start_date === dateStr)
+  const [selectedTask, setSelectedTask] = useState<TaskRow | null>(null)
+  const deleteTask = useDeleteTask()
+  const updateTask = useUpdateTask()
 
   return (
     <div className="space-y-3">
@@ -554,16 +578,45 @@ function DayView({ tasks, leads, date }: { tasks: TaskRow[]; leads: LeadRow[]; d
           {format(date, 'EEEE, MMMM d, yyyy')}
         </h2>
         <Badge variant="secondary" className="text-xs">
-          {dayTasks.length + dayLeads.length} items
+          {dayTasks.length + dayLeads.length + dayCalEvents.length} items
         </Badge>
       </div>
+
+      {dayCalEvents.length > 0 && (
+        <Card>
+          <CardHeader className="py-2">
+            <CardTitle className="flex items-center gap-2 text-sm font-medium">
+              <CalendarDays className="size-3.5 text-primary" />
+              Calendar Events
+              <Badge variant="secondary" className="ml-auto text-xs">{dayCalEvents.length}</Badge>
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="pb-2 pt-0">
+            <div className="space-y-1">
+              {dayCalEvents.map((ev) => (
+                <div key={ev.id} className="flex items-center gap-3 rounded-lg border px-3 py-2">
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm font-medium">{ev.title}</p>
+                    {ev.description && (
+                      <p className="text-xs text-muted-foreground line-clamp-1">{ev.description}</p>
+                    )}
+                  </div>
+                  {ev.location && (
+                    <span className="text-[10px] text-muted-foreground">{ev.location}</span>
+                  )}
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {dayLeads.length > 0 && (
         <Card>
           <CardHeader className="py-2">
             <CardTitle className="flex items-center gap-2 text-sm font-medium">
               <Users className="size-3.5 text-primary" />
-              Leads in today's slot
+              Scheduled leads
               <Badge variant="secondary" className="ml-auto text-xs">{dayLeads.length}</Badge>
             </CardTitle>
           </CardHeader>
@@ -590,30 +643,51 @@ function DayView({ tasks, leads, date }: { tasks: TaskRow[]; leads: LeadRow[]; d
         </Card>
       )}
 
-      {dayTasks.length > 0 ? (
-        <div className="space-y-1">
-          {dayTasks.map((task, i) => (
-            <div key={task.id} className="flex items-center gap-3 rounded-lg border px-3 py-2.5">
-              <span className="w-6 text-center text-xs text-muted-foreground tabular-nums">
-                {String(i + 1).padStart(2, '0')}
-              </span>
-              <div className="min-w-0 flex-1">
-                <p className="text-sm font-medium">{task.title}</p>
-                {task.description && (
-                  <p className="text-xs text-muted-foreground line-clamp-1">{task.description}</p>
-                )}
-              </div>
-              <PriorityBadge priority={task.priority} />
-              <StatusBadge status={task.status} />
+      <Card>
+        <CardHeader className="py-2">
+          <CardTitle className="flex items-center gap-2 text-sm font-medium">
+            <Sparkles className="size-3.5 text-muted-foreground" />
+            Tasks
+            <Badge variant="secondary" className="ml-auto text-xs">{dayTasks.length}</Badge>
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="pb-2 pt-0">
+          {dayTasks.length > 0 ? (
+            <div className="space-y-1">
+              {dayTasks.map((task, i) => (
+                <div
+                  key={task.id}
+                  onClick={() => setSelectedTask(task)}
+                  className="flex cursor-pointer items-center gap-3 rounded-lg border px-3 py-2.5 hover:bg-muted/50"
+                >
+                  <span className="w-6 text-center text-xs text-muted-foreground tabular-nums">
+                    {String(i + 1).padStart(2, '0')}
+                  </span>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm font-medium">{task.title}</p>
+                    {task.description && (
+                      <p className="text-xs text-muted-foreground line-clamp-1">{task.description}</p>
+                    )}
+                  </div>
+                  <PriorityBadge priority={task.priority} />
+                  <StatusBadge status={task.status} />
+                </div>
+              ))}
             </div>
-          ))}
-        </div>
-      ) : (
-        <Card>
-          <CardContent className="py-8 text-center text-sm text-muted-foreground">
-            No tasks planned for today
-          </CardContent>
-        </Card>
+          ) : (
+            <p className="py-4 text-center text-xs text-muted-foreground">No tasks for this day</p>
+          )}
+        </CardContent>
+      </Card>
+
+      {selectedTask && (
+        <TaskDetailDialog
+          task={selectedTask}
+          open
+          onClose={() => setSelectedTask(null)}
+          onUpdate={(updates) => updateTask.mutate({ taskId: selectedTask.id, ...updates })}
+          onDelete={() => { deleteTask.mutate(selectedTask.id); setSelectedTask(null) }}
+        />
       )}
     </div>
   )
@@ -623,10 +697,14 @@ function DayView({ tasks, leads, date }: { tasks: TaskRow[]; leads: LeadRow[]; d
 // Week View
 // ---------------------------------------------------------------------------
 
-function WeekView({ tasks, leads }: { tasks: TaskRow[]; leads: LeadRow[] }) {
+function WeekView({ tasks, leads, calendarEvents }: { tasks: TaskRow[]; leads: LeadRow[]; calendarEvents: CalendarEventRow[] }) {
   const today = new Date()
   const weekStart = startOfWeek(today, { weekStartsOn: 1 })
   const days = Array.from({ length: 7 }, (_, i) => addDays(weekStart, i))
+  const [selectedTask, setSelectedTask] = useState<TaskRow | null>(null)
+  const [leadDay, setLeadDay] = useState<{ leads: LeadRow[]; date: string } | null>(null)
+  const deleteTask = useDeleteTask()
+  const updateTask = useUpdateTask()
 
   return (
     <div className="space-y-3">
@@ -642,7 +720,13 @@ function WeekView({ tasks, leads }: { tasks: TaskRow[]; leads: LeadRow[] }) {
           const dateStr = format(day, 'yyyy-MM-dd')
           const dayTasks = tasks.filter((t) => t.planned_date === dateStr)
           const dayLeads = leads.filter((l) => l.scheduled_date === dateStr)
+          const dayCalEvents = calendarEvents.filter((e) => e.start_date === dateStr)
           const isToday = isSameDay(day, today)
+          const maxItems = 4
+          const leadCount = dayLeads.length > 0 ? 1 : 0
+          const calCount = dayCalEvents.length > 0 ? 1 : 0
+          const taskLimit = Math.max(0, maxItems - leadCount - calCount)
+          const overflow = dayTasks.length + leadCount + calCount - maxItems
 
           return (
             <div
@@ -662,24 +746,33 @@ function WeekView({ tasks, leads }: { tasks: TaskRow[]; leads: LeadRow[] }) {
               </div>
               <div className="flex flex-col gap-1">
                 {dayLeads.length > 0 && (
-                  <div className="mb-1 rounded bg-primary/10 px-1 py-0.5">
+                  <button
+                    onClick={() => setLeadDay({ leads: dayLeads, date: dateStr })}
+                    className="mb-0.5 w-full rounded bg-primary/10 px-1 py-0.5 text-left hover:bg-primary/20"
+                  >
                     <p className="text-[9px] font-medium text-primary">
                       {dayLeads.length} lead{dayLeads.length === 1 ? '' : 's'}
                     </p>
+                  </button>
+                )}
+                {dayCalEvents.length > 0 && (
+                  <div className="truncate rounded bg-emerald-500/10 px-1 py-0.5 text-[9px] font-medium text-emerald-600">
+                    {dayCalEvents.length} event{dayCalEvents.length === 1 ? '' : 's'}
                   </div>
                 )}
-                {dayTasks.slice(0, Math.max(0, 3 - (dayLeads.length > 0 ? 1 : 0))).map((task) => (
-                  <div
+                {dayTasks.slice(0, taskLimit).map((task) => (
+                  <button
                     key={task.id}
-                    className="truncate rounded bg-muted/50 px-1 py-0.5 text-[10px] font-medium"
+                    onClick={() => setSelectedTask(task)}
+                    className="truncate rounded bg-muted/50 px-1 py-0.5 text-left text-[10px] font-medium hover:bg-muted"
                     title={task.title}
                   >
                     {task.title}
-                  </div>
+                  </button>
                 ))}
-                {dayTasks.length + (dayLeads.length > 0 ? 1 : 0) > 3 && (
+                {overflow > 0 && (
                   <p className="text-center text-[10px] text-muted-foreground">
-                    +{dayTasks.length + dayLeads.length - 3} more
+                    +{overflow} more
                   </p>
                 )}
               </div>
@@ -687,6 +780,45 @@ function WeekView({ tasks, leads }: { tasks: TaskRow[]; leads: LeadRow[] }) {
           )
         })}
       </div>
+
+      {selectedTask && (
+        <TaskDetailDialog
+          task={selectedTask}
+          open
+          onClose={() => setSelectedTask(null)}
+          onUpdate={(updates) => updateTask.mutate({ taskId: selectedTask.id, ...updates })}
+          onDelete={() => { deleteTask.mutate(selectedTask.id); setSelectedTask(null) }}
+        />
+      )}
+
+      {leadDay && (
+        <Dialog open onOpenChange={() => setLeadDay(null)}>
+          <DialogContent className="sm:max-w-md">
+            <DialogHeader>
+              <DialogTitle>Leads for {format(new Date(leadDay.date), 'MMM d, yyyy')}</DialogTitle>
+            </DialogHeader>
+            <div className="max-h-60 space-y-1 overflow-y-auto">
+              {leadDay.leads.map((lead) => (
+                <Link
+                  key={lead.id}
+                  to="/crm/leads/$leadId"
+                  params={{ leadId: lead.id }}
+                  onClick={() => setLeadDay(null)}
+                  className="flex items-center gap-3 rounded-lg border px-3 py-2 hover:bg-muted/50"
+                >
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm font-medium">{lead.name}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {lead.company || lead.email || '—'} · <span className="capitalize">{lead.status}</span>
+                    </p>
+                  </div>
+                  <LeadStatusBadge status={lead.status} />
+                </Link>
+              ))}
+            </div>
+          </DialogContent>
+        </Dialog>
+      )}
     </div>
   )
 }
@@ -695,12 +827,18 @@ function WeekView({ tasks, leads }: { tasks: TaskRow[]; leads: LeadRow[] }) {
 // Month View
 // ---------------------------------------------------------------------------
 
-function MonthView({ tasks, leads }: { tasks: TaskRow[]; leads: LeadRow[] }) {
+function MonthView({ tasks, leads, calendarEvents }: { tasks: TaskRow[]; leads: LeadRow[]; calendarEvents: CalendarEventRow[] }) {
   const today = new Date()
   const monthStart = startOfMonth(today)
   const monthEnd = endOfMonth(today)
   const days = eachDayOfInterval({ start: monthStart, end: monthEnd })
   const startPad = getDay(monthStart) === 0 ? 6 : getDay(monthStart) - 1
+  const [selectedTask, setSelectedTask] = useState<TaskRow | null>(null)
+  const [leadDay, setLeadDay] = useState<{ leads: LeadRow[]; date: string } | null>(null)
+  const deleteTask = useDeleteTask()
+  const updateTask = useUpdateTask()
+
+  const maxItems = 2
 
   return (
     <div className="space-y-3">
@@ -722,7 +860,13 @@ function MonthView({ tasks, leads }: { tasks: TaskRow[]; leads: LeadRow[] }) {
           const dateStr = format(day, 'yyyy-MM-dd')
           const dayTasks = tasks.filter((t) => t.planned_date === dateStr)
           const dayLeads = leads.filter((l) => l.scheduled_date === dateStr)
+          const dayCalEvents = calendarEvents.filter((e) => e.start_date === dateStr)
           const isToday = isSameDay(day, today)
+
+          const leadCount = dayLeads.length > 0 ? 1 : 0
+          const calCount = dayCalEvents.length > 0 ? 1 : 0
+          const taskLimit = Math.max(0, maxItems - leadCount - calCount)
+          const overflow = dayTasks.length + leadCount + calCount - maxItems
 
           return (
             <div
@@ -737,25 +881,33 @@ function MonthView({ tasks, leads }: { tasks: TaskRow[]; leads: LeadRow[] }) {
               </p>
               <div className="flex flex-col gap-0.5">
                 {dayLeads.length > 0 && (
-                  <div className="truncate rounded px-1 py-0.5 text-[9px] font-medium leading-tight text-primary"
+                  <button
+                    onClick={() => setLeadDay({ leads: dayLeads, date: dateStr })}
+                    className="w-full truncate rounded px-1 py-0.5 text-left text-[9px] font-medium leading-tight text-primary hover:bg-primary/10"
                     style={{ backgroundColor: 'rgb(59 130 246 / 0.1)' }}
                   >
                     {dayLeads.length} lead{dayLeads.length === 1 ? '' : 's'}
+                  </button>
+                )}
+                {dayCalEvents.length > 0 && (
+                  <div className="truncate rounded bg-emerald-500/10 px-1 py-0.5 text-[9px] font-medium leading-tight text-emerald-600">
+                    {dayCalEvents.length} event{dayCalEvents.length === 1 ? '' : 's'}
                   </div>
                 )}
-                {dayTasks.slice(0, dayLeads.length > 0 ? 1 : 2).map((task) => (
-                  <div
+                {dayTasks.slice(0, taskLimit).map((task) => (
+                  <button
                     key={task.id}
-                    className="truncate rounded px-1 py-0.5 text-[9px] font-medium leading-tight"
+                    onClick={() => setSelectedTask(task)}
+                    className="w-full truncate rounded px-1 py-0.5 text-left text-[9px] font-medium leading-tight hover:opacity-80"
                     style={getPriorityStyle(task.priority)}
                     title={task.title}
                   >
                     {task.title}
-                  </div>
+                  </button>
                 ))}
-                {(dayTasks.length + (dayLeads.length > 0 ? 1 : 0)) > 2 && (
+                {overflow > 0 && (
                   <p className="text-[9px] text-muted-foreground">
-                    +{dayTasks.length + dayLeads.length - 2}
+                    +{overflow}
                   </p>
                 )}
               </div>
@@ -763,6 +915,45 @@ function MonthView({ tasks, leads }: { tasks: TaskRow[]; leads: LeadRow[] }) {
           )
         })}
       </div>
+
+      {selectedTask && (
+        <TaskDetailDialog
+          task={selectedTask}
+          open
+          onClose={() => setSelectedTask(null)}
+          onUpdate={(updates) => updateTask.mutate({ taskId: selectedTask.id, ...updates })}
+          onDelete={() => { deleteTask.mutate(selectedTask.id); setSelectedTask(null) }}
+        />
+      )}
+
+      {leadDay && (
+        <Dialog open onOpenChange={() => setLeadDay(null)}>
+          <DialogContent className="sm:max-w-md">
+            <DialogHeader>
+              <DialogTitle>Leads for {format(new Date(leadDay.date), 'MMM d, yyyy')}</DialogTitle>
+            </DialogHeader>
+            <div className="max-h-60 space-y-1 overflow-y-auto">
+              {leadDay.leads.map((lead) => (
+                <Link
+                  key={lead.id}
+                  to="/crm/leads/$leadId"
+                  params={{ leadId: lead.id }}
+                  onClick={() => setLeadDay(null)}
+                  className="flex items-center gap-3 rounded-lg border px-3 py-2 hover:bg-muted/50"
+                >
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm font-medium">{lead.name}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {lead.company || lead.email || '—'} · <span className="capitalize">{lead.status}</span>
+                    </p>
+                  </div>
+                  <LeadStatusBadge status={lead.status} />
+                </Link>
+              ))}
+            </div>
+          </DialogContent>
+        </Dialog>
+      )}
     </div>
   )
 }
@@ -811,6 +1002,97 @@ function QuarterView({ tasks, leads }: { tasks: TaskRow[]; leads: LeadRow[] }) {
         })}
       </div>
     </div>
+  )
+}
+
+// ---------------------------------------------------------------------------
+// Task Detail Dialog (reusable in board + calendar views)
+// ---------------------------------------------------------------------------
+
+function TaskDetailDialog({
+  task,
+  open,
+  onClose,
+  onUpdate,
+  onDelete,
+}: {
+  task: TaskRow
+  open: boolean
+  onClose: () => void
+  onUpdate: (updates: { status?: TaskStatus; priority?: TaskPriority }) => void
+  onDelete: () => void
+}) {
+  return (
+    <Dialog open={open} onOpenChange={onClose}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>{task.title}</DialogTitle>
+          {task.description && (
+            <DialogDescription>{task.description}</DialogDescription>
+          )}
+        </DialogHeader>
+        <div className="space-y-3 text-sm">
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <span className="text-muted-foreground">Status</span>
+              <Select
+                value={task.status}
+                onValueChange={(v) => {
+                  onUpdate({ status: v as TaskStatus })
+                  onClose()
+                }}
+              >
+                <SelectTrigger className="mt-1">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="todo">To Do</SelectItem>
+                  <SelectItem value="in_progress">In Progress</SelectItem>
+                  <SelectItem value="done">Done</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <span className="text-muted-foreground">Priority</span>
+              <Select
+                value={task.priority}
+                onValueChange={(v) => onUpdate({ priority: v as TaskPriority })}
+              >
+                <SelectTrigger className="mt-1">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="low">Low</SelectItem>
+                  <SelectItem value="medium">Medium</SelectItem>
+                  <SelectItem value="high">High</SelectItem>
+                  <SelectItem value="urgent">Urgent</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          {task.planned_date && (
+            <p className="text-xs text-muted-foreground">
+              Planned for {format(new Date(task.planned_date), 'MMM d, yyyy')}
+            </p>
+          )}
+          {task.created_at && (
+            <p className="text-xs text-muted-foreground">
+              Created {formatDistanceToNow(new Date(task.created_at))} ago
+              {task.generated && ' · AI-generated'}
+            </p>
+          )}
+        </div>
+        <DialogFooter className="gap-2">
+          <Button
+            variant="destructive"
+            size="sm"
+            onClick={onDelete}
+          >
+            <Trash2 className="size-3.5" /> Delete
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   )
 }
 

@@ -257,3 +257,184 @@ Rules:
     return { error: err instanceof Error ? err.message : 'Failed to generate plan' }
   }
 }
+
+// ---------------------------------------------------------------------------
+// Calendar Events (ICS Import)
+// ---------------------------------------------------------------------------
+
+export interface CalendarEventRow {
+  id: string
+  owner_id: string
+  title: string
+  description: string | null
+  location: string | null
+  start_date: string
+  end_date: string | null
+  all_day: boolean
+  source: string
+  source_uid: string | null
+  imported_at: string
+  created_at: string
+  updated_at: string
+}
+
+function parseIcsDate(val: string): string {
+  const cleaned = val.replace(/[^0-9TZ]/g, '')
+  const match = cleaned.match(/^(\d{4})(\d{2})(\d{2})/)
+  if (match) {
+    return `${match[1]}-${match[2]}-${match[3]}`
+  }
+  return val
+}
+
+interface ParsedIcsEvent {
+  title: string
+  description: string | null
+  location: string | null
+  start_date: string
+  end_date: string | null
+  all_day: boolean
+  source_uid: string | null
+}
+
+export function parseIcsContent(icsContent: string): ParsedIcsEvent[] {
+  const events: ParsedIcsEvent[] = []
+  const lines = icsContent.replace(/\r\n/g, '\n').replace(/\r/g, '\n').split('\n')
+
+  const unfolded: string[] = []
+  let carry = ''
+  for (const line of lines) {
+    if (line.startsWith(' ') || line.startsWith('\t')) {
+      carry += line.slice(1)
+    } else {
+      if (carry) unfolded.push(carry)
+      carry = line
+    }
+  }
+  if (carry) unfolded.push(carry)
+
+  const veventBlocks: string[][] = []
+  let current: string[] | null = null
+  let inEvent = false
+  for (const line of unfolded) {
+    if (line === 'BEGIN:VEVENT') {
+      current = []
+      inEvent = true
+    } else if (line === 'END:VEVENT') {
+      if (current) veventBlocks.push(current)
+      current = null
+      inEvent = false
+    } else if (inEvent && current) {
+      current.push(line)
+    }
+  }
+
+  for (const block of veventBlocks) {
+    const event: Record<string, string> = {}
+    for (const line of block) {
+      const colonIdx = line.indexOf(':')
+      if (colonIdx === -1) continue
+      const key = line.slice(0, colonIdx).split(';')[0]
+      const value = line.slice(colonIdx + 1)
+      if (key.startsWith('DTSTART') || key.startsWith('DTEND') || key === 'SUMMARY' || key === 'DESCRIPTION' || key === 'LOCATION' || key === 'UID') {
+        event[key] = value
+      }
+    }
+
+    if (!event['SUMMARY']) continue
+
+    const dtstart = event['DTSTART'] || ''
+    const dtend = event['DTEND'] || ''
+    const isAllDay = !dtstart.includes('T')
+
+    const startDate = parseIcsDate(dtstart)
+    let endDate: string | null = null
+    if (dtend) {
+      endDate = parseIcsDate(dtend)
+      if (isAllDay && endDate) {
+        const d = new Date(endDate)
+        d.setDate(d.getDate() - 1)
+        endDate = d.toISOString().slice(0, 10)
+      }
+    }
+
+    events.push({
+      title: event['SUMMARY'].replace(/\\n/g, '\n').replace(/\\,/g, ','),
+      description: event['DESCRIPTION'] ? event['DESCRIPTION'].replace(/\\n/g, '\n').replace(/\\,/g, ',') : null,
+      location: event['LOCATION'] ? event['LOCATION'].replace(/\\n/g, '\n').replace(/\\,/g, ',') : null,
+      start_date: startDate,
+      end_date: endDate,
+      all_day: isAllDay,
+      source_uid: event['UID'] || null,
+    })
+  }
+
+  return events
+}
+
+export async function importCalendarEventsImpl(
+  icsContent: string,
+): Promise<{ count: number } | { error: string }> {
+  try {
+    const supabase = getSupabaseServerClient()
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return { error: 'Not authenticated' }
+
+    const parsed = parseIcsContent(icsContent)
+    if (parsed.length === 0) return { error: 'No events found in the ICS file' }
+
+    const rows = parsed.map((ev) => ({
+      owner_id: user.id,
+      title: ev.title,
+      description: ev.description,
+      location: ev.location,
+      start_date: ev.start_date,
+      end_date: ev.end_date,
+      all_day: ev.all_day,
+      source: 'ics',
+      source_uid: ev.source_uid,
+    }))
+
+    const { error } = await supabase.from('calendar_events').insert(rows)
+    if (error) return { error: error.message }
+
+    return { count: parsed.length }
+  } catch (err) {
+    return { error: err instanceof Error ? err.message : 'Failed to import calendar events' }
+  }
+}
+
+export async function getCalendarEventsImpl(): Promise<CalendarEventRow[] | { error: string }> {
+  try {
+    const supabase = getSupabaseServerClient()
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return { error: 'Not authenticated' }
+
+    const { data, error } = await supabase
+      .from('calendar_events')
+      .select('*')
+      .eq('owner_id', user.id)
+      .order('start_date', { ascending: true })
+
+    if (error) return { error: error.message }
+    return data as unknown as CalendarEventRow[]
+  } catch (err) {
+    return { error: err instanceof Error ? err.message : 'Failed to load calendar events' }
+  }
+}
+
+export async function deleteCalendarEventImpl(
+  id: string,
+): Promise<{ error: string } | null> {
+  try {
+    const supabase = getSupabaseServerClient()
+    const { error } = await supabase
+      .from('calendar_events')
+      .delete()
+      .eq('id', id)
+    if (error) return { error: error.message }
+    return null
+  } catch (err) {
+    return { error: err instanceof Error ? err.message : 'Failed to delete calendar event' }
+  }
+}
