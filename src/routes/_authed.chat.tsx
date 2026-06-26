@@ -1,10 +1,7 @@
 import { useState, useRef, useEffect } from 'react'
 import {
   Bot,
-  Loader2,
   MessageSquarePlus,
-  Send,
-  Square,
   Trash2,
 } from 'lucide-react'
 import { createFileRoute, Link } from '@tanstack/react-router'
@@ -12,12 +9,11 @@ import { createFileRoute, Link } from '@tanstack/react-router'
 import { DashboardShell } from '@/components/layout/dashboard-shell'
 import { MessageBubble, StreamingBubble } from '@/components/chat/message-bubble'
 import { ToolResultBanner } from '@/components/chat/tool-result-banner'
+import { ChatInput } from '@/components/chat/chat-input'
 import { Button } from '@/components/ui/button'
 import {
   Card,
-  CardContent,
 } from '@/components/ui/card'
-import { Input } from '@/components/ui/input'
 import { Skeleton } from '@/components/ui/skeleton'
 import { useAgents } from '@/hooks/use-agents'
 import {
@@ -48,17 +44,27 @@ function ChatPage() {
     useChatStream(activeConvoId)
 
   const messagesEndRef = useRef<HTMLDivElement>(null)
+  const scrollRef = useRef<HTMLDivElement>(null)
+  const prevConvoRef = useRef(activeConvoId)
 
-  // Auto-scroll to bottom on new messages / streaming
+  const shouldForceScroll = prevConvoRef.current !== activeConvoId
+  if (shouldForceScroll) {
+    prevConvoRef.current = activeConvoId
+  }
+
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
-  }, [messages, streamingText, toolCallResults])
+    const el = scrollRef.current
+    if (!el) return
+    const isNearBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 200
+    if (isNearBottom || isStreaming || shouldForceScroll) {
+      messagesEndRef.current?.scrollIntoView({ behavior: shouldForceScroll ? 'instant' : 'smooth' })
+    }
+  }, [messages, streamingText, toolCallResults, isStreaming, shouldForceScroll])
 
   const activeConvo = conversations?.find((c) => c.id === activeConvoId)
   const activeAgent = agents?.find((a) => a.id === activeConvo?.agent_id)
   const defaultAgentId = agents?.[0]?.id
 
-  // Select the most recent conversation on mount if none selected
   useEffect(() => {
     if (!activeConvoId && conversations && conversations.length > 0) {
       setActiveConvoId(conversations[0].id)
@@ -99,7 +105,6 @@ function ChatPage() {
     await send(content)
   }
 
-  // Display title: use conversation title, or "New conversation" for brand new
   const headerTitle = activeConvo?.title ?? 'New conversation'
 
   return (
@@ -121,7 +126,7 @@ function ChatPage() {
       </div>
 
       <div className="grid h-[calc(100vh-12rem)] grid-cols-1 gap-4 lg:grid-cols-[280px_1fr]">
-        {/* Conversation list */}
+        {/* Conversation list sidebar */}
         <Card className="flex flex-col overflow-hidden">
           <div className="border-b p-3">
             <Button
@@ -190,7 +195,10 @@ function ChatPage() {
           {activeConvoId ? (
             <>
               {/* Messages */}
-              <div className="chat-scroll flex-1 space-y-4 overflow-y-auto p-4">
+              <div
+                ref={scrollRef}
+                className="flex-1 space-y-4 overflow-y-auto p-4"
+              >
                 {messagesLoading ? (
                   <div className="space-y-4">
                     {Array.from({ length: 3 }).map((_, i) => (
@@ -199,58 +207,52 @@ function ChatPage() {
                   </div>
                 ) : (
                   <>
-                    {messages?.map((msg) => (
-                      <MessageBubble key={msg.id} message={msg} />
+                    {messages?.map((msg, idx) => (
+                      <MessageBubble
+                        key={msg.id}
+                        message={msg}
+                        toolCalls={
+                          !isStreaming &&
+                          msg.role === 'assistant' &&
+                          idx === messages.length - 1 &&
+                          toolCallResults.length > 0
+                            ? toolCallResults
+                            : undefined
+                        }
+                      />
                     ))}
                     {isStreaming && (
                       <StreamingBubble text={streamingText} />
-                    )}
-                    {/* Tool results appear after streaming completes */}
-                    {!isStreaming && toolCallResults.length > 0 && (
-                      <ToolResultBanner
-                        results={toolCallResults}
-                        onDismiss={dismissToolResults}
-                      />
                     )}
                   </>
                 )}
                 <div ref={messagesEndRef} />
               </div>
 
-              {/* Input */}
-              <div className="border-t p-3">
-                <form onSubmit={handleSend} className="flex gap-2">
-                  <Input
-                    value={input}
-                    onChange={(e) => setInput(e.target.value)}
-                    placeholder="Type your message…"
-                    disabled={isStreaming}
-                    autoFocus
+              {/* Tool results banner after streaming */}
+              {!isStreaming && toolCallResults.length > 0 && (
+                <div className="border-t px-4 py-2">
+                  <ToolResultBanner
+                    results={toolCallResults}
+                    onDismiss={dismissToolResults}
                   />
-                  {isStreaming ? (
-                    <Button
-                      type="button"
-                      variant="outline"
-                      onClick={stop}
-                      size="icon"
-                    >
-                      <Square className="size-4" />
-                    </Button>
-                  ) : (
-                    <Button type="submit" size="icon" disabled={!input.trim()}>
-                      {createConversation.isPending ? (
-                        <Loader2 className="size-4 animate-spin" />
-                      ) : (
-                        <Send className="size-4" />
-                      )}
-                    </Button>
-                  )}
-                </form>
-              </div>
+                </div>
+              )}
+
+              {/* Input */}
+              <ChatInput
+                input={input}
+                onInputChange={setInput}
+                onSubmit={handleSend}
+                isStreaming={isStreaming}
+                onStop={stop}
+                isCreatingConversation={createConversation.isPending}
+                disabled={messagesLoading}
+              />
             </>
           ) : (
-            <CardContent className="flex flex-1 flex-col items-center justify-center gap-4 text-center">
-              <div className="flex size-16 animate-message-in items-center justify-center rounded-full bg-muted">
+            <div className="flex flex-1 flex-col items-center justify-center gap-4 p-8 text-center">
+              <div className="flex size-16 items-center justify-center rounded-full bg-muted">
                 <Bot className="size-8 text-muted-foreground" />
               </div>
               <div>
@@ -264,7 +266,7 @@ function ChatPage() {
                   <Link to="/agents">Create an agent first</Link>
                 </Button>
               )}
-            </CardContent>
+            </div>
           )}
         </Card>
       </div>

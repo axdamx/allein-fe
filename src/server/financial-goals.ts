@@ -8,7 +8,17 @@ import type {
 } from './financial-goals.server'
 
 export type { FinancialGoalRow, CreateGoalInput, UpdateGoalInput, GoalStatus, GoalCategory }
-export { getTimeframeLabel } from './financial-goals.server'
+
+export function getTimeframeLabel(timeframe: string): string {
+  const labels: Record<string, string> = {
+    daily: 'Daily',
+    weekly: 'Weekly',
+    monthly: 'Monthly',
+    quarterly: 'Quarterly',
+    yearly: 'Yearly',
+  }
+  return labels[timeframe] ?? timeframe
+}
 
 export const getGoals = createServerFn({ method: 'GET' }).handler(async () => {
   const { getGoalsImpl } = await import('./financial-goals.server')

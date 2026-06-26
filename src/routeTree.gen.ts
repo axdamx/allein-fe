@@ -32,7 +32,9 @@ import { Route as AuthedCrmPipelineRouteImport } from './routes/_authed.crm.pipe
 import { Route as AuthedCrmLeadsRouteImport } from './routes/_authed.crm.leads'
 import { Route as AuthedCrmClientsRouteImport } from './routes/_authed.crm.clients'
 import { Route as AuthedCrmLeadsIndexRouteImport } from './routes/_authed.crm.leads.index'
+import { Route as AuthedCrmClientsIndexRouteImport } from './routes/_authed.crm.clients.index'
 import { Route as AuthedCrmLeadsLeadIdRouteImport } from './routes/_authed.crm.leads.$leadId'
+import { Route as AuthedCrmClientsClientIdRouteImport } from './routes/_authed.crm.clients.$clientId'
 
 const PricingRoute = PricingRouteImport.update({
   id: '/pricing',
@@ -148,11 +150,22 @@ const AuthedCrmLeadsIndexRoute = AuthedCrmLeadsIndexRouteImport.update({
   path: '/',
   getParentRoute: () => AuthedCrmLeadsRoute,
 } as any)
+const AuthedCrmClientsIndexRoute = AuthedCrmClientsIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => AuthedCrmClientsRoute,
+} as any)
 const AuthedCrmLeadsLeadIdRoute = AuthedCrmLeadsLeadIdRouteImport.update({
   id: '/$leadId',
   path: '/$leadId',
   getParentRoute: () => AuthedCrmLeadsRoute,
 } as any)
+const AuthedCrmClientsClientIdRoute =
+  AuthedCrmClientsClientIdRouteImport.update({
+    id: '/$clientId',
+    path: '/$clientId',
+    getParentRoute: () => AuthedCrmClientsRoute,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -171,12 +184,14 @@ export interface FileRoutesByFullPath {
   '/settings': typeof AuthedSettingsRoute
   '/studio': typeof AuthedStudioRoute
   '/support': typeof AuthedSupportRoute
-  '/crm/clients': typeof AuthedCrmClientsRoute
+  '/crm/clients': typeof AuthedCrmClientsRouteWithChildren
   '/crm/leads': typeof AuthedCrmLeadsRouteWithChildren
   '/crm/pipeline': typeof AuthedCrmPipelineRoute
   '/api/messaging/telegram': typeof ApiMessagingTelegramRoute
   '/api/messaging/whatsapp': typeof ApiMessagingWhatsappRoute
+  '/crm/clients/$clientId': typeof AuthedCrmClientsClientIdRoute
   '/crm/leads/$leadId': typeof AuthedCrmLeadsLeadIdRoute
+  '/crm/clients/': typeof AuthedCrmClientsIndexRoute
   '/crm/leads/': typeof AuthedCrmLeadsIndexRoute
 }
 export interface FileRoutesByTo {
@@ -196,11 +211,12 @@ export interface FileRoutesByTo {
   '/settings': typeof AuthedSettingsRoute
   '/studio': typeof AuthedStudioRoute
   '/support': typeof AuthedSupportRoute
-  '/crm/clients': typeof AuthedCrmClientsRoute
   '/crm/pipeline': typeof AuthedCrmPipelineRoute
   '/api/messaging/telegram': typeof ApiMessagingTelegramRoute
   '/api/messaging/whatsapp': typeof ApiMessagingWhatsappRoute
+  '/crm/clients/$clientId': typeof AuthedCrmClientsClientIdRoute
   '/crm/leads/$leadId': typeof AuthedCrmLeadsLeadIdRoute
+  '/crm/clients': typeof AuthedCrmClientsIndexRoute
   '/crm/leads': typeof AuthedCrmLeadsIndexRoute
 }
 export interface FileRoutesById {
@@ -222,12 +238,14 @@ export interface FileRoutesById {
   '/_authed/settings': typeof AuthedSettingsRoute
   '/_authed/studio': typeof AuthedStudioRoute
   '/_authed/support': typeof AuthedSupportRoute
-  '/_authed/crm/clients': typeof AuthedCrmClientsRoute
+  '/_authed/crm/clients': typeof AuthedCrmClientsRouteWithChildren
   '/_authed/crm/leads': typeof AuthedCrmLeadsRouteWithChildren
   '/_authed/crm/pipeline': typeof AuthedCrmPipelineRoute
   '/api/messaging/telegram': typeof ApiMessagingTelegramRoute
   '/api/messaging/whatsapp': typeof ApiMessagingWhatsappRoute
+  '/_authed/crm/clients/$clientId': typeof AuthedCrmClientsClientIdRoute
   '/_authed/crm/leads/$leadId': typeof AuthedCrmLeadsLeadIdRoute
+  '/_authed/crm/clients/': typeof AuthedCrmClientsIndexRoute
   '/_authed/crm/leads/': typeof AuthedCrmLeadsIndexRoute
 }
 export interface FileRouteTypes {
@@ -254,7 +272,9 @@ export interface FileRouteTypes {
     | '/crm/pipeline'
     | '/api/messaging/telegram'
     | '/api/messaging/whatsapp'
+    | '/crm/clients/$clientId'
     | '/crm/leads/$leadId'
+    | '/crm/clients/'
     | '/crm/leads/'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -274,11 +294,12 @@ export interface FileRouteTypes {
     | '/settings'
     | '/studio'
     | '/support'
-    | '/crm/clients'
     | '/crm/pipeline'
     | '/api/messaging/telegram'
     | '/api/messaging/whatsapp'
+    | '/crm/clients/$clientId'
     | '/crm/leads/$leadId'
+    | '/crm/clients'
     | '/crm/leads'
   id:
     | '__root__'
@@ -304,7 +325,9 @@ export interface FileRouteTypes {
     | '/_authed/crm/pipeline'
     | '/api/messaging/telegram'
     | '/api/messaging/whatsapp'
+    | '/_authed/crm/clients/$clientId'
     | '/_authed/crm/leads/$leadId'
+    | '/_authed/crm/clients/'
     | '/_authed/crm/leads/'
   fileRoutesById: FileRoutesById
 }
@@ -481,6 +504,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthedCrmLeadsIndexRouteImport
       parentRoute: typeof AuthedCrmLeadsRoute
     }
+    '/_authed/crm/clients/': {
+      id: '/_authed/crm/clients/'
+      path: '/'
+      fullPath: '/crm/clients/'
+      preLoaderRoute: typeof AuthedCrmClientsIndexRouteImport
+      parentRoute: typeof AuthedCrmClientsRoute
+    }
     '/_authed/crm/leads/$leadId': {
       id: '/_authed/crm/leads/$leadId'
       path: '/$leadId'
@@ -488,8 +518,28 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthedCrmLeadsLeadIdRouteImport
       parentRoute: typeof AuthedCrmLeadsRoute
     }
+    '/_authed/crm/clients/$clientId': {
+      id: '/_authed/crm/clients/$clientId'
+      path: '/$clientId'
+      fullPath: '/crm/clients/$clientId'
+      preLoaderRoute: typeof AuthedCrmClientsClientIdRouteImport
+      parentRoute: typeof AuthedCrmClientsRoute
+    }
   }
 }
+
+interface AuthedCrmClientsRouteChildren {
+  AuthedCrmClientsClientIdRoute: typeof AuthedCrmClientsClientIdRoute
+  AuthedCrmClientsIndexRoute: typeof AuthedCrmClientsIndexRoute
+}
+
+const AuthedCrmClientsRouteChildren: AuthedCrmClientsRouteChildren = {
+  AuthedCrmClientsClientIdRoute: AuthedCrmClientsClientIdRoute,
+  AuthedCrmClientsIndexRoute: AuthedCrmClientsIndexRoute,
+}
+
+const AuthedCrmClientsRouteWithChildren =
+  AuthedCrmClientsRoute._addFileChildren(AuthedCrmClientsRouteChildren)
 
 interface AuthedCrmLeadsRouteChildren {
   AuthedCrmLeadsLeadIdRoute: typeof AuthedCrmLeadsLeadIdRoute
@@ -506,13 +556,13 @@ const AuthedCrmLeadsRouteWithChildren = AuthedCrmLeadsRoute._addFileChildren(
 )
 
 interface AuthedCrmRouteChildren {
-  AuthedCrmClientsRoute: typeof AuthedCrmClientsRoute
+  AuthedCrmClientsRoute: typeof AuthedCrmClientsRouteWithChildren
   AuthedCrmLeadsRoute: typeof AuthedCrmLeadsRouteWithChildren
   AuthedCrmPipelineRoute: typeof AuthedCrmPipelineRoute
 }
 
 const AuthedCrmRouteChildren: AuthedCrmRouteChildren = {
-  AuthedCrmClientsRoute: AuthedCrmClientsRoute,
+  AuthedCrmClientsRoute: AuthedCrmClientsRouteWithChildren,
   AuthedCrmLeadsRoute: AuthedCrmLeadsRouteWithChildren,
   AuthedCrmPipelineRoute: AuthedCrmPipelineRoute,
 }

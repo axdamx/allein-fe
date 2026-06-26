@@ -8,6 +8,7 @@ export interface DocumentRow {
   id: string
   owner_id: string
   agent_id: string | null
+  client_id: string | null
   name: string
   mime_type: string | null
   size_bytes: number | null
@@ -18,10 +19,10 @@ export interface DocumentRow {
 }
 
 export const getDocuments = createServerFn({ method: 'GET' })
-  .validator((d: { agentId?: string }) => d)
+  .validator((d: { agentId?: string; clientId?: string }) => d)
   .handler(async ({ data }) => {
     const { getDocumentsImpl } = await import('./documents.server')
-    return getDocumentsImpl(data.agentId)
+    return getDocumentsImpl(data.agentId, data.clientId)
   })
 
 export const uploadDocument = createServerFn({ method: 'POST' })
@@ -33,6 +34,7 @@ export const uploadDocument = createServerFn({ method: 'POST' })
       isBase64?: boolean
       sizeBytes?: number
       agentId?: string
+      clientId?: string
     }) => d,
   )
   .handler(async ({ data }) => {
@@ -48,4 +50,11 @@ export const deleteDocument = createServerFn({ method: 'POST' })
   .handler(async ({ data }) => {
     const { deleteDocumentImpl } = await import('./documents.server')
     return deleteDocumentImpl(data.documentId)
+  })
+
+export const getDocumentUrl = createServerFn({ method: 'GET' })
+  .validator((d: { documentId: string }) => d)
+  .handler(async ({ data }) => {
+    const { getDocumentUrlImpl } = await import('./documents.server')
+    return getDocumentUrlImpl(data.documentId)
   })

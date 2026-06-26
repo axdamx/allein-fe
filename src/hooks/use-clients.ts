@@ -1,7 +1,9 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient, type UseQueryResult } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import {
   getClients,
+  getClientsPaginated,
+  getClient,
   createClient,
   updateClient,
   deleteClient,
@@ -10,11 +12,32 @@ import {
   type UpdateClientInput,
 } from '@/server/clients'
 
-export function useClients() {
+export function useClients(): UseQueryResult<ClientRow[]>
+export function useClients(
+  page: number,
+  pageSize: number,
+  search?: string,
+): UseQueryResult<{ data: ClientRow[]; total: number }>
+export function useClients(page?: number, pageSize?: number, search?: string) {
+  if (page === undefined || pageSize === undefined) {
+    return useQuery({
+      queryKey: ['crm', 'clients'],
+      queryFn: () => getClients(),
+      staleTime: 20 * 1000,
+    })
+  }
   return useQuery({
-    queryKey: ['crm', 'clients'],
-    queryFn: () => getClients(),
+    queryKey: ['crm', 'clients', 'paginated', page, pageSize, search],
+    queryFn: () => getClientsPaginated({ data: { page, pageSize, search } }),
     staleTime: 20 * 1000,
+  })
+}
+
+export function useClient(id: string | undefined) {
+  return useQuery({
+    queryKey: ['crm', 'clients', id],
+    queryFn: () => getClient({ data: { id: id! } }),
+    enabled: !!id,
   })
 }
 

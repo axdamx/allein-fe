@@ -1,22 +1,9 @@
-import { Bell, Check, UserPlus, X, AlertCircle } from 'lucide-react'
+import { CheckCircle2, XCircle, X, Wrench } from 'lucide-react'
 
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
-import type { SendMessageResult } from '@/hooks/use-chat'
+import type { SendMessageResult } from '@/server/chat'
 
-const TOOL_META: Record<
-  string,
-  { icon: typeof UserPlus; label: string; color: string }
-> = {
-  createLead: { icon: UserPlus, label: 'Lead created', color: 'emerald' },
-  createReminder: { icon: Bell, label: 'Reminder set', color: 'blue' },
-}
-
-/**
- * Shows results of tool calls made by the agent.
- * Unlike the old ActionCard, tools execute immediately (native tool calling)
- * — this banner just confirms what happened and lets the user dismiss it.
- */
 export function ToolResultBanner({
   results,
   onDismiss,
@@ -26,56 +13,50 @@ export function ToolResultBanner({
 }) {
   return (
     <div className="space-y-2">
-      {results.map((tc, i) => {
-        const meta = TOOL_META[tc.name] ?? {
-          icon: Check,
-          label: tc.name,
-          color: 'gray',
-        }
-        const Icon = meta.icon
-        const isSuccess = tc.success
-
-        return (
-          <div
-            key={i}
-            className={cn(
-              'animate-message-in flex items-center justify-between gap-2 rounded-lg border p-3',
-              isSuccess
-                ? 'border-emerald-500/30 bg-emerald-500/5'
-                : 'border-red-500/30 bg-red-500/5',
-            )}
-          >
+      {results.map((tc, i) => (
+        <div
+          key={i}
+          className={cn(
+            'flex items-start gap-3 rounded-lg border p-3',
+            tc.success
+              ? 'border-emerald-500/20 bg-emerald-500/5'
+              : 'border-red-500/20 bg-red-500/5',
+          )}
+        >
+          {tc.success ? (
+            <CheckCircle2 className="mt-0.5 size-4 shrink-0 text-emerald-500" />
+          ) : (
+            <XCircle className="mt-0.5 size-4 shrink-0 text-red-500" />
+          )}
+          <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2">
-              <div
+              <Wrench className="size-3.5 text-muted-foreground" />
+              <span className="text-sm font-medium">{tc.name}</span>
+              <span
                 className={cn(
-                  'flex size-8 shrink-0 items-center justify-center rounded-lg',
-                  isSuccess ? 'bg-emerald-500/10' : 'bg-red-500/10',
+                  'ml-auto rounded-full px-2 py-0.5 text-[10px] font-medium',
+                  tc.success
+                    ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400'
+                    : 'bg-red-500/10 text-red-600 dark:text-red-400',
                 )}
               >
-                {isSuccess ? (
-                  <Icon className="size-4 text-emerald-600 dark:text-emerald-400" />
-                ) : (
-                  <AlertCircle className="size-4 text-red-600 dark:text-red-400" />
-                )}
-              </div>
-              <div>
-                <p className="text-sm font-medium">
-                  {isSuccess ? meta.label : 'Action failed'}
-                </p>
-                <p className="text-xs text-muted-foreground">{tc.message}</p>
-              </div>
+                {tc.success ? 'Success' : 'Failed'}
+              </span>
             </div>
-            <Button
-              variant="ghost"
-              size="icon"
-              className="size-7 shrink-0"
-              onClick={onDismiss}
-            >
-              <X className="size-3.5" />
-            </Button>
+            <p className="mt-0.5 text-xs text-muted-foreground">
+              {tc.message}
+            </p>
           </div>
-        )
-      })}
+          <Button
+            variant="ghost"
+            size="icon"
+            className="size-6 shrink-0"
+            onClick={onDismiss}
+          >
+            <X className="size-3" />
+          </Button>
+        </div>
+      ))}
     </div>
   )
 }

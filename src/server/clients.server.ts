@@ -21,6 +21,7 @@ export interface ClientRow {
   status: ClientStatus
   notes: string | null
   tags: string[]
+  date_of_birth: string | null
   created_at: string
   updated_at: string
 }
@@ -35,6 +36,7 @@ export interface CreateClientInput {
   status?: ClientStatus
   notes?: string
   tags?: string[]
+  date_of_birth?: string
 }
 
 export interface UpdateClientInput {
@@ -48,6 +50,7 @@ export interface UpdateClientInput {
   status?: ClientStatus
   notes?: string
   tags?: string[]
+  date_of_birth?: string
 }
 
 // ---------------------------------------------------------------------------
@@ -67,6 +70,89 @@ export async function getClientsImpl(): Promise<ClientRow[]> {
     .eq('owner_id', user.id)
     .order('created_at', { ascending: false })
 
+  if (error || !data) return []
+  return data as unknown as ClientRow[]
+}
+
+export async function getClientsPaginatedImpl({
+  page,
+  pageSize,
+  search,
+}: {
+  page: number
+  pageSize: number
+  search?: string
+}): Promise<{ data: ClientRow[]; total: number }> {
+  const supabase = getSupabaseServerClient()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+  if (!user) return { data: [], total: 0 }
+
+  const term = search ? `%${search}%` : null
+
+  // Count total matching
+  let countQuery = supabase
+    .from('clients')
+    .select('id', { count: 'exact', head: true })
+    .eq('owner_id', user.id)
+
+  if (term) {
+    countQuery = countQuery.or(
+      `name.ilike.${term},email.ilike.${term},company.ilike.${term},industry.ilike.${term}`,
+    )
+  }
+
+  const { count } = await countQuery
+
+  // Fetch page
+  let dataQuery = supabase
+    .from('clients')
+    .select('*')
+    .eq('owner_id', user.id)
+    .order('created_at', { ascending: false })
+    .range((page - 1) * pageSize, page * pageSize - 1)
+
+  if (term) {
+    dataQuery = dataQuery.or(
+      `name.ilike.${term},email.ilike.${term},company.ilike.${term},industry.ilike.${term}`,
+    )
+  }
+
+  const { data, error } = await dataQuery
+  if (error || !data) return { data: [], total: 0 }
+
+  return { data: data as unknown as ClientRow[], total: count ?? 0 }
+}
+
+export async function getClientByIdImpl(
+  id: string,
+): Promise<ClientRow | null> {
+  const supabase = getSupabaseServerClient()
+  const { data, error } = await supabase
+    .from('clients')
+    .select('*')
+    .eq('id', id)
+    .single()
+  if (error || !data) return null
+  return data as unknown as ClientRow
+}
+
+export async function getClientsByBirthdayRangeImpl({
+  withinMonths,
+}: {
+  withinMonths: number
+}): Promise<ClientRow[]> {
+  const supabase = getSupabaseServerClient()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+  if (!user) return []
+
+  const { data, error } = await supabase.rpc('clients_upcoming_birthdays', {
+    p_owner_id: user.id,
+    p_months: withinMonths,
+  })
   if (error || !data) return []
   return data as unknown as ClientRow[]
 }
@@ -93,6 +179,7 @@ export async function createClientImpl(
       status: input.status ?? 'active',
       notes: input.notes ?? null,
       tags: input.tags ?? [],
+      date_of_birth: input.date_of_birth ?? null,
     })
     .select('id')
     .single()
@@ -117,6 +204,7 @@ export async function updateClientImpl(
   if (updates.status !== undefined) cleanUpdates.status = updates.status
   if (updates.notes !== undefined) cleanUpdates.notes = updates.notes
   if (updates.tags !== undefined) cleanUpdates.tags = updates.tags
+  if (updates.date_of_birth !== undefined) cleanUpdates.date_of_birth = updates.date_of_birth
 
   const { error } = await supabase
     .from('clients')

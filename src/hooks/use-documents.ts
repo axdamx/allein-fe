@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import {
   getDocuments,
+  getDocumentUrl,
   uploadDocument,
   deleteDocument,
   type DocumentRow,
@@ -10,10 +11,10 @@ import { PLAN_CONFIGS } from '@/lib/plans'
 import { showUsageWarning } from '@/lib/usage-warnings'
 import type { PlanState } from '@/server/profile'
 
-export function useDocuments(agentId?: string) {
+export function useDocuments(agentId?: string, clientId?: string) {
   return useQuery({
-    queryKey: ['documents', agentId],
-    queryFn: () => getDocuments({ data: { agentId } }),
+    queryKey: ['documents', agentId, clientId],
+    queryFn: () => getDocuments({ data: { agentId, clientId } }),
     staleTime: 15 * 1000,
     // Poll frequently while any document is processing
     refetchInterval: (query) => {
@@ -41,6 +42,7 @@ export function useUploadDocument() {
       isBase64?: boolean
       sizeBytes?: number
       agentId?: string
+      clientId?: string
     }) => uploadDocument({ data: input }),
     onSuccess: (result) => {
       if ('error' in result) {
@@ -70,6 +72,15 @@ export function useUploadDocument() {
       const msg = err instanceof Error ? err.message : 'Upload failed'
       toast.error(msg)
     },
+  })
+}
+
+export function useDocumentUrl(documentId: string | null) {
+  return useQuery({
+    queryKey: ['documents', 'url', documentId],
+    queryFn: () => getDocumentUrl({ data: { documentId: documentId! } }),
+    enabled: !!documentId,
+    staleTime: 30 * 60 * 1000,
   })
 }
 

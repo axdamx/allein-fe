@@ -12,6 +12,20 @@ export const getClients = createServerFn({ method: 'GET' }).handler(async () => 
   return getClientsImpl()
 })
 
+export const getClientsPaginated = createServerFn({ method: 'GET' })
+  .validator((d: { page: number; pageSize: number; search?: string }) => d)
+  .handler(async ({ data }) => {
+    const { getClientsPaginatedImpl } = await import('./clients.server')
+    return getClientsPaginatedImpl(data)
+  })
+
+export const getClient = createServerFn({ method: 'GET' })
+  .validator((d: { id: string }) => d)
+  .handler(async ({ data }) => {
+    const { getClientByIdImpl } = await import('./clients.server')
+    return getClientByIdImpl(data.id)
+  })
+
 export const createClient = createServerFn({ method: 'POST' })
   .validator((d: CreateClientInput) => d)
   .handler(async ({ data }) => {

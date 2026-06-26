@@ -16,6 +16,7 @@ export interface DocumentRow {
   id: string
   owner_id: string
   agent_id: string | null
+  client_id: string | null
   name: string
   mime_type: string | null
   size_bytes: number | null
@@ -26,12 +27,42 @@ export interface DocumentRow {
   updated_at: string
 }
 
+export async function getDocumentUrlImpl(
+  documentId: string,
+): Promise<{ signed_url: string } | { error: string }> {
+  const supabase = getSupabaseServerClient()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+  if (!user) return { error: 'Not authenticated' }
+
+  const { data: doc } = await supabase
+    .from('documents')
+    .select('storage_path, name')
+    .eq('id', documentId)
+    .eq('owner_id', user.id)
+    .single()
+
+  if (!doc?.storage_path) {
+    return { error: 'Document not found or no storage path' }
+  }
+
+  const { data } = await supabase.storage
+    .from('documents')
+    .createSignedUrl(doc.storage_path, 3600)
+
+  if (!data?.signedUrl) return { error: 'Failed to generate signed URL' }
+
+  return { signed_url: data.signedUrl }
+}
+
 // ---------------------------------------------------------------------------
 // Document CRUD
 // ---------------------------------------------------------------------------
 
 export async function getDocumentsImpl(
   agentId?: string,
+  clientId?: string,
 ): Promise<DocumentRow[]> {
   const supabase = getSupabaseServerClient()
   const {
@@ -47,6 +78,10 @@ export async function getDocumentsImpl(
 
   if (agentId) {
     query = query.or(`agent_id.eq.${agentId},agent_id.is.null`)
+  }
+
+  if (clientId) {
+    query = query.eq('client_id', clientId)
   }
 
   const { data, error } = await query
@@ -106,6 +141,7 @@ export interface UploadDocumentInput {
   isBase64?: boolean
   sizeBytes?: number
   agentId?: string
+  clientId?: string
 }
 
 /**
@@ -150,6 +186,7 @@ export async function uploadDocumentImpl(
     .insert({
       owner_id: user.id,
       agent_id: input.agentId ?? null,
+      client_id: input.clientId ?? null,
       name: input.name,
       mime_type: input.mimeType,
       size_bytes: input.sizeBytes ?? null,
