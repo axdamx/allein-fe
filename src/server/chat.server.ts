@@ -183,6 +183,18 @@ export async function getMessagesImpl(
 }
 
 /**
+ * Detect if the user wants to create records and build a nudge message
+ * that forces the LLM to act on conversation context instead of asking.
+ */
+function buildCreateNudge(content: string): string | null {
+  const createPattern = /\b(create|make|add|save|set up|setup)\b/i
+  const recordType = /\b(lead|reminder|task|planner|todo|to-?do)\b/i
+  if (!createPattern.test(content) && !recordType.test(content)) return null
+
+  return `[INSTRUCTION: The user just asked to create records. Look at the conversation history above — specifically any recently mentioned person, their name, email, company, and relevant dates. Call the appropriate tools (createLead, createReminder, createTask) IMMEDIATELY with those details. DO NOT ask the user for information already discussed. DO NOT write a summary first. Call the tools now.]`
+}
+
+/**
  * Send a message and get the AI response using Vercel AI SDK.
  *
  * Uses generateText (non-streaming but with tool calling) because TanStack
@@ -281,25 +293,25 @@ ${contextText}
 
   const fullSystemPrompt = `${systemPrompt}${userContext}${ragContext}
 
-## About tools
-You have tools to create leads, reminders, planner tasks, and send messages.
+## Tools
+You have tools to create leads, reminders, tasks, and send messages.
 
-CRITICAL: Never ask the user for details already mentioned. Extract everything from conversation context.
+!!! ABSOLUTE RULE: NEVER ask the user for details that exist in this conversation. Immediately call the appropriate tool with whatever you already know. !!!
 
-Example — correct behavior:
-- User: "who has birthday in june?" → you return Farah's info
-- User: "create a lead, planner and reminder" → you IMMEDIATELY call createLead(name="Farah", email="..."), createTask(title="Birthday reminder - Farah"), createReminder(title="Farah's birthday", due_at="2026-06-26"). No questions.
+When user says "create" after discussing a specific person/event, you MUST:
+1. Call createLead with that person's name, email, company from chat
+2. Call createReminder with a descriptive title and the relevant date
+3. Call createTask with a relevant title
 
-When creating ANY record:
-- Pull names, emails, phones, dates, companies from conversation history
-- Use User Context for defaults
-- Resolve "this person"/"that client"/"this email" to actual values
-- Call the tool immediately — do NOT ask for confirmation
-- Do NOT describe what you're about to do — just do it and report the result
+Example — DO THIS EXACTLY:
+User: "who has birthday" → you: return client info
+User: "create a lead, planner and reminder" → you: call all three tools IMMEDIATELY with the info from the previous turn. No questions. No summaries. Just call the tools.
 
-When sending to "my Telegram" or "my WhatsApp", use User Context — do not ask.`
+Rule: Call the tool first, explain later. Never ask "what details?" — use what you already know.`
 
   // 6. Build messages for the AI SDK
+  const createNudge = buildCreateNudge(input.content)
+
   const coreMessages = [
     ...(history ?? [])
       .filter((m) => m.role === 'user' || m.role === 'assistant')
@@ -307,6 +319,7 @@ When sending to "my Telegram" or "my WhatsApp", use User Context — do not ask.
         role: m.role as 'user' | 'assistant',
         content: m.content,
       })),
+    ...(createNudge ? [{ role: 'system' as const, content: createNudge }] : []),
     { role: 'user' as const, content: input.content },
   ]
 
@@ -452,25 +465,25 @@ ${contextText}
 
   const fullSystemPrompt = `${systemPrompt}${userContext}${ragContext}
 
-## About tools
-You have tools to create leads, reminders, planner tasks, and send messages.
+## Tools
+You have tools to create leads, reminders, tasks, and send messages.
 
-CRITICAL: Never ask the user for details already mentioned. Extract everything from conversation context.
+!!! ABSOLUTE RULE: NEVER ask the user for details that exist in this conversation. Immediately call the appropriate tool with whatever you already know. !!!
 
-Example — correct behavior:
-- User: "who has birthday in june?" → you return Farah's info
-- User: "create a lead, planner and reminder" → you IMMEDIATELY call createLead(name="Farah", email="..."), createTask(title="Birthday reminder - Farah"), createReminder(title="Farah's birthday", due_at="2026-06-26"). No questions.
+When user says "create" after discussing a specific person/event, you MUST:
+1. Call createLead with that person's name, email, company from chat
+2. Call createReminder with a descriptive title and the relevant date
+3. Call createTask with a relevant title
 
-When creating ANY record:
-- Pull names, emails, phones, dates, companies from conversation history
-- Use User Context for defaults
-- Resolve "this person"/"that client"/"this email" to actual values
-- Call the tool immediately — do NOT ask for confirmation
-- Do NOT describe what you're about to do — just do it and report the result
+Example — DO THIS EXACTLY:
+User: "who has birthday" → you: return client info
+User: "create a lead, planner and reminder" → you: call all three tools IMMEDIATELY with the info from the previous turn. No questions. No summaries. Just call the tools.
 
-When sending to "my Telegram" or "my WhatsApp", use User Context — do not ask.`
+Rule: Call the tool first, explain later. Never ask "what details?" — use what you already know.`
 
   // 6. Build messages for AI
+  const createNudge = buildCreateNudge(input.content)
+
   const coreMessages = [
     ...(history ?? [])
       .filter((m: { role: string; content: string }) => m.role === 'user' || m.role === 'assistant')
@@ -478,6 +491,7 @@ When sending to "my Telegram" or "my WhatsApp", use User Context — do not ask.
         role: m.role as 'user' | 'assistant',
         content: m.content,
       })),
+    ...(createNudge ? [{ role: 'system' as const, content: createNudge }] : []),
     { role: 'user' as const, content: input.content },
   ]
 
