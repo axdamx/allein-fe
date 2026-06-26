@@ -355,12 +355,14 @@ Rule: Call the tool first, explain later. Never ask "what details?" — use what
     }
   }
 
-  // 9. Save assistant message
+  // 9. Save assistant message with token usage
   await supabase.from('messages').insert({
     conversation_id: input.conversationId,
     role: 'assistant',
     content: replyText,
     model: agent.model,
+    tokens_in: result.usage.inputTokens ?? 0,
+    tokens_out: result.usage.outputTokens ?? 0,
   })
 
   // 10. Auto-generate title for new conversations
@@ -527,12 +529,14 @@ Rule: Call the tool first, explain later. Never ask "what details?" — use what
     }
   }
 
-  // 9. Save assistant message
+  // 9. Save assistant message with token usage
   await supabase.from('messages').insert({
     conversation_id: input.conversationId,
     role: 'assistant',
     content: replyText,
     model: agent.model,
+    tokens_in: result.usage.inputTokens ?? 0,
+    tokens_out: result.usage.outputTokens ?? 0,
   })
 
   // 10. Auto-title
