@@ -102,14 +102,15 @@ export function useChatStream(conversationId: string | null) {
   const abortRef = useRef(false)
 
   const send = useCallback(
-    async (content: string) => {
-      if (!conversationId || !content.trim()) return
+    async (content: string, overrideConvoId?: string) => {
+      const id = overrideConvoId ?? conversationId
+      if (!id || !content.trim()) return
       if (state.isStreaming) return
 
       // Optimistic: show user message immediately
       const optimisticMessage: MessageRow = {
         id: `${TEMP_ID_PREFIX}${Date.now()}`,
-        conversation_id: conversationId,
+        conversation_id: id,
         role: 'user',
         content,
         tokens_in: null,
@@ -119,7 +120,7 @@ export function useChatStream(conversationId: string | null) {
       }
 
       qc.setQueryData<MessageRow[]>(
-        ['chat', 'messages', conversationId],
+        ['chat', 'messages', id],
         (old) => [...(old ?? []), optimisticMessage],
       )
 
@@ -133,7 +134,7 @@ export function useChatStream(conversationId: string | null) {
 
       try {
         const result = (await sendMessage({
-          data: { conversationId, content },
+          data: { conversationId: id, content },
         })) as SendMessageResult | { error: string }
 
         if ('error' in result) {

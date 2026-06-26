@@ -282,9 +282,22 @@ ${contextText}
   const fullSystemPrompt = `${systemPrompt}${userContext}${ragContext}
 
 ## About tools
-You have tools available to create leads, reminders, and send messages. When the user asks you to save/add/record a contact, call the createLead tool with the details from the conversation. Resolve references like "this email" or "that person" to their actual values from the conversation history. Do NOT claim you've done something before calling the tool — call the tool and report its result.
+You have tools to create leads, reminders, planner tasks, and send messages.
 
-When the user asks you to send something to "my Telegram" or "my WhatsApp", use their contact info from User Context above — do NOT ask them for it.`
+CRITICAL: Never ask the user for details already mentioned. Extract everything from conversation context.
+
+Example — correct behavior:
+- User: "who has birthday in june?" → you return Farah's info
+- User: "create a lead, planner and reminder" → you IMMEDIATELY call createLead(name="Farah", email="..."), createTask(title="Birthday reminder - Farah"), createReminder(title="Farah's birthday", due_at="2026-06-26"). No questions.
+
+When creating ANY record:
+- Pull names, emails, phones, dates, companies from conversation history
+- Use User Context for defaults
+- Resolve "this person"/"that client"/"this email" to actual values
+- Call the tool immediately — do NOT ask for confirmation
+- Do NOT describe what you're about to do — just do it and report the result
+
+When sending to "my Telegram" or "my WhatsApp", use User Context — do not ask.`
 
   // 6. Build messages for the AI SDK
   const coreMessages = [
@@ -339,24 +352,13 @@ When the user asks you to send something to "my Telegram" or "my WhatsApp", use 
 
   // 10. Auto-generate title for new conversations
   if (isFirstMessage) {
-    try {
-      const titleResult = await generateText({
-        model: getDefaultModel(),
-        system:
-          'Generate a short 3-5 word title for this conversation based on the user message. Return only the title, no quotes.',
-        messages: [{ role: 'user', content: input.content }],
-        maxOutputTokens: 30,
-        temperature: 0.3,
-      })
-      await supabase
-        .from('conversations')
-        .update({
-          title: titleResult.text.trim().replace(/["']/g, ''),
-        })
-        .eq('id', input.conversationId)
-    } catch {
-      // Title generation is best-effort
-    }
+    const title = input.content.length > 60
+      ? input.content.slice(0, 57) + '...'
+      : input.content
+    await supabase
+      .from('conversations')
+      .update({ title })
+      .eq('id', input.conversationId)
   }
 
   // Invalidate leads/reminders queries if tools were called
@@ -451,9 +453,22 @@ ${contextText}
   const fullSystemPrompt = `${systemPrompt}${userContext}${ragContext}
 
 ## About tools
-You have tools available to create leads, reminders, and send messages. When the user asks you to save/add/record a contact, call the createLead tool with the details from the conversation. Resolve references like "this email" or "that person" to their actual values from the conversation history. Do NOT claim you've done something before calling the tool — call the tool and report its result.
+You have tools to create leads, reminders, planner tasks, and send messages.
 
-When the user asks you to send something to "my Telegram" or "my WhatsApp", use their contact info from User Context above — do NOT ask them for it.`
+CRITICAL: Never ask the user for details already mentioned. Extract everything from conversation context.
+
+Example — correct behavior:
+- User: "who has birthday in june?" → you return Farah's info
+- User: "create a lead, planner and reminder" → you IMMEDIATELY call createLead(name="Farah", email="..."), createTask(title="Birthday reminder - Farah"), createReminder(title="Farah's birthday", due_at="2026-06-26"). No questions.
+
+When creating ANY record:
+- Pull names, emails, phones, dates, companies from conversation history
+- Use User Context for defaults
+- Resolve "this person"/"that client"/"this email" to actual values
+- Call the tool immediately — do NOT ask for confirmation
+- Do NOT describe what you're about to do — just do it and report the result
+
+When sending to "my Telegram" or "my WhatsApp", use User Context — do not ask.`
 
   // 6. Build messages for AI
   const coreMessages = [
@@ -508,24 +523,13 @@ When the user asks you to send something to "my Telegram" or "my WhatsApp", use 
 
   // 10. Auto-title
   if (isFirstMessage) {
-    try {
-      const titleResult = await generateText({
-        model: getDefaultModel(),
-        system:
-          'Generate a short 3-5 word title for this conversation based on the user message. Return only the title, no quotes.',
-        messages: [{ role: 'user', content: input.content }],
-        maxOutputTokens: 30,
-        temperature: 0.3,
-      })
-      await supabase
-        .from('conversations')
-        .update({
-          title: titleResult.text.trim().replace(/["']/g, ''),
-        })
-        .eq('id', input.conversationId)
-    } catch {
-      // best-effort
-    }
+    const title = input.content.length > 60
+      ? input.content.slice(0, 57) + '...'
+      : input.content
+    await supabase
+      .from('conversations')
+      .update({ title })
+      .eq('id', input.conversationId)
   }
 
   return {

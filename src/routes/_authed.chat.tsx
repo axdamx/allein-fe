@@ -8,7 +8,7 @@ import { createFileRoute, Link } from '@tanstack/react-router'
 
 import { DashboardShell } from '@/components/layout/dashboard-shell'
 import { MessageBubble, StreamingBubble } from '@/components/chat/message-bubble'
-import { ToolResultBanner } from '@/components/chat/tool-result-banner'
+
 import { ChatInput } from '@/components/chat/chat-input'
 import { Button } from '@/components/ui/button'
 import {
@@ -24,6 +24,7 @@ import {
   useChatStream,
 } from '@/hooks/use-chat'
 import { cn } from '@/lib/utils'
+import { motion, staggerContainer, staggerItem } from '@/lib/animations'
 
 export const Route = createFileRoute('/_authed/chat')({
   component: ChatPage,
@@ -40,26 +41,15 @@ function ChatPage() {
   const [input, setInput] = useState('')
 
   const { data: messages, isLoading: messagesLoading } = useMessages(activeConvoId)
-  const { send, isStreaming, streamingText, stop, toolCallResults, dismissToolResults } =
+  const { send, isStreaming, streamingText, stop } =
     useChatStream(activeConvoId)
 
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const scrollRef = useRef<HTMLDivElement>(null)
-  const prevConvoRef = useRef(activeConvoId)
-
-  const shouldForceScroll = prevConvoRef.current !== activeConvoId
-  if (shouldForceScroll) {
-    prevConvoRef.current = activeConvoId
-  }
 
   useEffect(() => {
-    const el = scrollRef.current
-    if (!el) return
-    const isNearBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 200
-    if (isNearBottom || isStreaming || shouldForceScroll) {
-      messagesEndRef.current?.scrollIntoView({ behavior: shouldForceScroll ? 'instant' : 'smooth' })
-    }
-  }, [messages, streamingText, toolCallResults, isStreaming, shouldForceScroll])
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
+  }, [messages, streamingText])
 
   const activeConvo = conversations?.find((c) => c.id === activeConvoId)
   const activeAgent = agents?.find((a) => a.id === activeConvo?.agent_id)
@@ -102,7 +92,7 @@ function ChatPage() {
     if (!convoId) return
     const content = input
     setInput('')
-    await send(content)
+    await send(content, convoId)
   }
 
   const headerTitle = activeConvo?.title ?? 'New conversation'
@@ -148,7 +138,12 @@ function ChatPage() {
             ) : conversations && conversations.length > 0 ? (
               <ul className="space-y-1">
                 {conversations.map((convo) => (
-                  <li key={convo.id}>
+                  <motion.li
+                    key={convo.id}
+                    variants={staggerItem}
+                    initial="hidden"
+                    animate="visible"
+                  >
                     <button
                       onClick={() => setActiveConvoId(convo.id)}
                       className={cn(
@@ -177,7 +172,7 @@ function ChatPage() {
                         <Trash2 className="size-3.5 text-muted-foreground hover:text-destructive" />
                       </span>
                     </button>
-                  </li>
+                  </motion.li>
                 ))}
               </ul>
             ) : (
@@ -197,7 +192,7 @@ function ChatPage() {
               {/* Messages */}
               <div
                 ref={scrollRef}
-                className="flex-1 space-y-4 overflow-y-auto p-4"
+                className="chat-scroll flex-1 space-y-4 overflow-y-auto p-4"
               >
                 {messagesLoading ? (
                   <div className="space-y-4">
@@ -206,38 +201,25 @@ function ChatPage() {
                     ))}
                   </div>
                 ) : (
-                  <>
-                    {messages?.map((msg, idx) => (
-                      <MessageBubble
-                        key={msg.id}
-                        message={msg}
-                        toolCalls={
-                          !isStreaming &&
-                          msg.role === 'assistant' &&
-                          idx === messages.length - 1 &&
-                          toolCallResults.length > 0
-                            ? toolCallResults
-                            : undefined
-                        }
-                      />
+                  <motion.div
+                    variants={staggerContainer}
+                    initial="hidden"
+                    animate="visible"
+                  >
+                    {messages?.map((msg) => (
+                      <motion.div key={msg.id} variants={staggerItem}>
+                        <MessageBubble message={msg} />
+                      </motion.div>
                     ))}
                     {isStreaming && (
-                      <StreamingBubble text={streamingText} />
+                      <motion.div variants={staggerItem}>
+                        <StreamingBubble text={streamingText} />
+                      </motion.div>
                     )}
-                  </>
+                  </motion.div>
                 )}
                 <div ref={messagesEndRef} />
               </div>
-
-              {/* Tool results banner after streaming */}
-              {!isStreaming && toolCallResults.length > 0 && (
-                <div className="border-t px-4 py-2">
-                  <ToolResultBanner
-                    results={toolCallResults}
-                    onDismiss={dismissToolResults}
-                  />
-                </div>
-              )}
 
               {/* Input */}
               <ChatInput

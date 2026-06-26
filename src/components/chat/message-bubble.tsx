@@ -1,55 +1,60 @@
-import { useState, useCallback } from 'react'
-import { Check, ChevronDown, ChevronRight, Copy, Bot, User, Wrench, Loader2, XCircle, CheckCircle2 } from 'lucide-react'
-import ReactMarkdown from 'react-markdown'
-import remarkGfm from 'remark-gfm'
-import rehypeHighlight from 'rehype-highlight'
+import { useState, useCallback } from "react";
+import { Check, Copy, Bot, User, Loader2 } from "lucide-react";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
+import rehypeHighlight from "rehype-highlight";
 
-import { Avatar, AvatarFallback } from '@/components/ui/avatar'
-import { Badge } from '@/components/ui/badge'
-import {
-  Collapsible,
-  CollapsibleContent,
-  CollapsibleTrigger,
-} from '@/components/ui/collapsible'
-import { cn } from '@/lib/utils'
-import type { MessageRow } from '@/hooks/use-chat'
-import type { SendMessageResult } from '@/server/chat'
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { cn } from "@/lib/utils";
+import type { MessageRow } from "@/hooks/use-chat";
+
+function formatTime(iso: string) {
+  const d = new Date(iso)
+  const now = new Date()
+  const sameDay = d.toDateString() === now.toDateString()
+  const time = d.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })
+  if (sameDay) return time
+  return d.toLocaleDateString([], { month: 'short', day: 'numeric' }) + ', ' + time
+}
 
 export function MessageBubble({
   message,
-  toolCalls,
 }: {
-  message: MessageRow
-  toolCalls?: SendMessageResult['toolCalls']
+  message: MessageRow;
 }) {
-  const isUser = message.role === 'user'
+  const isUser = message.role === "user";
 
   return (
     <div
       className={cn(
-        'flex gap-3',
-        isUser ? 'flex-row-reverse' : 'flex-row',
+        "flex gap-3 m-5",
+        isUser
+          ? "flex-row-reverse animate-message-in-right"
+          : "flex-row animate-message-in-left",
       )}
     >
       <Avatar className="mt-1 size-8 shrink-0">
         <AvatarFallback
           className={cn(
-            'size-8 text-xs',
-            isUser
-              ? 'bg-primary text-primary-foreground'
-              : 'bg-muted',
+            "size-8 text-xs",
+            isUser ? "bg-primary text-primary-foreground" : "bg-muted",
           )}
         >
           {isUser ? <User className="size-4" /> : <Bot className="size-4" />}
         </AvatarFallback>
       </Avatar>
-      <div className={cn('flex min-w-0 flex-col gap-2', isUser ? 'items-end' : 'items-start')}>
+      <div
+        className={cn(
+          "flex min-w-0 flex-col gap-1",
+          isUser ? "items-end" : "items-start",
+        )}
+      >
         <div
           className={cn(
-            'w-fit max-w-[85%] rounded-2xl px-4 py-2.5 text-sm leading-relaxed',
+            "w-fit max-w-[85%] rounded-2xl px-4 py-2.5 text-sm leading-relaxed",
             isUser
-              ? 'bg-primary text-primary-foreground'
-              : 'bg-muted text-foreground',
+              ? "bg-primary text-primary-foreground"
+              : "bg-muted text-foreground",
           )}
         >
           {isUser ? (
@@ -58,16 +63,12 @@ export function MessageBubble({
             <MarkdownContent content={message.content} />
           )}
         </div>
-        {!isUser && toolCalls && toolCalls.length > 0 && (
-          <div className="w-full max-w-[85%] space-y-1.5">
-            {toolCalls.map((tc, i) => (
-              <ToolCallCard key={i} toolCall={tc} />
-            ))}
-          </div>
-        )}
+        <span className="px-1 text-[10px] text-muted-foreground/60">
+          {formatTime(message.created_at)}
+        </span>
       </div>
     </div>
-  )
+  );
 }
 
 function MarkdownContent({ content }: { content: string }) {
@@ -78,8 +79,8 @@ function MarkdownContent({ content }: { content: string }) {
         rehypePlugins={[rehypeHighlight]}
         components={{
           code({ className, children, ...props }) {
-            const match = /language-(\w+)/.exec(className ?? '')
-            const isInline = !match && !className
+            const match = /language-(\w+)/.exec(className ?? "");
+            const isInline = !match && !className;
             if (isInline) {
               return (
                 <code
@@ -88,35 +89,35 @@ function MarkdownContent({ content }: { content: string }) {
                 >
                   {children}
                 </code>
-              )
+              );
             }
             return (
               <CodeBlock
-                language={match?.[1] ?? 'text'}
-                code={String(children).replace(/\n$/, '')}
+                language={match?.[1] ?? "text"}
+                code={String(children).replace(/\n$/, "")}
               />
-            )
+            );
           },
           pre({ children }) {
-            return <>{children}</>
+            return <>{children}</>;
           },
         }}
       >
         {content}
       </ReactMarkdown>
     </div>
-  )
+  );
 }
 
 function CodeBlock({ language, code }: { language: string; code: string }) {
-  const [copied, setCopied] = useState(false)
+  const [copied, setCopied] = useState(false);
 
   const handleCopy = useCallback(() => {
     navigator.clipboard.writeText(code).then(() => {
-      setCopied(true)
-      setTimeout(() => setCopied(false), 1500)
-    })
-  }, [code])
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1500);
+    });
+  }, [code]);
 
   return (
     <div className="not-prose my-2 overflow-hidden rounded-lg border bg-[#0d1117] text-sm">
@@ -141,61 +142,7 @@ function CodeBlock({ language, code }: { language: string; code: string }) {
         <code className={`language-${language} hljs`}>{code}</code>
       </div>
     </div>
-  )
-}
-
-function ToolCallCard({
-  toolCall,
-}: {
-  toolCall: SendMessageResult['toolCalls'][number]
-}) {
-  const [open, setOpen] = useState(false)
-
-  return (
-    <Collapsible open={open} onOpenChange={setOpen}>
-      <CollapsibleTrigger asChild>
-        <button
-          className={cn(
-            'flex w-full items-center gap-2 rounded-lg border px-3 py-2 text-left text-xs transition-colors',
-            toolCall.success
-              ? 'border-emerald-500/30 bg-emerald-500/5 hover:bg-emerald-500/10'
-              : 'border-red-500/30 bg-red-500/5 hover:bg-red-500/10',
-          )}
-        >
-          {toolCall.success ? (
-            <CheckCircle2 className="size-4 shrink-0 text-emerald-500" />
-          ) : (
-            <XCircle className="size-4 shrink-0 text-red-500" />
-          )}
-          <Wrench className="size-3.5 shrink-0 text-muted-foreground" />
-          <span className="flex-1 truncate font-medium">
-            {toolCall.name}
-          </span>
-          <Badge
-            variant="outline"
-            className={cn(
-              'shrink-0 text-[10px]',
-              toolCall.success
-                ? 'border-emerald-500/30 text-emerald-600 dark:text-emerald-400'
-                : 'border-red-500/30 text-red-600 dark:text-red-400',
-            )}
-          >
-            {toolCall.success ? 'Success' : 'Failed'}
-          </Badge>
-          {open ? (
-            <ChevronDown className="size-3.5 shrink-0 text-muted-foreground" />
-          ) : (
-            <ChevronRight className="size-3.5 shrink-0 text-muted-foreground" />
-          )}
-        </button>
-      </CollapsibleTrigger>
-      <CollapsibleContent className="pt-1">
-        <div className="rounded-lg border bg-background/50 px-3 py-2 text-xs text-muted-foreground">
-          {toolCall.message}
-        </div>
-      </CollapsibleContent>
-    </Collapsible>
-  )
+  );
 }
 
 export function StreamingBubble({ text }: { text: string }) {
@@ -220,5 +167,5 @@ export function StreamingBubble({ text }: { text: string }) {
         </div>
       </div>
     </div>
-  )
+  );
 }

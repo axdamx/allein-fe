@@ -15,7 +15,7 @@ import { getSupabaseServerClient } from '@/lib/supabase/server.server'
  */
 export const createLeadTool = tool({
   description:
-    'Save a contact as a new lead in the CRM. Use when the user wants to add, save, or record a person/prospect. Extract name, email, phone, company from the conversation. Resolve references like "this email" to actual values.',
+    'Save a contact as a new lead in the CRM. Use when the user wants to add, save, or record a person/prospect. PROACTIVELY extract name, email, phone, company from the conversation context — do NOT ask the user for details they already provided. Resolve references like "this email", "that person", "this client" to actual values.',
   inputSchema: z.object({
     name: z
       .string()
@@ -70,7 +70,7 @@ export const createLeadTool = tool({
  */
 export const createReminderTool = tool({
   description:
-    'Create a follow-up reminder. Use when the user wants to be reminded, follow up, or schedule something for later. If the reminder is about a specific person/lead, include their name in lead_name so it gets linked to their CRM record.',
+    'Create a follow-up reminder. Use when the user wants to be reminded, follow up, or schedule something for later. Extract the title, description, due date, and person from the conversation context — do not ask the user for details they already mentioned. If the reminder is about a specific person/lead, include their name in lead_name so it gets linked to their CRM record.',
   inputSchema: z.object({
     title: z.string().describe('Short title for the reminder'),
     description: z.string().optional().describe('Additional details'),
@@ -188,6 +188,160 @@ export const sendTelegramTool = tool({
 })
 
 /**
+ * Tool: Read/search clients from the CRM.
+ */
+export const readClientsTool = tool({
+  description:
+    'Read or search your clients from the CRM. Use when the user asks about their clients, customers, or contacts — including questions like "who has birthdays this month", "find client by name", "list my active clients", etc.',
+  inputSchema: z.object({
+    search: z.string().optional().describe('Search term to filter clients by name, email, or company'),
+    birthdayMonth: z.number().min(1).max(12).optional().describe('Filter clients whose birthday falls in this month (1-12, e.g. 6 for June)'),
+    status: z.enum(['active', 'inactive', 'churned']).optional().describe('Filter by client status'),
+    limit: z.number().min(1).max(50).optional().default(20).describe('Maximum number of clients to return'),
+  }),
+  execute: async ({ search, birthdayMonth, status, limit }) => {
+    const supabase = getSupabaseServerClient()
+    const {
+      data: { user },
+    } = await supabase.auth.getUser()
+    if (!user) return { success: false, error: 'Not authenticated', clients: [] }
+
+    let query = supabase
+      .from('clients')
+      .select('id, name, email, phone, company, status, date_of_birth, created_at')
+      .eq('owner_id', user.id)
+      .order('name', { ascending: true })
+
+    if (search) {
+      query = query.or(
+        `name.ilike.%${search}%,email.ilike.%${search}%,company.ilike.%${search}%`,
+      )
+    }
+
+    if (status) {
+      query = query.eq('status', status)
+    }
+
+    let data, error
+
+    if (birthdayMonth) {
+      ;({ data, error } = await supabase.rpc('clients_by_birthday_month', {
+        p_owner_id: user.id,
+        p_month: birthdayMonth,
+      }))
+    } else {
+      query = query.limit(limit ?? 20)
+      ;({ data, error } = await query)
+    }
+
+    if (error) return { success: false, error: error.message, clients: [] }
+
+    const clients = (data ?? []).map((c: Record<string, unknown>) => ({
+      id: c.id,
+      name: c.name,
+      email: c.email,
+      phone: c.phone,
+      company: c.company,
+      status: c.status,
+      birthday: c.date_of_birth,
+    }))
+
+    return {
+      success: true,
+      clients,
+    }
+  },
+})
+
+/**
+ * Tool: Create a planner task.
+ */
+export const createTaskTool = tool({
+  description:
+    'Create a task in the planner. Use when the user wants to schedule, plan, add a to-do, or create a task. Extract the title, description, priority, dates from the conversation context — do not ask the user for details they already mentioned. Tasks can have a timeframe (day/week/month/quarter), priority, due date, and planned date.',
+  inputSchema: z.object({
+    title: z.string().describe('Short title for the task'),
+    description: z.string().optional().describe('Detailed description of the task'),
+    priority: z.enum(['low', 'medium', 'high', 'urgent']).optional().default('medium').describe('Priority level'),
+    timeFrame: z.enum(['day', 'week', 'month', 'quarter']).optional().default('day').describe('Timeframe for the task'),
+    plannedDate: z.string().optional().describe('Planned date in YYYY-MM-DD format'),
+    dueDate: z.string().optional().describe('Due date in YYYY-MM-DD format'),
+    tags: z.array(z.string()).optional().describe('Tags to categorize the task'),
+  }),
+  execute: async ({ title, description, priority, timeFrame, plannedDate, dueDate, tags }) => {
+    const supabase = getSupabaseServerClient()
+    const {
+      data: { user },
+    } = await supabase.auth.getUser()
+    if (!user) return { success: false, error: 'Not authenticated' }
+
+    const { createTaskImpl } = await import('@/server/planner.server')
+    const result = await createTaskImpl({
+      title,
+      description,
+      status: 'todo',
+      priority,
+      timeFrame,
+      plannedDate,
+      dueDate,
+      tags,
+    })
+
+    if ('error' in result) return { success: false, error: result.error }
+    return { success: true, taskId: result.id, message: `Task "${title}" created` }
+  },
+})
+
+/**
+ * Tool: Read/search planner tasks.
+ */
+export const readTasksTool = tool({
+  description:
+    'Read or search tasks from the planner. Use when the user asks about their tasks, schedule, to-dos, or planner. Supports filtering by timeframe and planned date.',
+  inputSchema: z.object({
+    timeFrame: z.enum(['day', 'week', 'month', 'quarter']).optional().describe('Filter by timeframe'),
+    plannedDate: z.string().optional().describe('Filter by planned date in YYYY-MM-DD format'),
+    limit: z.number().min(1).max(50).optional().default(20).describe('Maximum number of tasks to return'),
+  }),
+  execute: async ({ timeFrame, plannedDate, limit }) => {
+    const supabase = getSupabaseServerClient()
+    const {
+      data: { user },
+    } = await supabase.auth.getUser()
+    if (!user) return { success: false, error: 'Not authenticated', tasks: [] }
+
+    let query = supabase
+      .from('tasks')
+      .select('id, title, description, status, priority, time_frame, planned_date, due_date, tags, created_at')
+      .eq('owner_id', user.id)
+      .order('sort_order', { ascending: true })
+
+    if (timeFrame) query = query.eq('time_frame', timeFrame)
+    if (plannedDate) query = query.eq('planned_date', plannedDate)
+
+    query = query.limit(limit ?? 20)
+
+    const { data, error } = await query
+    if (error) return { success: false, error: error.message, tasks: [] }
+
+    return {
+      success: true,
+      tasks: data.map((t) => ({
+        id: t.id,
+        title: t.title,
+        description: t.description,
+        status: t.status,
+        priority: t.priority,
+        timeFrame: t.time_frame,
+        plannedDate: t.planned_date,
+        dueDate: t.due_date,
+        tags: t.tags,
+      })),
+    }
+  },
+})
+
+/**
  * All tools available to agents.
  */
 export const agentTools = {
@@ -195,4 +349,7 @@ export const agentTools = {
   createReminder: createReminderTool,
   sendWhatsApp: sendWhatsAppTool,
   sendTelegram: sendTelegramTool,
+  readClients: readClientsTool,
+  createTask: createTaskTool,
+  readTasks: readTasksTool,
 }

@@ -54,7 +54,7 @@ export const Route = createFileRoute('/_authed/crm/clients/')({
   component: ClientsPage,
 })
 
-const PAGE_SIZE = 50
+const PAGE_SIZE = 20
 
 function ClientsPage() {
   const [page, setPage] = useState(1)
