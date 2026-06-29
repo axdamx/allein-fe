@@ -1,6 +1,5 @@
 import { useState } from 'react'
 import { startOfMonth, endOfMonth, eachDayOfInterval, getDay, format, isSameDay } from 'date-fns'
-import { CalendarDays } from 'lucide-react'
 import { Link } from '@tanstack/react-router'
 
 import { cn } from '@/lib/utils'
@@ -27,10 +26,10 @@ const getPriorityStyle = (priority: TaskPriority): React.CSSProperties => {
   return { backgroundColor: `${colors[priority]}15`, color: colors[priority] }
 }
 
-export const MonthView = ({ tasks, leads, calendarEvents }: { tasks: TaskRow[]; leads: LeadRow[]; calendarEvents: CalendarEventRow[] }) => {
+export const MonthView = ({ tasks, leads, calendarEvents, currentDate }: { tasks: TaskRow[]; leads: LeadRow[]; calendarEvents: CalendarEventRow[]; currentDate: Date }) => {
   const today = new Date()
-  const monthStart = startOfMonth(today)
-  const monthEnd = endOfMonth(today)
+  const monthStart = startOfMonth(currentDate)
+  const monthEnd = endOfMonth(currentDate)
   const days = eachDayOfInterval({ start: monthStart, end: monthEnd })
   const startPad = getDay(monthStart) === 0 ? 6 : getDay(monthStart) - 1
   const [selectedTask, setSelectedTask] = useState<TaskRow | null>(null)
@@ -41,11 +40,7 @@ export const MonthView = ({ tasks, leads, calendarEvents }: { tasks: TaskRow[]; 
   const maxItems = 2
 
   return (
-    <div className="space-y-3">
-      <div className="flex items-center gap-2">
-        <CalendarDays className="size-4 text-muted-foreground" />
-        <h2 className="text-sm font-medium">{format(today, 'MMMM yyyy')}</h2>
-      </div>
+    <div>
 
       <div className="grid grid-cols-7 gap-px rounded-lg border bg-muted/30">
         {['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map((d) => (

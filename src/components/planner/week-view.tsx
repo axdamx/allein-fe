@@ -1,6 +1,5 @@
 import { useState } from 'react'
 import { startOfWeek, addDays, format, isSameDay } from 'date-fns'
-import { CalendarDays } from 'lucide-react'
 import { Link } from '@tanstack/react-router'
 
 import { cn } from '@/lib/utils'
@@ -17,9 +16,9 @@ import type { LeadRow } from '@/server/crm'
 import type { CalendarEventRow } from '@/hooks/use-calendar-events'
 import { TaskDetailDialog } from './task-detail-dialog'
 
-export const WeekView = ({ tasks, leads, calendarEvents }: { tasks: TaskRow[]; leads: LeadRow[]; calendarEvents: CalendarEventRow[] }) => {
+export const WeekView = ({ tasks, leads, calendarEvents, currentDate }: { tasks: TaskRow[]; leads: LeadRow[]; calendarEvents: CalendarEventRow[]; currentDate: Date }) => {
   const today = new Date()
-  const weekStart = startOfWeek(today, { weekStartsOn: 1 })
+  const weekStart = startOfWeek(currentDate, { weekStartsOn: 1 })
   const days = Array.from({ length: 7 }, (_, i) => addDays(weekStart, i))
   const [selectedTask, setSelectedTask] = useState<TaskRow | null>(null)
   const [leadDay, setLeadDay] = useState<{ leads: LeadRow[]; date: string } | null>(null)
@@ -27,13 +26,7 @@ export const WeekView = ({ tasks, leads, calendarEvents }: { tasks: TaskRow[]; l
   const updateTask = useUpdateTask()
 
   return (
-    <div className="space-y-3">
-      <div className="flex items-center gap-2">
-        <CalendarDays className="size-4 text-muted-foreground" />
-        <h2 className="text-sm font-medium">
-          {format(weekStart, 'MMM d')} – {format(addDays(weekStart, 6), 'MMM d, yyyy')}
-        </h2>
-      </div>
+    <div>
 
       <div className="grid grid-cols-7 gap-1.5">
         {days.map((day) => {

@@ -1,7 +1,6 @@
 import { createTool } from '@mastra/core/tools';
 import { z } from 'zod';
-import { g as getSupabaseServerClient } from '../server.server.mjs';
-import '@tanstack/react-start/server';
+import { g as getSupabaseServiceClient } from '../service.server.mjs';
 import '@supabase/ssr';
 import 'ws';
 
@@ -13,14 +12,14 @@ const sendWhatsAppTool = createTool({
     message: z.string().describe("Message body to send"),
     leadId: z.string().optional().describe("Lead ID to log this message against")
   }),
-  execute: async ({ to, message, leadId }) => {
+  execute: async ({ to, message, leadId }, context) => {
+    const resourceId = context?.agent?.resourceId;
     const { sendWhatsApp } = await import('../index2.mjs');
     const result = await sendWhatsApp(to, message);
     if (!result.success) return result;
-    const supabase = getSupabaseServerClient();
-    const { data: { user } } = await supabase.auth.getUser();
-    if (user && leadId) {
-      await supabase.from("leads").update({ last_contacted_at: (/* @__PURE__ */ new Date()).toISOString() }).eq("id", leadId).eq("owner_id", user.id);
+    if (leadId) {
+      const supabase = getSupabaseServiceClient();
+      await supabase.from("leads").update({ last_contacted_at: (/* @__PURE__ */ new Date()).toISOString() }).eq("id", leadId).eq("owner_id", resourceId);
     }
     return {
       success: true,

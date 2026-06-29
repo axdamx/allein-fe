@@ -1,6 +1,6 @@
 import { createTool } from '@mastra/core/tools'
 import { z } from 'zod'
-import { getSupabaseServerClient } from '@/lib/supabase/server.server'
+import { getSupabaseServiceClient } from '@/lib/supabase/service.server'
 
 export const readClientsTool = createTool({
   id: 'read-clients',
@@ -12,15 +12,14 @@ export const readClientsTool = createTool({
     status: z.enum(['active', 'inactive', 'churned']).optional().describe('Filter by client status'),
     limit: z.number().min(1).max(50).optional().default(20).describe('Maximum number of clients to return'),
   }),
-  execute: async ({ search, birthdayMonth, status, limit }) => {
-    const supabase = getSupabaseServerClient()
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user) return { success: false, error: 'Not authenticated', clients: [] }
+  execute: async ({ search, birthdayMonth, status, limit }, context) => {
+    const resourceId = context?.agent?.resourceId
+    const supabase = getSupabaseServiceClient()
 
     let query = supabase
       .from('clients')
       .select('id, name, email, phone, company, status, date_of_birth, created_at')
-      .eq('owner_id', user.id)
+      .eq('owner_id', resourceId)
       .order('name', { ascending: true })
 
     if (search) {
@@ -39,7 +38,7 @@ export const readClientsTool = createTool({
 
     return {
       success: true,
-      clients: data.map(c => ({
+      clients: data.map((c: { id: string; name: string; email: string | null; phone: string | null; company: string | null; status: string; date_of_birth: string | null }) => ({
         id: c.id,
         name: c.name,
         email: c.email,
@@ -66,15 +65,27 @@ export const createClientTool = createTool({
     date_of_birth: z.string().optional().describe('Date of birth in YYYY-MM-DD format'),
     tags: z.array(z.string()).optional().describe('Tags to categorize the client'),
   }),
-  execute: async (input) => {
-    const supabase = getSupabaseServerClient()
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user) return { success: false, error: 'Not authenticated' }
-
-    const { createClientImpl } = await import('@/server/clients.server')
-    const result = await createClientImpl({ ...input, status: 'active' })
-    if ('error' in result) return { success: false, error: result.error }
-    return { success: true, clientId: result.id, message: `Client "${input.name}" created successfully` }
+  execute: async (input, context) => {
+    const resourceId = context?.agent?.resourceId
+    const supabase = getSupabaseServiceClient()
+    const { data, error } = await supabase
+      .from('clients')
+      .insert({
+        owner_id: resourceId,
+        name: input.name,
+        email: input.email ?? null,
+        phone: input.phone ?? null,
+        company: input.company ?? null,
+        industry: input.industry ?? null,
+        status: 'active',
+        notes: input.notes ?? null,
+        tags: input.tags ?? [],
+        date_of_birth: input.date_of_birth ?? null,
+      })
+      .select('id')
+      .single()
+    if (error) return { success: false, error: error.message }
+    return { success: true, clientId: data.id, message: `Client "${input.name}" created successfully` }
   },
 })
 
@@ -94,15 +105,26 @@ export const updateClientTool = createTool({
     tags: z.array(z.string()).optional().describe('Replace existing tags'),
     date_of_birth: z.string().optional().describe('Date of birth in YYYY-MM-DD format'),
   }),
-  execute: async (input) => {
-    const supabase = getSupabaseServerClient()
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user) return { success: false, error: 'Not authenticated' }
-
+  execute: async (input, context) => {
+    const resourceId = context?.agent?.resourceId
+    const supabase = getSupabaseServiceClient()
     const { clientId, ...fields } = input
-    const { updateClientImpl } = await import('@/server/clients.server')
-    const result = await updateClientImpl({ id: clientId, ...fields })
-    if (result?.error) return { success: false, error: result.error }
+    const cleanUpdates: Record<string, string | number | string[] | null> = {}
+    if (fields.name !== undefined) cleanUpdates.name = fields.name
+    if (fields.email !== undefined) cleanUpdates.email = fields.email
+    if (fields.phone !== undefined) cleanUpdates.phone = fields.phone
+    if (fields.company !== undefined) cleanUpdates.company = fields.company
+    if (fields.industry !== undefined) cleanUpdates.industry = fields.industry
+    if (fields.status !== undefined) cleanUpdates.status = fields.status
+    if (fields.notes !== undefined) cleanUpdates.notes = fields.notes
+    if (fields.tags !== undefined) cleanUpdates.tags = fields.tags
+    if (fields.date_of_birth !== undefined) cleanUpdates.date_of_birth = fields.date_of_birth
+    const { error } = await supabase
+      .from('clients')
+      .update(cleanUpdates)
+      .eq('id', clientId)
+      .eq('owner_id', resourceId)
+    if (error) return { success: false, error: error.message }
     return { success: true, message: 'Client updated successfully' }
   },
 })
@@ -114,14 +136,15 @@ export const deleteClientTool = createTool({
   inputSchema: z.object({
     clientId: z.string().describe('The UUID of the client to delete. Get this from readClients first if unknown.'),
   }),
-  execute: async ({ clientId }) => {
-    const supabase = getSupabaseServerClient()
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user) return { success: false, error: 'Not authenticated' }
-
-    const { deleteClientImpl } = await import('@/server/clients.server')
-    const result = await deleteClientImpl(clientId)
-    if (result?.error) return { success: false, error: result.error }
+  execute: async ({ clientId }, context) => {
+    const resourceId = context?.agent?.resourceId
+    const supabase = getSupabaseServiceClient()
+    const { error } = await supabase
+      .from('clients')
+      .delete()
+      .eq('id', clientId)
+      .eq('owner_id', resourceId)
+    if (error) return { success: false, error: error.message }
     return { success: true, message: 'Client deleted successfully' }
   },
 })

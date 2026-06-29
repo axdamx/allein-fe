@@ -1,3 +1,18 @@
+import { useState } from 'react'
+import {
+  addDays,
+  addMonths,
+  addQuarters,
+  addWeeks,
+  format,
+  subDays,
+  subMonths,
+  subQuarters,
+  subWeeks,
+} from 'date-fns'
+import { ChevronLeft, ChevronRight } from 'lucide-react'
+
+import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { useTasks } from '@/hooks/use-planner'
 import { useLeads } from '@/hooks/use-crm'
@@ -10,11 +25,20 @@ import { WeekView } from './week-view'
 import { MonthView } from './month-view'
 import { QuarterView } from './quarter-view'
 
+const navigate = {
+  day: { next: addDays, prev: subDays, format: 'MMMM d, yyyy' },
+  week: { next: addWeeks, prev: subWeeks, format: "'Week of' MMM d, yyyy" },
+  month: { next: addMonths, prev: subMonths, format: 'MMMM yyyy' },
+  quarter: { next: addQuarters, prev: subQuarters, format: "'Q'Q yyyy" },
+} as const
+
 export const CalendarView = ({ timeFrame }: { timeFrame: TimeFrame }) => {
   const { data: tasks, isLoading: tasksLoading } = useTasks(timeFrame)
   const { data: leads } = useLeads()
   const { data: calEvents } = useCalendarEvents()
-  const today = new Date()
+  const [currentDate, setCurrentDate] = useState(new Date())
+
+  const nav = navigate[timeFrame]
 
   const isLoading = tasksLoading
   if (isLoading) {
@@ -31,14 +55,52 @@ export const CalendarView = ({ timeFrame }: { timeFrame: TimeFrame }) => {
   const scheduledLeads: LeadRow[] = (leads ?? []).filter((l) => l.scheduled_date)
   const calendarEvents: CalendarEventRow[] = calEvents && !('error' in calEvents) ? calEvents : []
 
-  switch (timeFrame) {
-    case 'day':
-      return <DayView tasks={taskList} leads={scheduledLeads} calendarEvents={calendarEvents} date={today} />
-    case 'week':
-      return <WeekView tasks={taskList} leads={scheduledLeads} calendarEvents={calendarEvents} />
-    case 'month':
-      return <MonthView tasks={taskList} leads={scheduledLeads} calendarEvents={calendarEvents} />
-    case 'quarter':
-      return <QuarterView tasks={taskList} leads={scheduledLeads} />
-  }
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-1">
+          <Button
+            variant="ghost"
+            size="icon"
+            className="size-7"
+            onClick={() => setCurrentDate((d) => nav.prev(d, 1))}
+          >
+            <ChevronLeft className="size-4" />
+          </Button>
+          <h2 className="min-w-[160px] text-center text-sm font-medium">
+            {format(currentDate, nav.format)}
+          </h2>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="size-7"
+            onClick={() => setCurrentDate((d) => nav.next(d, 1))}
+          >
+            <ChevronRight className="size-4" />
+          </Button>
+        </div>
+        <Button
+          variant="outline"
+          size="sm"
+          className="h-7 text-xs"
+          onClick={() => setCurrentDate(new Date())}
+        >
+          Today
+        </Button>
+      </div>
+
+      {timeFrame === 'day' && (
+        <DayView tasks={taskList} leads={scheduledLeads} calendarEvents={calendarEvents} date={currentDate} />
+      )}
+      {timeFrame === 'week' && (
+        <WeekView tasks={taskList} leads={scheduledLeads} calendarEvents={calendarEvents} currentDate={currentDate} />
+      )}
+      {timeFrame === 'month' && (
+        <MonthView tasks={taskList} leads={scheduledLeads} calendarEvents={calendarEvents} currentDate={currentDate} />
+      )}
+      {timeFrame === 'quarter' && (
+        <QuarterView tasks={taskList} leads={scheduledLeads} currentDate={currentDate} />
+      )}
+    </div>
+  )
 }

@@ -30,15 +30,6 @@ export const DayView = ({ tasks, leads, calendarEvents, date }: { tasks: TaskRow
 
   return (
     <div className="space-y-3">
-      <div className="flex items-center gap-2">
-        <CalendarDays className="size-4 text-muted-foreground" />
-        <h2 className="text-sm font-medium capitalize">
-          {format(date, 'EEEE, MMMM d, yyyy')}
-        </h2>
-        <Badge variant="secondary" className="text-xs">
-          {dayTasks.length + dayLeads.length + dayCalEvents.length} items
-        </Badge>
-      </div>
 
       {dayCalEvents.length > 0 && (
         <Card>

@@ -1,7 +1,6 @@
 import { createTool } from '@mastra/core/tools';
 import { z } from 'zod';
-import { g as getSupabaseServerClient } from '../server.server.mjs';
-import '@tanstack/react-start/server';
+import { g as getSupabaseServiceClient } from '../service.server.mjs';
 import '@supabase/ssr';
 import 'ws';
 
@@ -15,10 +14,9 @@ const createLeadTool = createTool({
     company: z.string().optional().describe("Company name"),
     notes: z.string().optional().describe("Additional notes")
   }),
-  execute: async ({ name, email, phone, company, notes }) => {
-    const supabase = getSupabaseServerClient();
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return { success: false, error: "Not authenticated" };
+  execute: async ({ name, email, phone, company, notes }, context) => {
+    const ownerId = context?.agent?.resourceId;
+    const supabase = getSupabaseServiceClient();
     const { enforceLimitImpl } = await import('../profile.server.mjs');
     try {
       await enforceLimitImpl("leads");
@@ -26,7 +24,7 @@ const createLeadTool = createTool({
       return { success: false, error: "Lead limit reached on your current plan." };
     }
     const { data, error } = await supabase.from("leads").insert({
-      owner_id: user.id,
+      owner_id: ownerId,
       name,
       email: email || null,
       phone: phone || null,
@@ -53,17 +51,16 @@ const createReminderTool = createTool({
     lead_id: z.string().optional().describe("Lead ID to link this reminder to (if known)"),
     lead_name: z.string().optional().describe("Name of the lead this reminder is about")
   }),
-  execute: async ({ title, description, due_at, lead_id, lead_name }) => {
-    const supabase = getSupabaseServerClient();
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return { success: false, error: "Not authenticated" };
+  execute: async ({ title, description, due_at, lead_id, lead_name }, context) => {
+    const ownerId = context?.agent?.resourceId;
+    const supabase = getSupabaseServiceClient();
     let resolvedLeadId = lead_id;
     if (!resolvedLeadId && lead_name) {
-      const { data: lead } = await supabase.from("leads").select("id").eq("owner_id", user.id).ilike("name", lead_name).maybeSingle();
+      const { data: lead } = await supabase.from("leads").select("id").eq("owner_id", ownerId).ilike("name", lead_name).maybeSingle();
       if (lead) resolvedLeadId = lead.id;
     }
     const { data, error } = await supabase.from("reminders").insert({
-      owner_id: user.id,
+      owner_id: ownerId,
       title,
       description: description || null,
       due_at,

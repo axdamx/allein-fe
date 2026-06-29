@@ -5,13 +5,12 @@ import { PostgresStore, PgVector } from '@mastra/pg';
 import { Agent } from '@mastra/core/agent';
 import { Memory } from '@mastra/memory';
 import { ModelRouterEmbeddingModel } from '@mastra/core/llm';
+import { createOpenAICompatible } from '@ai-sdk/openai-compatible';
 import { createTool } from '@mastra/core/tools';
 import { z } from 'zod';
-import { generateText } from 'ai';
-import { setCookie, getCookies } from '@tanstack/react-start/server';
 import { createServerClient } from '@supabase/ssr';
+import { setCookie, getCookies } from '@tanstack/react-start/server';
 import ws from 'ws';
-import { createOpenAICompatible } from '@ai-sdk/openai-compatible';
 import twilio from 'twilio';
 import { Bot } from 'grammy';
 
@@ -34,34 +33,27 @@ const getModel = (modelId) => {
   return provider(modelId);
 };
 
-const SUPABASE_URL = process.env.SUPABASE_URL;
-const SUPABASE_ANON_KEY = process.env.SUPABASE_ANON_KEY;
-if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
+const SUPABASE_URL$1 = process.env.SUPABASE_URL;
+const SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
+if (!SUPABASE_URL$1 || !SERVICE_ROLE_KEY) {
   throw new Error(
-    `[supabase] Missing env vars. SUPABASE_URL=${SUPABASE_URL ?? "undefined"} SUPABASE_ANON_KEY=${SUPABASE_ANON_KEY ? "set" : "undefined"}. Check your .env file and that vite.config.ts loads it.`
+    `[supabase/service] Missing env vars. SUPABASE_URL=${SUPABASE_URL$1 ?? "undefined"} SERVICE_ROLE_KEY=${SERVICE_ROLE_KEY ? "set" : "undefined"}.`
   );
 }
-const RESOLVED_URL = SUPABASE_URL;
-const RESOLVED_KEY = SUPABASE_ANON_KEY;
-function getSupabaseServerClient() {
-  return createServerClient(RESOLVED_URL, RESOLVED_KEY, {
-    cookies: {
-      getAll() {
-        return Object.entries(getCookies()).map(([name, value]) => ({
-          name,
-          value
-        }));
-      },
-      setAll(cookies) {
-        cookies.forEach((cookie) => {
-          setCookie(cookie.name, cookie.value);
-        });
+let client$1 = null;
+function getSupabaseServiceClient() {
+  if (!client$1) {
+    client$1 = createServerClient(SUPABASE_URL$1, SERVICE_ROLE_KEY, {
+      cookies: {
+        getAll() {
+          return [];
+        },
+        setAll() {
+        }
       }
-    },
-    realtime: {
-      transport: ws
-    }
-  });
+    });
+  }
+  return client$1;
 }
 
 const createLeadTool = createTool({
@@ -74,10 +66,9 @@ const createLeadTool = createTool({
     company: z.string().optional().describe("Company name"),
     notes: z.string().optional().describe("Additional notes")
   }),
-  execute: async ({ name, email, phone, company, notes }) => {
-    const supabase = getSupabaseServerClient();
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return { success: false, error: "Not authenticated" };
+  execute: async ({ name, email, phone, company, notes }, context) => {
+    const { resourceId: ownerId } = context;
+    const supabase = getSupabaseServiceClient();
     const { enforceLimitImpl } = await Promise.resolve().then(function () { return profile_server; });
     try {
       await enforceLimitImpl("leads");
@@ -85,7 +76,7 @@ const createLeadTool = createTool({
       return { success: false, error: "Lead limit reached on your current plan." };
     }
     const { data, error } = await supabase.from("leads").insert({
-      owner_id: user.id,
+      owner_id: ownerId,
       name,
       email: email || null,
       phone: phone || null,
@@ -112,17 +103,16 @@ const createReminderTool = createTool({
     lead_id: z.string().optional().describe("Lead ID to link this reminder to (if known)"),
     lead_name: z.string().optional().describe("Name of the lead this reminder is about")
   }),
-  execute: async ({ title, description, due_at, lead_id, lead_name }) => {
-    const supabase = getSupabaseServerClient();
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return { success: false, error: "Not authenticated" };
+  execute: async ({ title, description, due_at, lead_id, lead_name }, context) => {
+    const { resourceId: ownerId } = context;
+    const supabase = getSupabaseServiceClient();
     let resolvedLeadId = lead_id;
     if (!resolvedLeadId && lead_name) {
-      const { data: lead } = await supabase.from("leads").select("id").eq("owner_id", user.id).ilike("name", lead_name).maybeSingle();
+      const { data: lead } = await supabase.from("leads").select("id").eq("owner_id", ownerId).ilike("name", lead_name).maybeSingle();
       if (lead) resolvedLeadId = lead.id;
     }
     const { data, error } = await supabase.from("reminders").insert({
-      owner_id: user.id,
+      owner_id: ownerId,
       title,
       description: description || null,
       due_at,
@@ -148,11 +138,10 @@ const readClientsTool = createTool({
     status: z.enum(["active", "inactive", "churned"]).optional().describe("Filter by client status"),
     limit: z.number().min(1).max(50).optional().default(20).describe("Maximum number of clients to return")
   }),
-  execute: async ({ search, birthdayMonth, status, limit }) => {
-    const supabase = getSupabaseServerClient();
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return { success: false, error: "Not authenticated", clients: [] };
-    let query = supabase.from("clients").select("id, name, email, phone, company, status, date_of_birth, created_at").eq("owner_id", user.id).order("name", { ascending: true });
+  execute: async ({ search, birthdayMonth, status, limit }, context) => {
+    const { resourceId } = context;
+    const supabase = getSupabaseServiceClient();
+    let query = supabase.from("clients").select("id, name, email, phone, company, status, date_of_birth, created_at").eq("owner_id", resourceId).order("name", { ascending: true });
     if (search) {
       query = query.or(
         `name.ilike.%${search}%,email.ilike.%${search}%,company.ilike.%${search}%`
@@ -192,14 +181,23 @@ const createClientTool = createTool({
     date_of_birth: z.string().optional().describe("Date of birth in YYYY-MM-DD format"),
     tags: z.array(z.string()).optional().describe("Tags to categorize the client")
   }),
-  execute: async (input) => {
-    const supabase = getSupabaseServerClient();
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return { success: false, error: "Not authenticated" };
-    const { createClientImpl } = await Promise.resolve().then(function () { return clients_server; });
-    const result = await createClientImpl({ ...input, status: "active" });
-    if ("error" in result) return { success: false, error: result.error };
-    return { success: true, clientId: result.id, message: `Client "${input.name}" created successfully` };
+  execute: async (input, context) => {
+    const { resourceId } = context;
+    const supabase = getSupabaseServiceClient();
+    const { data, error } = await supabase.from("clients").insert({
+      owner_id: resourceId,
+      name: input.name,
+      email: input.email ?? null,
+      phone: input.phone ?? null,
+      company: input.company ?? null,
+      industry: input.industry ?? null,
+      status: "active",
+      notes: input.notes ?? null,
+      tags: input.tags ?? [],
+      date_of_birth: input.date_of_birth ?? null
+    }).select("id").single();
+    if (error) return { success: false, error: error.message };
+    return { success: true, clientId: data.id, message: `Client "${input.name}" created successfully` };
   }
 });
 const updateClientTool = createTool({
@@ -217,14 +215,22 @@ const updateClientTool = createTool({
     tags: z.array(z.string()).optional().describe("Replace existing tags"),
     date_of_birth: z.string().optional().describe("Date of birth in YYYY-MM-DD format")
   }),
-  execute: async (input) => {
-    const supabase = getSupabaseServerClient();
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return { success: false, error: "Not authenticated" };
+  execute: async (input, context) => {
+    const { resourceId } = context;
+    const supabase = getSupabaseServiceClient();
     const { clientId, ...fields } = input;
-    const { updateClientImpl } = await Promise.resolve().then(function () { return clients_server; });
-    const result = await updateClientImpl({ id: clientId, ...fields });
-    if (result?.error) return { success: false, error: result.error };
+    const cleanUpdates = {};
+    if (fields.name !== void 0) cleanUpdates.name = fields.name;
+    if (fields.email !== void 0) cleanUpdates.email = fields.email;
+    if (fields.phone !== void 0) cleanUpdates.phone = fields.phone;
+    if (fields.company !== void 0) cleanUpdates.company = fields.company;
+    if (fields.industry !== void 0) cleanUpdates.industry = fields.industry;
+    if (fields.status !== void 0) cleanUpdates.status = fields.status;
+    if (fields.notes !== void 0) cleanUpdates.notes = fields.notes;
+    if (fields.tags !== void 0) cleanUpdates.tags = fields.tags;
+    if (fields.date_of_birth !== void 0) cleanUpdates.date_of_birth = fields.date_of_birth;
+    const { error } = await supabase.from("clients").update(cleanUpdates).eq("id", clientId).eq("owner_id", resourceId);
+    if (error) return { success: false, error: error.message };
     return { success: true, message: "Client updated successfully" };
   }
 });
@@ -234,13 +240,11 @@ const deleteClientTool = createTool({
   inputSchema: z.object({
     clientId: z.string().describe("The UUID of the client to delete. Get this from readClients first if unknown.")
   }),
-  execute: async ({ clientId }) => {
-    const supabase = getSupabaseServerClient();
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return { success: false, error: "Not authenticated" };
-    const { deleteClientImpl } = await Promise.resolve().then(function () { return clients_server; });
-    const result = await deleteClientImpl(clientId);
-    if (result?.error) return { success: false, error: result.error };
+  execute: async ({ clientId }, context) => {
+    const { resourceId } = context;
+    const supabase = getSupabaseServiceClient();
+    const { error } = await supabase.from("clients").delete().eq("id", clientId).eq("owner_id", resourceId);
+    if (error) return { success: false, error: error.message };
     return { success: true, message: "Client deleted successfully" };
   }
 });
@@ -257,23 +261,22 @@ const createTaskTool = createTool({
     dueDate: z.string().optional().describe("Due date in YYYY-MM-DD format"),
     tags: z.array(z.string()).optional().describe("Tags to categorize the task")
   }),
-  execute: async ({ title, description, priority, timeFrame, plannedDate, dueDate, tags }) => {
-    const supabase = getSupabaseServerClient();
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return { success: false, error: "Not authenticated" };
-    const { createTaskImpl } = await Promise.resolve().then(function () { return planner_server; });
-    const result = await createTaskImpl({
+  execute: async ({ title, description, priority, timeFrame, plannedDate, dueDate, tags }, context) => {
+    const { resourceId } = context;
+    const supabase = getSupabaseServiceClient();
+    const { data, error } = await supabase.from("tasks").insert({
+      owner_id: resourceId,
       title,
-      description,
+      description: description ?? null,
       status: "todo",
-      priority,
-      timeFrame,
-      plannedDate,
-      dueDate,
-      tags
-    });
-    if ("error" in result) return { success: false, error: result.error };
-    return { success: true, taskId: result.id, message: `Task "${title}" created` };
+      priority: priority ?? "medium",
+      time_frame: timeFrame ?? "day",
+      planned_date: plannedDate ?? null,
+      due_date: dueDate ?? null,
+      tags: tags ?? []
+    }).select("id").single();
+    if (error) return { success: false, error: error.message };
+    return { success: true, taskId: data.id, message: `Task "${title}" created` };
   }
 });
 const readTasksTool = createTool({
@@ -284,11 +287,10 @@ const readTasksTool = createTool({
     plannedDate: z.string().optional().describe("Filter by planned date in YYYY-MM-DD format"),
     limit: z.number().min(1).max(50).optional().default(20).describe("Maximum number of tasks to return")
   }),
-  execute: async ({ timeFrame, plannedDate, limit }) => {
-    const supabase = getSupabaseServerClient();
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return { success: false, error: "Not authenticated", tasks: [] };
-    let query = supabase.from("tasks").select("id, title, description, status, priority, time_frame, planned_date, due_date, tags, created_at").eq("owner_id", user.id).order("sort_order", { ascending: true });
+  execute: async ({ timeFrame, plannedDate, limit }, context) => {
+    const { resourceId } = context;
+    const supabase = getSupabaseServiceClient();
+    let query = supabase.from("tasks").select("id, title, description, status, priority, time_frame, planned_date, due_date, tags, created_at").eq("owner_id", resourceId).order("sort_order", { ascending: true });
     if (timeFrame) query = query.eq("time_frame", timeFrame);
     if (plannedDate) query = query.eq("planned_date", plannedDate);
     query = query.limit(limit ?? 20);
@@ -319,14 +321,14 @@ const sendWhatsAppTool = createTool({
     message: z.string().describe("Message body to send"),
     leadId: z.string().optional().describe("Lead ID to log this message against")
   }),
-  execute: async ({ to, message, leadId }) => {
+  execute: async ({ to, message, leadId }, context) => {
+    const { resourceId } = context;
     const { sendWhatsApp } = await Promise.resolve().then(function () { return index; });
     const result = await sendWhatsApp(to, message);
     if (!result.success) return result;
-    const supabase = getSupabaseServerClient();
-    const { data: { user } } = await supabase.auth.getUser();
-    if (user && leadId) {
-      await supabase.from("leads").update({ last_contacted_at: (/* @__PURE__ */ new Date()).toISOString() }).eq("id", leadId).eq("owner_id", user.id);
+    if (leadId) {
+      const supabase = getSupabaseServiceClient();
+      await supabase.from("leads").update({ last_contacted_at: (/* @__PURE__ */ new Date()).toISOString() }).eq("id", leadId).eq("owner_id", resourceId);
     }
     return {
       success: true,
@@ -619,6 +621,36 @@ function getAgentByType(type) {
   }
 }
 
+const SUPABASE_URL = process.env.SUPABASE_URL;
+const SUPABASE_ANON_KEY = process.env.SUPABASE_ANON_KEY;
+if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
+  throw new Error(
+    `[supabase] Missing env vars. SUPABASE_URL=${SUPABASE_URL ?? "undefined"} SUPABASE_ANON_KEY=${SUPABASE_ANON_KEY ? "set" : "undefined"}. Check your .env file and that vite.config.ts loads it.`
+  );
+}
+const RESOLVED_URL = SUPABASE_URL;
+const RESOLVED_KEY = SUPABASE_ANON_KEY;
+function getSupabaseServerClient() {
+  return createServerClient(RESOLVED_URL, RESOLVED_KEY, {
+    cookies: {
+      getAll() {
+        return Object.entries(getCookies()).map(([name, value]) => ({
+          name,
+          value
+        }));
+      },
+      setAll(cookies) {
+        cookies.forEach((cookie) => {
+          setCookie(cookie.name, cookie.value);
+        });
+      }
+    },
+    realtime: {
+      transport: ws
+    }
+  });
+}
+
 const PLAN_CONFIGS = {
   free: {
     tier: "free",
@@ -897,406 +929,6 @@ var profile_server = /*#__PURE__*/Object.freeze({
   getCurrentUserProfile: getCurrentUserProfile,
   getPlanStateImpl: getPlanStateImpl,
   requireFeatureImpl: requireFeatureImpl
-});
-
-async function getClientsImpl() {
-  const supabase = getSupabaseServerClient();
-  const {
-    data: { user }
-  } = await supabase.auth.getUser();
-  if (!user) return [];
-  const { data, error } = await supabase.from("clients").select("*").eq("owner_id", user.id).order("created_at", { ascending: false });
-  if (error || !data) return [];
-  return data;
-}
-async function getClientsPaginatedImpl({
-  page,
-  pageSize,
-  search
-}) {
-  const supabase = getSupabaseServerClient();
-  const {
-    data: { user }
-  } = await supabase.auth.getUser();
-  if (!user) return { data: [], total: 0 };
-  const term = search ? `%${search}%` : null;
-  let countQuery = supabase.from("clients").select("id", { count: "exact", head: true }).eq("owner_id", user.id);
-  if (term) {
-    countQuery = countQuery.or(
-      `name.ilike.${term},email.ilike.${term},company.ilike.${term},industry.ilike.${term}`
-    );
-  }
-  const { count } = await countQuery;
-  let dataQuery = supabase.from("clients").select("*").eq("owner_id", user.id).order("created_at", { ascending: false }).range((page - 1) * pageSize, page * pageSize - 1);
-  if (term) {
-    dataQuery = dataQuery.or(
-      `name.ilike.${term},email.ilike.${term},company.ilike.${term},industry.ilike.${term}`
-    );
-  }
-  const { data, error } = await dataQuery;
-  if (error || !data) return { data: [], total: 0 };
-  return { data, total: count ?? 0 };
-}
-async function getClientByIdImpl(id) {
-  const supabase = getSupabaseServerClient();
-  const { data, error } = await supabase.from("clients").select("*").eq("id", id).single();
-  if (error || !data) return null;
-  return data;
-}
-async function getClientsByBirthdayRangeImpl({
-  withinMonths
-}) {
-  const supabase = getSupabaseServerClient();
-  const {
-    data: { user }
-  } = await supabase.auth.getUser();
-  if (!user) return [];
-  const { data, error } = await supabase.rpc("clients_upcoming_birthdays", {
-    p_owner_id: user.id,
-    p_months: withinMonths
-  });
-  if (error || !data) return [];
-  return data;
-}
-async function createClientImpl(input) {
-  const supabase = getSupabaseServerClient();
-  const {
-    data: { user }
-  } = await supabase.auth.getUser();
-  if (!user) return { error: "Not authenticated" };
-  const { data, error } = await supabase.from("clients").insert({
-    owner_id: user.id,
-    name: input.name,
-    email: input.email ?? null,
-    phone: input.phone ?? null,
-    company: input.company ?? null,
-    website: input.website ?? null,
-    industry: input.industry ?? null,
-    status: input.status ?? "active",
-    notes: input.notes ?? null,
-    tags: input.tags ?? [],
-    date_of_birth: input.date_of_birth ?? null
-  }).select("id").single();
-  if (error) return { error: error.message };
-  return { id: data.id };
-}
-async function updateClientImpl(input) {
-  const supabase = getSupabaseServerClient();
-  const { id, ...updates } = input;
-  const cleanUpdates = {};
-  if (updates.name !== void 0) cleanUpdates.name = updates.name;
-  if (updates.email !== void 0) cleanUpdates.email = updates.email;
-  if (updates.phone !== void 0) cleanUpdates.phone = updates.phone;
-  if (updates.company !== void 0) cleanUpdates.company = updates.company;
-  if (updates.website !== void 0) cleanUpdates.website = updates.website;
-  if (updates.industry !== void 0) cleanUpdates.industry = updates.industry;
-  if (updates.status !== void 0) cleanUpdates.status = updates.status;
-  if (updates.notes !== void 0) cleanUpdates.notes = updates.notes;
-  if (updates.tags !== void 0) cleanUpdates.tags = updates.tags;
-  if (updates.date_of_birth !== void 0) cleanUpdates.date_of_birth = updates.date_of_birth;
-  const { error } = await supabase.from("clients").update(cleanUpdates).eq("id", id);
-  if (error) return { error: error.message };
-  return null;
-}
-async function deleteClientImpl(clientId) {
-  const supabase = getSupabaseServerClient();
-  const { error } = await supabase.from("clients").delete().eq("id", clientId);
-  if (error) return { error: error.message };
-  return null;
-}
-
-var clients_server = /*#__PURE__*/Object.freeze({
-  __proto__: null,
-  createClientImpl: createClientImpl,
-  deleteClientImpl: deleteClientImpl,
-  getClientByIdImpl: getClientByIdImpl,
-  getClientsByBirthdayRangeImpl: getClientsByBirthdayRangeImpl,
-  getClientsImpl: getClientsImpl,
-  getClientsPaginatedImpl: getClientsPaginatedImpl,
-  updateClientImpl: updateClientImpl
-});
-
-async function getTasksImpl(input) {
-  try {
-    const supabase = getSupabaseServerClient();
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return { error: "Not authenticated" };
-    let query = supabase.from("tasks").select("*").eq("owner_id", user.id).order("sort_order", { ascending: true });
-    if (input.timeFrame) {
-      query = query.eq("time_frame", input.timeFrame);
-    }
-    if (input.plannedDate) {
-      query = query.eq("planned_date", input.plannedDate);
-    }
-    const { data, error } = await query;
-    if (error) return { error: error.message };
-    return data;
-  } catch (err) {
-    return { error: err instanceof Error ? err.message : "Failed to load tasks" };
-  }
-}
-async function createTaskImpl(input) {
-  try {
-    const supabase = getSupabaseServerClient();
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return { error: "Not authenticated" };
-    const { data, error } = await supabase.from("tasks").insert({
-      owner_id: user.id,
-      title: input.title,
-      description: input.description ?? null,
-      status: input.status ?? "todo",
-      priority: input.priority ?? "medium",
-      time_frame: input.timeFrame ?? "day",
-      planned_date: input.plannedDate ?? null,
-      due_date: input.dueDate ?? null,
-      agent_id: input.agentId ?? null,
-      tags: input.tags ?? []
-    }).select("id").single();
-    if (error) return { error: error.message };
-    return { id: data.id };
-  } catch (err) {
-    return { error: err instanceof Error ? err.message : "Failed to create task" };
-  }
-}
-async function updateTaskImpl(input) {
-  try {
-    const supabase = getSupabaseServerClient();
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return { error: "Not authenticated" };
-    const updates = {};
-    if (input.title !== void 0) updates.title = input.title;
-    if (input.description !== void 0) updates.description = input.description;
-    if (input.status !== void 0) updates.status = input.status;
-    if (input.priority !== void 0) updates.priority = input.priority;
-    if (input.timeFrame !== void 0) updates.time_frame = input.timeFrame;
-    if (input.plannedDate !== void 0) updates.planned_date = input.plannedDate;
-    if (input.dueDate !== void 0) updates.due_date = input.dueDate;
-    if (input.agentId !== void 0) updates.agent_id = input.agentId;
-    if (input.tags !== void 0) updates.tags = input.tags;
-    if (input.sortOrder !== void 0) updates.sort_order = input.sortOrder;
-    const { error } = await supabase.from("tasks").update(updates).eq("id", input.taskId);
-    if (error) return { error: error.message };
-    return null;
-  } catch (err) {
-    return { error: err instanceof Error ? err.message : "Failed to update task" };
-  }
-}
-async function deleteTaskImpl(taskId) {
-  try {
-    const supabase = getSupabaseServerClient();
-    const { error } = await supabase.from("tasks").delete().eq("id", taskId);
-    if (error) return { error: error.message };
-    return null;
-  } catch (err) {
-    return { error: err instanceof Error ? err.message : "Failed to delete task" };
-  }
-}
-async function reorderTasksImpl(updates) {
-  try {
-    const supabase = getSupabaseServerClient();
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return { error: "Not authenticated" };
-    for (const u of updates) {
-      const { error } = await supabase.from("tasks").update({ status: u.status, sort_order: u.sortOrder }).eq("id", u.taskId);
-      if (error) return { error: error.message };
-    }
-    return null;
-  } catch (err) {
-    return { error: err instanceof Error ? err.message : "Failed to reorder tasks" };
-  }
-}
-async function generatePlanImpl(input) {
-  try {
-    const supabase = getSupabaseServerClient();
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return { error: "Not authenticated" };
-    const timeFrameLabels = {
-      day: "day",
-      week: "week",
-      month: "month",
-      quarter: "quarter"
-    };
-    const result = await generateText({
-      model: getDefaultModel(),
-      system: `You are a strategic planning assistant. Break down the user's goal into actionable tasks for their ${timeFrameLabels[input.timeFrame]}-long plan.
-
-Return ONLY a JSON array of task objects (no markdown, no explanation). Each object has:
-- "title": short actionable task name (max 8 words)
-- "description": optional brief detail (max 20 words)
-- "priority": one of "low", "medium", "high", "urgent"
-
-Rules:
-- Generate 3-8 tasks appropriate for the time frame
-- Tasks should be specific and actionable
-- Order them logically (first things first)
-- If the prompt is vague, make reasonable assumptions
-- Return valid JSON only: [{ "title": "...", "description": "...", "priority": "medium" }]`,
-      prompt: input.prompt,
-      maxOutputTokens: 2e3,
-      temperature: 0.7
-    });
-    const raw = result.text;
-    const jsonMatch = raw.match(/\[[\s\S]*\]/);
-    if (!jsonMatch) {
-      return { error: "AI response was not valid JSON. Try rephrasing your prompt." };
-    }
-    const tasks = JSON.parse(jsonMatch[0]);
-    if (!Array.isArray(tasks) || tasks.length === 0) {
-      return { error: "AI returned an empty plan. Try a more detailed prompt." };
-    }
-    for (let i = 0; i < tasks.length; i++) {
-      const t = tasks[i];
-      await supabase.from("tasks").insert({
-        owner_id: user.id,
-        title: t.title,
-        description: t.description ?? null,
-        status: "todo",
-        priority: t.priority || "medium",
-        time_frame: input.timeFrame,
-        planned_date: input.plannedDate ?? null,
-        sort_order: i,
-        generated: true
-      });
-    }
-    return { tasks };
-  } catch (err) {
-    return { error: err instanceof Error ? err.message : "Failed to generate plan" };
-  }
-}
-function parseIcsDate(val) {
-  const cleaned = val.replace(/[^0-9TZ]/g, "");
-  const match = cleaned.match(/^(\d{4})(\d{2})(\d{2})/);
-  if (match) {
-    return `${match[1]}-${match[2]}-${match[3]}`;
-  }
-  return val;
-}
-function parseIcsContent(icsContent) {
-  const events = [];
-  const lines = icsContent.replace(/\r\n/g, "\n").replace(/\r/g, "\n").split("\n");
-  const unfolded = [];
-  let carry = "";
-  for (const line of lines) {
-    if (line.startsWith(" ") || line.startsWith("	")) {
-      carry += line.slice(1);
-    } else {
-      if (carry) unfolded.push(carry);
-      carry = line;
-    }
-  }
-  if (carry) unfolded.push(carry);
-  const veventBlocks = [];
-  let current = null;
-  let inEvent = false;
-  for (const line of unfolded) {
-    if (line === "BEGIN:VEVENT") {
-      current = [];
-      inEvent = true;
-    } else if (line === "END:VEVENT") {
-      if (current) veventBlocks.push(current);
-      current = null;
-      inEvent = false;
-    } else if (inEvent && current) {
-      current.push(line);
-    }
-  }
-  for (const block of veventBlocks) {
-    const event = {};
-    for (const line of block) {
-      const colonIdx = line.indexOf(":");
-      if (colonIdx === -1) continue;
-      const key = line.slice(0, colonIdx).split(";")[0];
-      const value = line.slice(colonIdx + 1);
-      if (key.startsWith("DTSTART") || key.startsWith("DTEND") || key === "SUMMARY" || key === "DESCRIPTION" || key === "LOCATION" || key === "UID") {
-        event[key] = value;
-      }
-    }
-    if (!event["SUMMARY"]) continue;
-    const dtstart = event["DTSTART"] || "";
-    const dtend = event["DTEND"] || "";
-    const isAllDay = !dtstart.includes("T");
-    const startDate = parseIcsDate(dtstart);
-    let endDate = null;
-    if (dtend) {
-      endDate = parseIcsDate(dtend);
-      if (isAllDay && endDate) {
-        const d = new Date(endDate);
-        d.setDate(d.getDate() - 1);
-        endDate = d.toISOString().slice(0, 10);
-      }
-    }
-    events.push({
-      title: event["SUMMARY"].replace(/\\n/g, "\n").replace(/\\,/g, ","),
-      description: event["DESCRIPTION"] ? event["DESCRIPTION"].replace(/\\n/g, "\n").replace(/\\,/g, ",") : null,
-      location: event["LOCATION"] ? event["LOCATION"].replace(/\\n/g, "\n").replace(/\\,/g, ",") : null,
-      start_date: startDate,
-      end_date: endDate,
-      all_day: isAllDay,
-      source_uid: event["UID"] || null
-    });
-  }
-  return events;
-}
-async function importCalendarEventsImpl(icsContent) {
-  try {
-    const supabase = getSupabaseServerClient();
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return { error: "Not authenticated" };
-    const parsed = parseIcsContent(icsContent);
-    if (parsed.length === 0) return { error: "No events found in the ICS file" };
-    const rows = parsed.map((ev) => ({
-      owner_id: user.id,
-      title: ev.title,
-      description: ev.description,
-      location: ev.location,
-      start_date: ev.start_date,
-      end_date: ev.end_date,
-      all_day: ev.all_day,
-      source: "ics",
-      source_uid: ev.source_uid
-    }));
-    const { error } = await supabase.from("calendar_events").insert(rows);
-    if (error) return { error: error.message };
-    return { count: parsed.length };
-  } catch (err) {
-    return { error: err instanceof Error ? err.message : "Failed to import calendar events" };
-  }
-}
-async function getCalendarEventsImpl() {
-  try {
-    const supabase = getSupabaseServerClient();
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return { error: "Not authenticated" };
-    const { data, error } = await supabase.from("calendar_events").select("*").eq("owner_id", user.id).order("start_date", { ascending: true });
-    if (error) return { error: error.message };
-    return data;
-  } catch (err) {
-    return { error: err instanceof Error ? err.message : "Failed to load calendar events" };
-  }
-}
-async function deleteCalendarEventImpl(id) {
-  try {
-    const supabase = getSupabaseServerClient();
-    const { error } = await supabase.from("calendar_events").delete().eq("id", id);
-    if (error) return { error: error.message };
-    return null;
-  } catch (err) {
-    return { error: err instanceof Error ? err.message : "Failed to delete calendar event" };
-  }
-}
-
-var planner_server = /*#__PURE__*/Object.freeze({
-  __proto__: null,
-  createTaskImpl: createTaskImpl,
-  deleteCalendarEventImpl: deleteCalendarEventImpl,
-  deleteTaskImpl: deleteTaskImpl,
-  generatePlanImpl: generatePlanImpl,
-  getCalendarEventsImpl: getCalendarEventsImpl,
-  getTasksImpl: getTasksImpl,
-  importCalendarEventsImpl: importCalendarEventsImpl,
-  parseIcsContent: parseIcsContent,
-  reorderTasksImpl: reorderTasksImpl,
-  updateTaskImpl: updateTaskImpl
 });
 
 let client = null;

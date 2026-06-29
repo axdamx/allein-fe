@@ -229,7 +229,14 @@ ${contextText}
 
   const userContext = await buildUserContext(user.id, supabase)
 
-  const dynamicPrompt = `${systemPrompt ? `## Custom Instructions\n${systemPrompt}\n\n` : ''}${userContext}${ragContext}
+  const today = new Date()
+  const dateStr = today.toLocaleDateString('en-US', {
+    weekday: 'long', year: 'numeric', month: 'long', day: 'numeric',
+  })
+
+  const dynamicPrompt = `Current date: ${dateStr}
+
+${systemPrompt ? `## Custom Instructions\n${systemPrompt}\n\n` : ''}${userContext}${ragContext}
 
 ## Tools
 You have tools to create leads, reminders, tasks, and send messages.
@@ -365,7 +372,14 @@ ${contextText}
 
   const userContext = await buildUserContext(input.ownerId, supabase)
 
-  const dynamicPrompt = `${systemPrompt ? `## Custom Instructions\n${systemPrompt}\n\n` : ''}${userContext}${ragContext}
+  const today = new Date()
+  const dateStr = today.toLocaleDateString('en-US', {
+    weekday: 'long', year: 'numeric', month: 'long', day: 'numeric',
+  })
+
+  const dynamicPrompt = `Current date: ${dateStr}
+
+${systemPrompt ? `## Custom Instructions\n${systemPrompt}\n\n` : ''}${userContext}${ragContext}
 
 ## Tools
 You have tools to create leads, reminders, tasks, and send messages.

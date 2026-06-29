@@ -1,6 +1,6 @@
 import { createTool } from '@mastra/core/tools'
 import { z } from 'zod'
-import { getSupabaseServerClient } from '@/lib/supabase/server.server'
+import { getSupabaseServiceClient } from '@/lib/supabase/service.server'
 
 export const createTaskTool = createTool({
   id: 'create-task',
@@ -15,25 +15,26 @@ export const createTaskTool = createTool({
     dueDate: z.string().optional().describe('Due date in YYYY-MM-DD format'),
     tags: z.array(z.string()).optional().describe('Tags to categorize the task'),
   }),
-  execute: async ({ title, description, priority, timeFrame, plannedDate, dueDate, tags }) => {
-    const supabase = getSupabaseServerClient()
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user) return { success: false, error: 'Not authenticated' }
-
-    const { createTaskImpl } = await import('@/server/planner.server')
-    const result = await createTaskImpl({
-      title,
-      description,
-      status: 'todo',
-      priority,
-      timeFrame,
-      plannedDate,
-      dueDate,
-      tags,
-    })
-
-    if ('error' in result) return { success: false, error: result.error }
-    return { success: true, taskId: result.id, message: `Task "${title}" created` }
+  execute: async ({ title, description, priority, timeFrame, plannedDate, dueDate, tags }, context) => {
+    const resourceId = context?.agent?.resourceId
+    const supabase = getSupabaseServiceClient()
+    const { data, error } = await supabase
+      .from('tasks')
+      .insert({
+        owner_id: resourceId,
+        title,
+        description: description ?? null,
+        status: 'todo',
+        priority: priority ?? 'medium',
+        time_frame: timeFrame ?? 'day',
+        planned_date: plannedDate ?? null,
+        due_date: dueDate ?? null,
+        tags: tags ?? [],
+      })
+      .select('id')
+      .single()
+    if (error) return { success: false, error: error.message }
+    return { success: true, taskId: data.id, message: `Task "${title}" created` }
   },
 })
 
@@ -46,15 +47,14 @@ export const readTasksTool = createTool({
     plannedDate: z.string().optional().describe('Filter by planned date in YYYY-MM-DD format'),
     limit: z.number().min(1).max(50).optional().default(20).describe('Maximum number of tasks to return'),
   }),
-  execute: async ({ timeFrame, plannedDate, limit }) => {
-    const supabase = getSupabaseServerClient()
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user) return { success: false, error: 'Not authenticated', tasks: [] }
+  execute: async ({ timeFrame, plannedDate, limit }, context) => {
+    const resourceId = context?.agent?.resourceId
+    const supabase = getSupabaseServiceClient()
 
     let query = supabase
       .from('tasks')
       .select('id, title, description, status, priority, time_frame, planned_date, due_date, tags, created_at')
-      .eq('owner_id', user.id)
+      .eq('owner_id', resourceId)
       .order('sort_order', { ascending: true })
 
     if (timeFrame) query = query.eq('time_frame', timeFrame)
@@ -66,7 +66,7 @@ export const readTasksTool = createTool({
 
     return {
       success: true,
-      tasks: data.map(t => ({
+      tasks: data.map((t: { id: string; title: string; description: string | null; status: string; priority: string; time_frame: string; planned_date: string | null; due_date: string | null; tags: string[] }) => ({
         id: t.id,
         title: t.title,
         description: t.description,

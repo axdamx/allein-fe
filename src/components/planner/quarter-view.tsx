@@ -1,5 +1,4 @@
 import { format } from 'date-fns'
-import { CalendarDays } from 'lucide-react'
 
 import {
   Card,
@@ -8,19 +7,12 @@ import {
 import type { TaskRow } from '@/hooks/use-planner'
 import type { LeadRow } from '@/server/crm'
 
-export const QuarterView = ({ tasks, leads }: { tasks: TaskRow[]; leads: LeadRow[] }) => {
-  const today = new Date()
-  const quarterStartMonth = Math.floor(today.getMonth() / 3) * 3
-  const months = Array.from({ length: 3 }, (_, i) => new Date(today.getFullYear(), quarterStartMonth + i, 1))
+export const QuarterView = ({ tasks, leads, currentDate }: { tasks: TaskRow[]; leads: LeadRow[]; currentDate: Date }) => {
+  const quarterStartMonth = Math.floor(currentDate.getMonth() / 3) * 3
+  const months = Array.from({ length: 3 }, (_, i) => new Date(currentDate.getFullYear(), quarterStartMonth + i, 1))
 
   return (
-    <div className="space-y-3">
-      <div className="flex items-center gap-2">
-        <CalendarDays className="size-4 text-muted-foreground" />
-        <h2 className="text-sm font-medium">
-          Q{Math.floor(today.getMonth() / 3) + 1} {today.getFullYear()}
-        </h2>
-      </div>
+    <div>
 
       <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
         {months.map((month) => {
