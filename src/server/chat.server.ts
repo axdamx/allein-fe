@@ -1,23 +1,7 @@
-/**
- * Server-only implementation for the AI chat module.
- *
- * Uses Vercel AI SDK (streamText + tool calling) for:
- * - Native token streaming
- * - Structured tool calls (no more JSON parsing / regex fallback)
- * - Guaranteed parameter extraction from conversation context
- *
- * Also handles: RAG retrieval, conversation persistence, auto-titling.
- */
-import { generateText, stepCountIs } from 'ai'
 import { getSupabaseServerClient } from '@/lib/supabase/server.server'
-import { getDefaultModel } from '@/lib/ai-provider'
-import { agentTools } from '@/server/chat-tools'
 import { retrieveContext } from '@/server/documents.server'
+import { getAgentByType } from '@/mastra'
 import type { SupabaseClient } from '@supabase/supabase-js'
-
-// ---------------------------------------------------------------------------
-// Types
-// ---------------------------------------------------------------------------
 
 export interface ConversationRow {
   id: string
@@ -41,7 +25,6 @@ export interface MessageRow {
   created_at: string
 }
 
-/** Result of sending a message — includes any tool calls that were made. */
 export interface SendMessageResult {
   reply: string
   toolCalls: Array<{
@@ -51,10 +34,6 @@ export interface SendMessageResult {
   }>
 }
 
-/**
- * Fetch the user's profile and build a context string to inject into the
- * system prompt so the AI agent knows who it's talking to.
- */
 async function buildUserContext(
   userId: string,
   supabase: SupabaseClient,
@@ -85,10 +64,6 @@ ${parts.join('\n')}
 Always refer to them by their name if available. When creating leads or reminders, use their company as default if the user doesn't specify one.
 ## End of User Context`
 }
-
-// ---------------------------------------------------------------------------
-// Conversations
-// ---------------------------------------------------------------------------
 
 export async function getConversationsImpl(
   agentId?: string,
@@ -164,10 +139,6 @@ export async function deleteConversationImpl(
   return null
 }
 
-// ---------------------------------------------------------------------------
-// Messages
-// ---------------------------------------------------------------------------
-
 export async function getMessagesImpl(
   conversationId: string,
 ): Promise<MessageRow[]> {
@@ -182,30 +153,6 @@ export async function getMessagesImpl(
   return data as unknown as MessageRow[]
 }
 
-/**
- * Detect if the user wants to create records and build a nudge message
- * that forces the LLM to act on conversation context instead of asking.
- */
-function buildCreateNudge(content: string): string | null {
-  const createPattern = /\b(create|make|add|save|set up|setup)\b/i
-  const recordType = /\b(lead|reminder|task|planner|todo|to-?do)\b/i
-  if (!createPattern.test(content) && !recordType.test(content)) return null
-
-  return `[INSTRUCTION: The user just asked to create records. Look at the conversation history above — specifically any recently mentioned person, their name, email, company, and relevant dates. Call the appropriate tools (createLead, createReminder, createTask) IMMEDIATELY with those details. DO NOT ask the user for information already discussed. DO NOT write a summary first. Call the tools now.]`
-}
-
-/**
- * Send a message and get the AI response using Vercel AI SDK.
- *
- * Uses generateText (non-streaming but with tool calling) because TanStack
- * Start's createServerFn returns JSON, not a stream. The client reveals the
- * response progressively for a typing UX.
- *
- * Key improvement over the manual approach:
- * - Tools are native (LLM calls them with typed params — no JSON parsing)
- * - Context resolution is automatic (LLM reads conversation history)
- * - No regex fallback needed
- */
 export async function sendMessageImpl(input: {
   conversationId: string
   content: string
@@ -216,7 +163,6 @@ export async function sendMessageImpl(input: {
   } = await supabase.auth.getUser()
   if (!user) return { error: 'Not authenticated' }
 
-  // 1. Verify conversation ownership + load agent
   const { data: conversation } = await supabase
     .from('conversations')
     .select('id, agent_id, owner_id')
@@ -235,7 +181,6 @@ export async function sendMessageImpl(input: {
 
   if (!agent) return { error: 'Agent not found' }
 
-  // Load system prompt (agent override → agent type default)
   let systemPrompt = agent.system_prompt
   if (!systemPrompt) {
     const { data: agentType } = await supabase
@@ -243,20 +188,15 @@ export async function sendMessageImpl(input: {
       .select('system_prompt')
       .eq('key', agent.type)
       .single()
-    systemPrompt = agentType?.system_prompt ?? 'You are a helpful AI assistant.'
+    systemPrompt = agentType?.system_prompt ?? ''
   }
 
-  // 2. Load conversation history (last 20 messages, user + assistant only)
-  const { data: history } = await supabase
+  const { data: msgCount } = await supabase
     .from('messages')
-    .select('role, content')
+    .select('id', { count: 'exact', head: true })
     .eq('conversation_id', input.conversationId)
-    .order('created_at', { ascending: true })
-    .limit(20)
+  const isFirst = (msgCount?.length ?? 0) === 0
 
-  const isFirstMessage = (history?.length ?? 0) === 0
-
-  // 3. Save user message
   await supabase.from('messages').insert({
     conversation_id: input.conversationId,
     role: 'user',
@@ -269,7 +209,6 @@ export async function sendMessageImpl(input: {
     p_amount: 1,
   })
 
-  // 4. RAG: Retrieve relevant context from knowledge base
   const relevantChunks = await retrieveContext(input.content, agent.id, 5)
 
   let ragContext = ''
@@ -281,104 +220,81 @@ export async function sendMessageImpl(input: {
       )
       .join('\n\n---\n\n')
     ragContext = `\n\n## Knowledge Base Context
-The following is from the user's uploaded documents. This is YOUR data — the user expects you to know it. ALWAYS check this context before saying you don't know something. If the answer is anywhere below, use it:
+The following is from the user's uploaded documents. ALWAYS check this context before saying you don't know something:
 
 ${contextText}
 
 ## End of Knowledge Base Context`
   }
 
-  // 5. Inject user context so the agent knows who it's talking to
   const userContext = await buildUserContext(user.id, supabase)
 
-  const fullSystemPrompt = `${systemPrompt}${userContext}${ragContext}
+  const dynamicPrompt = `${systemPrompt ? `## Custom Instructions\n${systemPrompt}\n\n` : ''}${userContext}${ragContext}
 
 ## Tools
 You have tools to create leads, reminders, tasks, and send messages.
 
 !!! ABSOLUTE RULE: NEVER ask the user for details that exist in this conversation. Immediately call the appropriate tool with whatever you already know. !!!
 
-When user says "create" after discussing a specific person/event, you MUST:
-1. Call createLead with that person's name, email, company from chat
-2. Call createReminder with a descriptive title and the relevant date
-3. Call createTask with a relevant title
-
-Example — DO THIS EXACTLY:
-User: "who has birthday" → you: return client info
-User: "create a lead, planner and reminder" → you: call all three tools IMMEDIATELY with the info from the previous turn. No questions. No summaries. Just call the tools.
+Example:
+User: "who has birthday" → return client info
+User: "create a lead, planner and reminder" → call all three tools IMMEDIATELY with the info from the previous turn. No questions. No summaries. Just call the tools.
 
 Rule: Call the tool first, explain later. Never ask "what details?" — use what you already know.`
 
-  // 6. Build messages for the AI SDK
-  const createNudge = buildCreateNudge(input.content)
+  const mastraAgent = getAgentByType(agent.type)
+  if (!mastraAgent) {
+    return { error: `Agent type "${agent.type}" not found` }
+  }
 
-  const coreMessages = [
-    ...(history ?? [])
-      .filter((m) => m.role === 'user' || m.role === 'assistant')
-      .map((m) => ({
-        role: m.role as 'user' | 'assistant',
-        content: m.content,
-      })),
-    ...(createNudge ? [{ role: 'system' as const, content: createNudge }] : []),
-    { role: 'user' as const, content: input.content },
-  ]
-
-  // 7. Call the LLM with tools (native tool calling)
-  const model = getDefaultModel()
-  const result = await generateText({
-    model,
-    system: fullSystemPrompt,
-    messages: coreMessages,
-    tools: agentTools,
-    stopWhen: stepCountIs(3), // allow multi-step tool calls (call → see result → respond)
-    temperature: 0.7,
-    maxOutputTokens: 4096,
-  })
+  const result = await mastraAgent.generate(
+    [
+      { role: 'system' as const, content: dynamicPrompt },
+      { role: 'user' as const, content: input.content },
+    ],
+    {
+      memory: {
+        resource: user.id,
+        thread: input.conversationId,
+      },
+      maxSteps: 3,
+    },
+  )
 
   const replyText = result.text
 
-  // 8. Collect tool call results (if any tools were called)
   const toolCalls: SendMessageResult['toolCalls'] = []
-  for (const step of result.steps) {
-    for (const tr of step.toolResults) {
-      // tr.output is typed by the tool's execute return
-      const output = tr.output as {
-        success?: boolean
-        message?: string
-        error?: string
-      }
+  const steps = result.steps ?? []
+  for (const step of steps) {
+    const toolResults = (step as any).toolResults ?? []
+    for (const tr of toolResults) {
+      const output = tr.output ?? tr.result ?? {}
       toolCalls.push({
-        name: tr.toolName,
+        name: tr.toolName ?? tr.name ?? 'unknown',
         success: output?.success !== false,
         message: output?.message ?? output?.error ?? 'Completed',
       })
     }
   }
 
-  // 9. Save assistant message with token usage
   await supabase.from('messages').insert({
     conversation_id: input.conversationId,
     role: 'assistant',
     content: replyText,
     model: agent.model,
-    tokens_in: result.usage.inputTokens ?? 0,
-    tokens_out: result.usage.outputTokens ?? 0,
+    tokens_in: result.usage?.inputTokens ?? 0,
+    tokens_out: result.usage?.outputTokens ?? 0,
   })
 
-  // 10. Auto-generate title for new conversations
-  if (isFirstMessage) {
-    const title = input.content.length > 60
-      ? input.content.slice(0, 57) + '...'
-      : input.content
+  if (isFirst) {
+    const title =
+      input.content.length > 60
+        ? input.content.slice(0, 57) + '...'
+        : input.content
     await supabase
       .from('conversations')
       .update({ title })
       .eq('id', input.conversationId)
-  }
-
-  // Invalidate leads/reminders queries if tools were called
-  if (toolCalls.length > 0) {
-    // The client will refetch these
   }
 
   return {
@@ -387,13 +303,6 @@ Rule: Call the tool first, explain later. Never ask "what details?" — use what
   }
 }
 
-/**
- * Send a message on behalf of a user (for webhooks — no cookie session).
- *
- * Uses the service-role Supabase client to bypass RLS, so the caller must
- * pass a verified `ownerId`. This is the same AI processing as sendMessageImpl
- * but designed for Telegram / WhatsApp inbound webhooks.
- */
 export async function sendMessageForOwnerImpl(input: {
   ownerId: string
   agentId: string
@@ -405,7 +314,6 @@ export async function sendMessageForOwnerImpl(input: {
   )
   const supabase = getSupabaseServiceClient()
 
-  // 1. Load agent
   const { data: agent } = await supabase
     .from('agents')
     .select('id, type, name, system_prompt, model')
@@ -414,7 +322,6 @@ export async function sendMessageForOwnerImpl(input: {
 
   if (!agent) return { error: 'Agent not found' }
 
-  // Load system prompt
   let systemPrompt = agent.system_prompt
   if (!systemPrompt) {
     const { data: agentType } = await supabase
@@ -422,27 +329,21 @@ export async function sendMessageForOwnerImpl(input: {
       .select('system_prompt')
       .eq('key', agent.type)
       .single()
-    systemPrompt = agentType?.system_prompt ?? 'You are a helpful AI assistant.'
+    systemPrompt = agentType?.system_prompt ?? ''
   }
 
-  // 2. Save user message
   await supabase.from('messages').insert({
     conversation_id: input.conversationId,
     role: 'user',
     content: input.content,
   })
 
-  // 3. Load conversation history
-  const { data: history } = await supabase
+  const { data: msgCount } = await supabase
     .from('messages')
-    .select('role, content')
+    .select('id', { count: 'exact', head: true })
     .eq('conversation_id', input.conversationId)
-    .order('created_at', { ascending: true })
-    .limit(20)
+  const isFirst = (msgCount?.length ?? 0) === 1
 
-  const isFirstMessage = (history?.filter((m: { role: string }) => m.role === 'user').length ?? 0) === 1
-
-  // 4. RAG
   const { retrieveContext } = await import('@/server/documents.server')
   const relevantChunks = await retrieveContext(input.content, agent.id, 5)
 
@@ -455,95 +356,74 @@ export async function sendMessageForOwnerImpl(input: {
       )
       .join('\n\n---\n\n')
     ragContext = `\n\n## Knowledge Base Context
-The following is from the user's uploaded documents. This is YOUR data — the user expects you to know it. ALWAYS check this context before saying you don't know something. If the answer is anywhere below, use it:
+The following is from the user's uploaded documents. ALWAYS check this context before saying you don't know something:
 
 ${contextText}
 
 ## End of Knowledge Base Context`
   }
 
-  // 5. Inject user context
   const userContext = await buildUserContext(input.ownerId, supabase)
 
-  const fullSystemPrompt = `${systemPrompt}${userContext}${ragContext}
+  const dynamicPrompt = `${systemPrompt ? `## Custom Instructions\n${systemPrompt}\n\n` : ''}${userContext}${ragContext}
 
 ## Tools
 You have tools to create leads, reminders, tasks, and send messages.
 
 !!! ABSOLUTE RULE: NEVER ask the user for details that exist in this conversation. Immediately call the appropriate tool with whatever you already know. !!!
 
-When user says "create" after discussing a specific person/event, you MUST:
-1. Call createLead with that person's name, email, company from chat
-2. Call createReminder with a descriptive title and the relevant date
-3. Call createTask with a relevant title
-
-Example — DO THIS EXACTLY:
-User: "who has birthday" → you: return client info
-User: "create a lead, planner and reminder" → you: call all three tools IMMEDIATELY with the info from the previous turn. No questions. No summaries. Just call the tools.
-
 Rule: Call the tool first, explain later. Never ask "what details?" — use what you already know.`
 
-  // 6. Build messages for AI
-  const createNudge = buildCreateNudge(input.content)
+  const { getAgentByType } = await import('@/mastra')
+  const mastraAgent = getAgentByType(agent.type)
+  if (!mastraAgent) {
+    return { error: `Agent type "${agent.type}" not found` }
+  }
 
-  const coreMessages = [
-    ...(history ?? [])
-      .filter((m: { role: string; content: string }) => m.role === 'user' || m.role === 'assistant')
-      .map((m: { role: string; content: string }) => ({
-        role: m.role as 'user' | 'assistant',
-        content: m.content,
-      })),
-    ...(createNudge ? [{ role: 'system' as const, content: createNudge }] : []),
-    { role: 'user' as const, content: input.content },
-  ]
-
-  // 7. Call LLM
-  const { getDefaultModel } = await import('@/lib/ai-provider')
-  const model = getDefaultModel()
-  const result = await generateText({
-    model,
-    system: fullSystemPrompt,
-    messages: coreMessages,
-    tools: agentTools,
-    stopWhen: stepCountIs(3),
-    temperature: 0.7,
-    maxOutputTokens: 4096,
-  })
+  const result = await mastraAgent.generate(
+    [
+      { role: 'system' as const, content: dynamicPrompt },
+      { role: 'user' as const, content: input.content },
+    ],
+    {
+      memory: {
+        resource: input.ownerId,
+        thread: input.conversationId,
+      },
+      maxSteps: 3,
+    },
+  )
 
   const replyText = result.text
 
-  // 8. Collect tool results
   const toolCalls: SendMessageResult['toolCalls'] = []
-  for (const step of result.steps) {
-    for (const tr of step.toolResults) {
-      const output = tr.output as {
-        success?: boolean
-        message?: string
-        error?: string
-      }
+  const steps = result.steps ?? []
+  for (const step of steps) {
+    const toolResults = (step as any).toolResults ?? []
+    for (const tr of toolResults) {
+      const output = tr.output ?? tr.result ?? {}
       toolCalls.push({
-        name: tr.toolName,
+        name: tr.toolName ?? tr.name ?? 'unknown',
         success: output?.success !== false,
         message: output?.message ?? output?.error ?? 'Completed',
       })
     }
   }
 
-  // 9. Save assistant message with token usage
   await supabase.from('messages').insert({
     conversation_id: input.conversationId,
     role: 'assistant',
     content: replyText,
     model: agent.model,
-    tokens_in: result.usage.inputTokens ?? 0,
-    tokens_out: result.usage.outputTokens ?? 0,
+    tokens_in: result.usage?.inputTokens ?? 0,
+    tokens_out: result.usage?.outputTokens ?? 0,
   })
 
-  // 10. Auto-title
-  if (isFirstMessage) {
-    const title = input.content.length > 60
-      ? input.content.slice(0, 57) + '...'
-      : input.content
+  if (isFirst) {
+    const title =
+      input.content.length > 60
+        ? input.content.slice(0, 57) + '...'
+        : input.content
     await supabase
       .from('conversations')
       .update({ title })

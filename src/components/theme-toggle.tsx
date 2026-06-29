@@ -14,6 +14,7 @@ export const ThemeToggle = () => {
       size="icon"
       aria-label="Toggle theme"
       onClick={() => setTheme(isDark ? 'light' : 'dark')}
+      suppressHydrationWarning
     >
       <AnimatePresence mode="wait" initial={false}>
         <motion.div

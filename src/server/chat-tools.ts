@@ -1,25 +1,12 @@
-/**
- * Agent tools — native function calling via Vercel AI SDK v6.
- *
- * The LLM calls these functions directly with guaranteed-type parameters.
- * It decides WHEN to call a tool and fills params from conversation context.
- *
- * Note: AI SDK v6 uses `inputSchema` (not `parameters`) and `tool()` from 'ai'.
- */
 import { tool } from 'ai'
 import { z } from 'zod'
 import { getSupabaseServerClient } from '@/lib/supabase/server.server'
 
-/**
- * Tool: Create a lead in the CRM.
- */
 export const createLeadTool = tool({
   description:
     'Save a contact as a new lead in the CRM. Use when the user wants to add, save, or record a person/prospect. PROACTIVELY extract name, email, phone, company from the conversation context — do NOT ask the user for details they already provided. Resolve references like "this email", "that person", "this client" to actual values.',
   inputSchema: z.object({
-    name: z
-      .string()
-      .describe('Full name of the contact. Derive from email if not given.'),
+    name: z.string().describe('Full name of the contact. Derive from email if not given.'),
     email: z.string().describe('Email address'),
     phone: z.string().optional().describe('Phone number'),
     company: z.string().optional().describe('Company name'),
@@ -27,12 +14,9 @@ export const createLeadTool = tool({
   }),
   execute: async ({ name, email, phone, company, notes }) => {
     const supabase = getSupabaseServerClient()
-    const {
-      data: { user },
-    } = await supabase.auth.getUser()
+    const { data: { user } } = await supabase.auth.getUser()
     if (!user) return { success: false, error: 'Not authenticated' }
 
-    // Enforce plan limit
     const { enforceLimitImpl } = await import('@/server/profile.server')
     try {
       await enforceLimitImpl('leads')
@@ -65,9 +49,6 @@ export const createLeadTool = tool({
   },
 })
 
-/**
- * Tool: Create a follow-up reminder.
- */
 export const createReminderTool = tool({
   description:
     'Create a follow-up reminder. Use when the user wants to be reminded, follow up, or schedule something for later. Extract the title, description, due date, and person from the conversation context — do not ask the user for details they already mentioned. If the reminder is about a specific person/lead, include their name in lead_name so it gets linked to their CRM record.',
@@ -82,9 +63,7 @@ export const createReminderTool = tool({
   }),
   execute: async ({ title, description, due_at, lead_id, lead_name }) => {
     const supabase = getSupabaseServerClient()
-    const {
-      data: { user },
-    } = await supabase.auth.getUser()
+    const { data: { user } } = await supabase.auth.getUser()
     if (!user) return { success: false, error: 'Not authenticated' }
 
     let resolvedLeadId = lead_id
@@ -123,16 +102,11 @@ export const createReminderTool = tool({
   },
 })
 
-/**
- * Tool: Send a WhatsApp message to a contact.
- */
 export const sendWhatsAppTool = tool({
   description:
     'Send a WhatsApp message to a contact. Use when the user wants to message a lead, customer, or prospect on WhatsApp. Requires their phone number with country code.',
   inputSchema: z.object({
-    to: z
-      .string()
-      .describe('Recipient phone number with country code (e.g. 60123456789)'),
+    to: z.string().describe('Recipient phone number with country code (e.g. 60123456789)'),
     message: z.string().describe('Message body to send'),
     leadId: z.string().optional().describe('Lead ID to log this message against'),
   }),
@@ -142,9 +116,7 @@ export const sendWhatsAppTool = tool({
     if (!result.success) return result
 
     const supabase = getSupabaseServerClient()
-    const {
-      data: { user },
-    } = await supabase.auth.getUser()
+    const { data: { user } } = await supabase.auth.getUser()
 
     if (user && leadId) {
       await supabase
@@ -162,9 +134,6 @@ export const sendWhatsAppTool = tool({
   },
 })
 
-/**
- * Tool: Send a Telegram message to a contact.
- */
 export const sendTelegramTool = tool({
   description:
     'Send a Telegram message to a contact. Use when the user wants to message a lead, customer, or prospect on Telegram, or send info to their own Telegram. The user\'s Telegram chat ID is available in the User Context — use that when the user says "send to my Telegram".',
@@ -187,9 +156,6 @@ export const sendTelegramTool = tool({
   },
 })
 
-/**
- * Tool: Read/search clients from the CRM.
- */
 export const readClientsTool = tool({
   description:
     'Read or search your clients from the CRM. Use when the user asks about their clients, customers, or contacts — including questions like "who has birthdays this month", "find client by name", "list my active clients", etc.',
@@ -201,9 +167,7 @@ export const readClientsTool = tool({
   }),
   execute: async ({ search, birthdayMonth, status, limit }) => {
     const supabase = getSupabaseServerClient()
-    const {
-      data: { user },
-    } = await supabase.auth.getUser()
+    const { data: { user } } = await supabase.auth.getUser()
     if (!user) return { success: false, error: 'Not authenticated', clients: [] }
 
     let query = supabase
@@ -248,9 +212,6 @@ export const readClientsTool = tool({
   },
 })
 
-/**
- * Tool: Create a new client in the CRM.
- */
 export const createClientTool = tool({
   description:
     'Add a new client/customer to your CRM. Use when the user wants to save, add, or record a client. Extract name, email, phone, company, industry, notes from the conversation context — do NOT ask for details already provided.',
@@ -266,9 +227,7 @@ export const createClientTool = tool({
   }),
   execute: async (input) => {
     const supabase = getSupabaseServerClient()
-    const {
-      data: { user },
-    } = await supabase.auth.getUser()
+    const { data: { user } } = await supabase.auth.getUser()
     if (!user) return { success: false, error: 'Not authenticated' }
 
     const { createClientImpl } = await import('@/server/clients.server')
@@ -279,9 +238,6 @@ export const createClientTool = tool({
   },
 })
 
-/**
- * Tool: Update an existing client in the CRM.
- */
 export const updateClientTool = tool({
   description:
     'Update a client\'s details — status, name, email, phone, company, industry, notes, tags, etc. Use when the user wants to change, modify, update, mark inactive/churned, or edit a client. If you don\'t know the clientId, call readClients first with the client\'s name to get their ID.',
@@ -299,9 +255,7 @@ export const updateClientTool = tool({
   }),
   execute: async (input) => {
     const supabase = getSupabaseServerClient()
-    const {
-      data: { user },
-    } = await supabase.auth.getUser()
+    const { data: { user } } = await supabase.auth.getUser()
     if (!user) return { success: false, error: 'Not authenticated' }
 
     const { clientId, ...fields } = input
@@ -313,9 +267,6 @@ export const updateClientTool = tool({
   },
 })
 
-/**
- * Tool: Delete a client from the CRM.
- */
 export const deleteClientTool = tool({
   description:
     'Delete/remove a client from your CRM. Use when the user wants to delete, remove, or archive a client. If you don\'t know the clientId, call readClients first with the client\'s name to get their ID.',
@@ -324,9 +275,7 @@ export const deleteClientTool = tool({
   }),
   execute: async ({ clientId }) => {
     const supabase = getSupabaseServerClient()
-    const {
-      data: { user },
-    } = await supabase.auth.getUser()
+    const { data: { user } } = await supabase.auth.getUser()
     if (!user) return { success: false, error: 'Not authenticated' }
 
     const { deleteClientImpl } = await import('@/server/clients.server')
@@ -337,9 +286,6 @@ export const deleteClientTool = tool({
   },
 })
 
-/**
- * Tool: Create a planner task.
- */
 export const createTaskTool = tool({
   description:
     'Create a task in the planner. Use when the user wants to schedule, plan, add a to-do, or create a task. Extract the title, description, priority, dates from the conversation context — do not ask the user for details they already mentioned. Tasks can have a timeframe (day/week/month/quarter), priority, due date, and planned date.',
@@ -354,9 +300,7 @@ export const createTaskTool = tool({
   }),
   execute: async ({ title, description, priority, timeFrame, plannedDate, dueDate, tags }) => {
     const supabase = getSupabaseServerClient()
-    const {
-      data: { user },
-    } = await supabase.auth.getUser()
+    const { data: { user } } = await supabase.auth.getUser()
     if (!user) return { success: false, error: 'Not authenticated' }
 
     const { createTaskImpl } = await import('@/server/planner.server')
@@ -376,9 +320,6 @@ export const createTaskTool = tool({
   },
 })
 
-/**
- * Tool: Read/search planner tasks.
- */
 export const readTasksTool = tool({
   description:
     'Read or search tasks from the planner. Use when the user asks about their tasks, schedule, to-dos, or planner. Supports filtering by timeframe and planned date.',
@@ -389,9 +330,7 @@ export const readTasksTool = tool({
   }),
   execute: async ({ timeFrame, plannedDate, limit }) => {
     const supabase = getSupabaseServerClient()
-    const {
-      data: { user },
-    } = await supabase.auth.getUser()
+    const { data: { user } } = await supabase.auth.getUser()
     if (!user) return { success: false, error: 'Not authenticated', tasks: [] }
 
     let query = supabase
@@ -425,9 +364,6 @@ export const readTasksTool = tool({
   },
 })
 
-/**
- * All tools available to agents.
- */
 export const agentTools = {
   createLead: createLeadTool,
   createReminder: createReminderTool,

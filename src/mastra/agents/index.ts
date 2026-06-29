@@ -1,0 +1,6 @@
+export { propertyAgent } from './property-agent'
+export { insuranceAgent } from './insurance-agent'
+export { carDealerAgent } from './car-dealer-agent'
+export { travelAgent } from './travel-agent'
+export { salesAgent } from './sales-agent'
+export { legalAgent } from './legal-agent'
