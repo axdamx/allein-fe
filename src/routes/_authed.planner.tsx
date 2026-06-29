@@ -33,67 +33,71 @@ const PlannerPage = () => {
 
   return (
     <DashboardShell userEmail={user?.email} userName={user?.email?.split('@')[0]}>
-      <div className="mb-6">
-        <div className="flex items-center justify-between gap-3">
-          <div className="flex items-center gap-2">
-            <Calendar className="size-6 text-primary" />
-            <h1 className="text-2xl font-semibold tracking-tight">Planner</h1>
+      <div className="flex h-full flex-col">
+        <div className="shrink-0">
+          <div className="mb-6">
+            <div className="flex items-center justify-between gap-3">
+              <div className="flex items-center gap-2">
+                <Calendar className="size-6 text-primary" />
+                <h1 className="text-2xl font-semibold tracking-tight">Planner</h1>
+              </div>
+              <div className="flex items-center gap-2">
+                <GeneratePlanDialog timeFrame={timeFrame} />
+                <ImportCalendarDialog />
+                <AddTaskDialog timeFrame={timeFrame} />
+              </div>
+            </div>
+            <p className="text-sm text-muted-foreground">
+              Plan your tasks and generate AI-powered schedules.
+            </p>
           </div>
-          <div className="flex items-center gap-2">
-            <GeneratePlanDialog timeFrame={timeFrame} />
-            <ImportCalendarDialog />
-            <AddTaskDialog timeFrame={timeFrame} />
+
+          <div className="flex items-center justify-between gap-3">
+            {view === 'calendar' && (
+              <Tabs value={timeFrame} onValueChange={(v) => setTimeFrame(v as TimeFrame)}>
+                <TabsList>
+                  {TIME_FRAMES.map((tf) => (
+                    <TabsTrigger key={tf.value} value={tf.value}>
+                      {tf.label}
+                    </TabsTrigger>
+                  ))}
+                </TabsList>
+              </Tabs>
+            )}
+            {view === 'board' && <div />}
+
+            <div className="flex items-center rounded-lg border bg-muted/30 p-0.5">
+              <button
+                onClick={() => setView('board')}
+                className={cn(
+                  'inline-flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-xs font-medium transition-colors',
+                  view === 'board' ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground',
+                )}
+              >
+                <Columns3 className="size-3.5" />
+                Board
+              </button>
+              <button
+                onClick={() => setView('calendar')}
+                className={cn(
+                  'inline-flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-xs font-medium transition-colors',
+                  view === 'calendar' ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground',
+                )}
+              >
+                <CalendarDays className="size-3.5" />
+                Calendar
+              </button>
+            </div>
+          </div>
+
+          <div className="mt-4">
+            <RemindersPanel />
           </div>
         </div>
-        <p className="text-sm text-muted-foreground">
-          Plan your tasks and generate AI-powered schedules.
-        </p>
-      </div>
 
-      <div className="flex items-center justify-between gap-3">
-        {view === 'calendar' && (
-          <Tabs value={timeFrame} onValueChange={(v) => setTimeFrame(v as TimeFrame)}>
-            <TabsList>
-              {TIME_FRAMES.map((tf) => (
-                <TabsTrigger key={tf.value} value={tf.value}>
-                  {tf.label}
-                </TabsTrigger>
-              ))}
-            </TabsList>
-          </Tabs>
-        )}
-        {view === 'board' && <div />}
-
-        <div className="flex items-center rounded-lg border bg-muted/30 p-0.5">
-          <button
-            onClick={() => setView('board')}
-            className={cn(
-              'inline-flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-xs font-medium transition-colors',
-              view === 'board' ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground',
-            )}
-          >
-            <Columns3 className="size-3.5" />
-            Board
-          </button>
-          <button
-            onClick={() => setView('calendar')}
-            className={cn(
-              'inline-flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-xs font-medium transition-colors',
-              view === 'calendar' ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground',
-            )}
-          >
-            <CalendarDays className="size-3.5" />
-            Calendar
-          </button>
+        <div className="mt-4 min-h-0 flex-1 overflow-y-auto">
+          {view === 'board' ? <KanbanBoard /> : <CalendarView timeFrame={timeFrame} />}
         </div>
-      </div>
-
-      <div className="mt-4">
-        <RemindersPanel />
-      </div>
-
-      <div className="mt-4">
-        {view === 'board' ? <KanbanBoard /> : <CalendarView timeFrame={timeFrame} />}
       </div>
     </DashboardShell>
   )

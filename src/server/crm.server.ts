@@ -376,3 +376,65 @@ export async function updateReminderStatusImpl(
   if (error) return { error: error.message }
   return null
 }
+
+export async function sendReminderToWhatsAppImpl(
+  reminderId: string,
+): Promise<{ success: true; message: string } | { success: false; error: string }> {
+  const supabase = getSupabaseServerClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { success: false, error: 'Not authenticated' }
+
+  const { data: profile } = await supabase
+    .from('profiles')
+    .select('phone')
+    .eq('id', user.id)
+    .single()
+
+  if (!profile?.phone) {
+    return { success: false, error: 'No phone number on your profile. Add one in Settings.' }
+  }
+
+  const { data: reminder } = await supabase
+    .from('reminders')
+    .select('title, due_at')
+    .eq('id', reminderId)
+    .single()
+
+  if (!reminder) return { success: false, error: 'Reminder not found' }
+
+  const { sendWhatsApp } = await import('@/server/messaging')
+  const result = await sendWhatsApp(profile.phone, `Reminder: ${reminder.title} (due ${reminder.due_at})`)
+  if (!result.success) return result
+  return { success: true, message: 'Reminder sent to your WhatsApp' }
+}
+
+export async function sendReminderToTelegramImpl(
+  reminderId: string,
+): Promise<{ success: true; message: string } | { success: false; error: string }> {
+  const supabase = getSupabaseServerClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { success: false, error: 'Not authenticated' }
+
+  const { data: profile } = await supabase
+    .from('profiles')
+    .select('telegram_chat_id')
+    .eq('id', user.id)
+    .single()
+
+  if (!profile?.telegram_chat_id) {
+    return { success: false, error: 'Telegram not connected. Link it in Settings.' }
+  }
+
+  const { data: reminder } = await supabase
+    .from('reminders')
+    .select('title, due_at')
+    .eq('id', reminderId)
+    .single()
+
+  if (!reminder) return { success: false, error: 'Reminder not found' }
+
+  const { sendTelegram } = await import('@/server/messaging')
+  const result = await sendTelegram(profile.telegram_chat_id, `Reminder: ${reminder.title} (due ${reminder.due_at})`)
+  if (!result.success) return result
+  return { success: true, message: 'Reminder sent to your Telegram' }
+}

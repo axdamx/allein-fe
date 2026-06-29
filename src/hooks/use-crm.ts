@@ -12,6 +12,8 @@ import {
   getReminders,
   createReminder,
   updateReminderStatus,
+  sendReminderToWhatsApp,
+  sendReminderToTelegram,
   type LeadRow,
   type DealRow,
   type ReminderRow,
@@ -189,6 +191,34 @@ export const useUpdateReminderStatus = () => {
         return
       }
       qc.invalidateQueries({ queryKey: ['crm', 'reminders'] })
+    },
+  })
+}
+
+export const useSendReminderToWhatsApp = () => {
+  return useMutation({
+    mutationFn: (reminderId: string) =>
+      sendReminderToWhatsApp({ data: { reminderId } }),
+    onSuccess: (result) => {
+      if (!result.success) {
+        toast.error(result.error)
+        return
+      }
+      toast.success(result.message)
+    },
+  })
+}
+
+export const useSendReminderToTelegram = () => {
+  return useMutation({
+    mutationFn: (reminderId: string) =>
+      sendReminderToTelegram({ data: { reminderId } }),
+    onSuccess: (result) => {
+      if (!result.success) {
+        toast.error(result.error)
+        return
+      }
+      toast.success(result.message)
     },
   })
 }

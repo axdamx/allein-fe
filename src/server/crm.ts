@@ -106,6 +106,20 @@ export const updateReminderStatus = createServerFn({ method: 'POST' })
     return updateReminderStatusImpl(data.reminderId, data.status)
   })
 
+export const sendReminderToWhatsApp = createServerFn({ method: 'POST' })
+  .validator((d: { reminderId: string }) => d)
+  .handler(async ({ data }) => {
+    const { sendReminderToWhatsAppImpl } = await import('./crm.server')
+    return sendReminderToWhatsAppImpl(data.reminderId)
+  })
+
+export const sendReminderToTelegram = createServerFn({ method: 'POST' })
+  .validator((d: { reminderId: string }) => d)
+  .handler(async ({ data }) => {
+    const { sendReminderToTelegramImpl } = await import('./crm.server')
+    return sendReminderToTelegramImpl(data.reminderId)
+  })
+
 // Status/stage constants for UI dropdowns
 export const LEAD_STATUSES: { value: LeadStatus; label: string; color: string }[] = [
   { value: 'new', label: 'New', color: '#3b82f6' },
