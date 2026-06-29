@@ -6,22 +6,14 @@ import rehypeHighlight from "rehype-highlight";
 
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { cn } from "@/lib/utils";
+import { formatTime } from "@/components/chat/chat-utils";
 import type { MessageRow } from "@/hooks/use-chat";
 
-function formatTime(iso: string) {
-  const d = new Date(iso)
-  const now = new Date()
-  const sameDay = d.toDateString() === now.toDateString()
-  const time = d.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })
-  if (sameDay) return time
-  return d.toLocaleDateString([], { month: 'short', day: 'numeric' }) + ', ' + time
-}
-
-export function MessageBubble({
+export const MessageBubble = ({
   message,
 }: {
   message: MessageRow;
-}) {
+}) => {
   const isUser = message.role === "user";
 
   return (
@@ -71,7 +63,7 @@ export function MessageBubble({
   );
 }
 
-function MarkdownContent({ content }: { content: string }) {
+const MarkdownContent = ({ content }: { content: string }) => {
   return (
     <div className="prose prose-sm dark:prose-invert max-w-none break-words">
       <ReactMarkdown
@@ -109,7 +101,7 @@ function MarkdownContent({ content }: { content: string }) {
   );
 }
 
-function CodeBlock({ language, code }: { language: string; code: string }) {
+const CodeBlock = ({ language, code }: { language: string; code: string }) => {
   const [copied, setCopied] = useState(false);
 
   const handleCopy = useCallback(() => {
@@ -145,7 +137,7 @@ function CodeBlock({ language, code }: { language: string; code: string }) {
   );
 }
 
-export function StreamingBubble({ text }: { text: string }) {
+export const StreamingBubble = ({ text }: { text: string }) => {
   return (
     <div className="flex gap-3">
       <Avatar className="mt-1 size-8 shrink-0">

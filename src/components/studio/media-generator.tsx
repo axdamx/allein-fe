@@ -35,7 +35,7 @@ const ASPECT_RATIOS = [
   { value: '4:3', label: 'Classic (4:3)', dims: '1024×768' },
 ]
 
-export function MediaGenerator({
+export const MediaGenerator = ({
   mediaType,
   caption,
   onMediaGenerated,
@@ -45,7 +45,7 @@ export function MediaGenerator({
   caption: string
   /** Called with the media URL when generation completes */
   onMediaGenerated: (url: string, type: MediaType) => void
-}) {
+}) => {
   const { hasFeature, tier } = usePlan()
   const featureKey = mediaType === 'image' ? 'aiImageGen' : 'aiVideoGen'
   const hasAccess = hasFeature(featureKey)
@@ -62,13 +62,13 @@ export function MediaGenerator({
   const estimatedTime = mediaType === 'image' ? '~10s' : '~2-5 min'
 
   // Auto-derive prompt from caption
-  function derivePrompt() {
+  const derivePrompt = () => {
     if (!caption) return
     const derived = `Visual content for social media post: "${caption.slice(0, 200)}". Professional, eye-catching, high quality.`
     setPrompt(derived)
   }
 
-  async function handleGenerate() {
+  const handleGenerate = async () => {
     if (!hasAccess) {
       setUpgradeOpen(true)
       return
@@ -109,7 +109,7 @@ export function MediaGenerator({
     onMediaGenerated(placeholderUrl, mediaType)
   }
 
-  function handleRegenerate() {
+  const handleRegenerate = () => {
     setMediaUrl(null)
     setState('idle')
     setProgress(0)

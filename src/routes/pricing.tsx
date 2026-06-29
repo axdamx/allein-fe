@@ -14,14 +14,6 @@ import {
 } from '@/lib/plans'
 import { getProfile } from '@/server/settings'
 
-export const Route = createFileRoute('/pricing')({
-  beforeLoad: ({ context }) => {
-    // Pricing is public, but if not logged in we still allow viewing.
-    return { user: context.user }
-  },
-  component: PricingPage,
-})
-
 const ALL_FEATURES: { key: string; label: string }[] = [
   { key: 'agents', label: 'AI agents' },
   { key: 'crm', label: 'CRM pipeline' },
@@ -36,7 +28,7 @@ const ALL_FEATURES: { key: string; label: string }[] = [
   { key: 'prioritySupport', label: 'Priority support' },
 ]
 
-function PricingPage() {
+const PricingPage = () => {
   const user = Route.useRouteContext().user
   const { data: profile } = useQuery({
     queryKey: ['profile'],
@@ -203,13 +195,21 @@ function PricingPage() {
   )
 }
 
-function LimitRow({
+export const Route = createFileRoute('/pricing')({
+  beforeLoad: ({ context }) => {
+    // Pricing is public, but if not logged in we still allow viewing.
+    return { user: context.user }
+  },
+  component: PricingPage,
+})
+
+const LimitRow = ({
   label,
   value,
 }: {
   label: string
   value: number | null
-}) {
+}) => {
   return (
     <li className="flex items-center justify-between">
       <span className="text-muted-foreground">{label}</span>

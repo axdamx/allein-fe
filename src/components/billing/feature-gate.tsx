@@ -21,7 +21,7 @@ import type { FeatureKey, LimitMetric } from '@/lib/plans'
  *   <MarketingStudio />
  * </FeatureGate>
  */
-export function FeatureGate({
+export const FeatureGate = ({
   feature,
   children,
   fallback,
@@ -30,7 +30,7 @@ export function FeatureGate({
   children: ReactNode
   /** Optional custom fallback instead of the default locked card. */
   fallback?: ReactNode
-}) {
+}) => {
   const { hasFeature } = usePlan()
 
   if (hasFeature(feature)) {
@@ -86,7 +86,7 @@ const FEATURE_LABELS: Partial<Record<FeatureKey, string>> = {
  *   <NewAgentButton />
  * </UsageGate>
  */
-export function UsageGate({
+export const UsageGate = ({
   metric,
   currentCount,
   children,
@@ -97,7 +97,7 @@ export function UsageGate({
   currentCount?: number
   children: ReactNode
   fallback?: ReactNode
-}) {
+}) => {
   const { canDo, usage, config, tier } = usePlan()
   const [upgradeOpen, setUpgradeOpen] = useState(false)
 

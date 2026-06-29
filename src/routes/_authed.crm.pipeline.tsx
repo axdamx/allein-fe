@@ -20,11 +20,7 @@ import { DEAL_STAGES } from '@/server/crm'
 import type { DealRow, DealStage } from '@/server/crm'
 import { cn } from '@/lib/utils'
 
-export const Route = createFileRoute('/_authed/crm/pipeline')({
-  component: PipelinePage,
-})
-
-function PipelinePage() {
+const PipelinePage = () => {
   const { data: deals, isLoading } = useDeals()
 
   // Group deals by stage
@@ -116,7 +112,11 @@ function PipelinePage() {
   )
 }
 
-function DealCard({ deal }: { deal: DealRow }) {
+export const Route = createFileRoute('/_authed/crm/pipeline')({
+  component: PipelinePage,
+})
+
+const DealCard = ({ deal }: { deal: DealRow }) => {
   const updateStage = useUpdateDealStage()
   const stageInfo = DEAL_STAGES.find((s) => s.value === deal.stage)
 

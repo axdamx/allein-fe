@@ -11,7 +11,7 @@ import {
   useMotionValueEvent,
 } from 'framer-motion'
 
-function Disc({ progressRef }: { progressRef: React.RefObject<number | null> }) {
+const Disc = ({ progressRef }: { progressRef: React.RefObject<number | null> }) => {
   const ref = useRef<THREE.Mesh>(null)
   const { viewport } = useThree()
 
@@ -45,7 +45,7 @@ function Disc({ progressRef }: { progressRef: React.RefObject<number | null> }) 
   )
 }
 
-function Scene({ progressRef }: { progressRef: React.RefObject<number | null> }) {
+const Scene = ({ progressRef }: { progressRef: React.RefObject<number | null> }) => {
   return (
     <>
       <ambientLight intensity={0.5} />
@@ -56,7 +56,7 @@ function Scene({ progressRef }: { progressRef: React.RefObject<number | null> })
   )
 }
 
-export function ChromeDiscScene({ visible }: { visible: boolean }) {
+export const ChromeDiscScene = ({ visible }: { visible: boolean }) => {
   const { scrollY } = useScroll()
   const scrollProgress = useTransform(scrollY, [0, 3000], [0, 1])
   const progressRef = useRef<number | null>(0)

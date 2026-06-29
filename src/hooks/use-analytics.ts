@@ -4,7 +4,7 @@ import {
   type AnalyticsTrends,
 } from '@/server/analytics'
 
-export function useAnalyticsTrends() {
+export const useAnalyticsTrends = () => {
   return useQuery({
     queryKey: ['analytics-trends'],
     queryFn: () => getAnalyticsTrends(),

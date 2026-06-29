@@ -22,11 +22,7 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { useAgents, useAgentTypes, useUpdateAgentStatus } from '@/hooks/use-agents'
 import { getLucideIcon } from '@/lib/icons'
 
-export const Route = createFileRoute('/_authed/agents')({
-  component: AgentsPage,
-})
-
-function AgentsPage() {
+const AgentsPage = () => {
   const { user } = Route.useRouteContext()
   const { data: agents, isLoading } = useAgents()
   const { data: agentTypes } = useAgentTypes()
@@ -177,3 +173,7 @@ function AgentsPage() {
     </DashboardShell>
   )
 }
+
+export const Route = createFileRoute('/_authed/agents')({
+  component: AgentsPage,
+})

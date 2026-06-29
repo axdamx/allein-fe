@@ -30,7 +30,7 @@ const METRIC_LABELS: Record<LimitMetric, { singular: string; plural: string }> =
  *
  * The banner is dismissible per-session (stored in component state).
  */
-export function UsageLimitBanner({
+export const UsageLimitBanner = ({
   metric,
   /** Threshold percentage (0–100) at which to show the warning. Default 80. */
   threshold = 80,
@@ -39,7 +39,7 @@ export function UsageLimitBanner({
   metric?: LimitMetric
   threshold?: number
   className?: string
-}) {
+}) => {
   const { percentUsed, usage, config, tier } = usePlan()
   const [dismissed, setDismissed] = useState(false)
   const [upgradeOpen, setUpgradeOpen] = useState(false)

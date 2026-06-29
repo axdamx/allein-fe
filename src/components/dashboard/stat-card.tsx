@@ -10,7 +10,7 @@ import { cn } from '@/lib/utils'
 import { motion } from '@/lib/animations'
 import type { Stat } from '@/lib/types'
 
-export function StatCard({ stat, index = 0 }: { stat: Stat; index?: number }) {
+export const StatCard = ({ stat, index = 0 }: { stat: Stat; index?: number }) => {
   const Icon = stat.icon
   const positive = stat.trend === 'up'
 

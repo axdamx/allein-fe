@@ -11,7 +11,7 @@ import {
 } from '@/server/agents'
 
 /** Fetch the agent type catalog. */
-export function useAgentTypes() {
+export const useAgentTypes = () => {
   return useQuery({
     queryKey: ['agent-types'],
     queryFn: () => getAgentTypes(),
@@ -20,7 +20,7 @@ export function useAgentTypes() {
 }
 
 /** Fetch the current user's agents. */
-export function useAgents() {
+export const useAgents = () => {
   return useQuery({
     queryKey: ['agents'],
     queryFn: () => getAgents(),
@@ -29,7 +29,7 @@ export function useAgents() {
 }
 
 /** Create a new agent. Invalidates the agents + plan queries on success. */
-export function useCreateAgent() {
+export const useCreateAgent = () => {
   const qc = useQueryClient()
   return useMutation({
     mutationFn: (input: CreateAgentInput) => createAgent({ data: input }),
@@ -51,7 +51,7 @@ export function useCreateAgent() {
 }
 
 /** Update an agent's status (pause/resume/archive). */
-export function useUpdateAgentStatus() {
+export const useUpdateAgentStatus = () => {
   const qc = useQueryClient()
   return useMutation({
     mutationFn: (vars: { agentId: string; status: AgentRow['status'] }) =>

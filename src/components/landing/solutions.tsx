@@ -27,7 +27,7 @@ const SOLUTIONS = [
   },
 ]
 
-function FlowchartGraphic() {
+const FlowchartGraphic = () => {
   return (
     <svg
       viewBox="0 0 200 80"
@@ -53,7 +53,7 @@ function FlowchartGraphic() {
   )
 }
 
-function DashboardGraphic() {
+const DashboardGraphic = () => {
   return (
     <div className="flex h-20 w-full items-center gap-3 rounded-lg border border-white/10 bg-white/5 p-4">
       <div className="h-6 w-48 rounded-full bg-white/10" />
@@ -73,7 +73,7 @@ function DashboardGraphic() {
   )
 }
 
-export function Solutions() {
+export const Solutions = () => {
   const sectionRef = useRef<HTMLElement>(null)
   const isInView = useInView(sectionRef, { once: true, margin: '-100px' })
 

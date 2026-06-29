@@ -11,7 +11,7 @@ import type { PlanTier, LimitMetric, FeatureKey } from '@/lib/plans'
  *
  * Returns `null` for plan/usage when not authenticated.
  */
-export function usePlan() {
+export const usePlan = () => {
   const query = useQuery({
     queryKey: ['plan-state'],
     queryFn: () => getPlanState(),

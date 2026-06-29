@@ -13,7 +13,7 @@ import {
   type UpdatePostInput,
 } from '@/server/marketing'
 
-export function usePosts() {
+export const usePosts = () => {
   return useQuery({
     queryKey: ['marketing', 'posts'],
     queryFn: () => getPosts(),
@@ -21,7 +21,7 @@ export function usePosts() {
   })
 }
 
-export function useGeneratePost() {
+export const useGeneratePost = () => {
   return useMutation({
     mutationFn: (input: {
       prompt: string
@@ -36,7 +36,7 @@ export function useGeneratePost() {
   })
 }
 
-export function useCreatePost() {
+export const useCreatePost = () => {
   const qc = useQueryClient()
   return useMutation({
     mutationFn: (input: CreatePostInput) => createPost({ data: input }),
@@ -52,7 +52,7 @@ export function useCreatePost() {
   })
 }
 
-export function useUpdatePost() {
+export const useUpdatePost = () => {
   const qc = useQueryClient()
   return useMutation({
     mutationFn: (input: UpdatePostInput) => updatePost({ data: input }),
@@ -66,7 +66,7 @@ export function useUpdatePost() {
   })
 }
 
-export function useDeletePost() {
+export const useDeletePost = () => {
   const qc = useQueryClient()
   return useMutation({
     mutationFn: (id: string) => deletePost({ data: { id } }),

@@ -14,7 +14,7 @@ env.allowLocalModels = false
 // Singleton — the model loads once and is reused across all requests
 let embedderPromise: Promise<any> | null = null
 
-async function getEmbedder() {
+const getEmbedder = async () => {
   if (!embedderPromise) {
     embedderPromise = pipeline(
       'feature-extraction',
@@ -29,7 +29,7 @@ async function getEmbedder() {
  * Generate a 384-dim embedding vector for a piece of text.
  * Uses mean pooling over token embeddings (standard for MiniLM).
  */
-export async function embed(text: string): Promise<number[]> {
+export const embed = async (text: string): Promise<number[]> => {
   const embedder = await getEmbedder()
   // pooling: 'mean' averages all token vectors into one sentence vector
   // normalize: true ensures cosine similarity works well
@@ -40,7 +40,7 @@ export async function embed(text: string): Promise<number[]> {
 /**
  * Batch-embed multiple texts (more efficient for document chunking).
  */
-export async function embedBatch(texts: string[]): Promise<number[][]> {
+export const embedBatch = async (texts: string[]): Promise<number[][]> => {
   const embedder = await getEmbedder()
   const output = await embedder(texts, { pooling: 'mean', normalize: true })
   // output.data is a flat Float32Array: [dim0_text0, dim1_text0, ..., dim0_text1, ...]

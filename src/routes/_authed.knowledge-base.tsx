@@ -25,11 +25,7 @@ import { useDocuments, useUploadDocument, useDeleteDocument } from '@/hooks/use-
 import { cn } from '@/lib/utils'
 import { motion } from '@/lib/animations'
 
-export const Route = createFileRoute('/_authed/knowledge-base')({
-  component: KnowledgeBasePage,
-})
-
-function KnowledgeBasePage() {
+const KnowledgeBasePage = () => {
   const { user } = Route.useRouteContext()
   const { data: documents, isLoading } = useDocuments()
   const uploadDoc = useUploadDocument()
@@ -37,7 +33,7 @@ function KnowledgeBasePage() {
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [uploading, setUploading] = useState(false)
 
-  async function handleFileSelect(e: React.ChangeEvent<HTMLInputElement>) {
+  const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files
     if (!files || files.length === 0) return
 
@@ -320,7 +316,11 @@ function KnowledgeBasePage() {
   )
 }
 
-function StatusBadge({ status }: { status: string }) {
+export const Route = createFileRoute('/_authed/knowledge-base')({
+  component: KnowledgeBasePage,
+})
+
+const StatusBadge = ({ status }: { status: string }) => {
   const config: Record<
     string,
     { icon: typeof CheckCircle2; className: string }
@@ -354,7 +354,7 @@ function StatusBadge({ status }: { status: string }) {
   )
 }
 
-function formatBytes(bytes: number): string {
+const formatBytes = (bytes: number): string => {
   if (bytes === 0) return '0 B'
   const k = 1024
   const sizes = ['B', 'KB', 'MB', 'GB']
@@ -373,13 +373,13 @@ const PIPELINE_STEPS = [
   { status: 'storing', label: 'Storing vectors', percent: 90 },
 ] as const
 
-function ProcessingProgress({
+const ProcessingProgress = ({
   status,
   chunkCount,
 }: {
   status: string
   chunkCount: number
-}) {
+}) => {
   const step = PIPELINE_STEPS.find((s) => s.status === status)
   const percent = step?.percent ?? 5
   const label = step?.label ?? 'Starting…'

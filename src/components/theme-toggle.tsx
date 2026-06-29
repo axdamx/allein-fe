@@ -4,7 +4,7 @@ import { useTheme } from 'next-themes'
 import { Button } from '@/components/ui/button'
 import { motion, AnimatePresence } from '@/lib/animations'
 
-export function ThemeToggle() {
+export const ThemeToggle = () => {
   const { setTheme, resolvedTheme } = useTheme()
   const isDark = resolvedTheme === 'dark'
 

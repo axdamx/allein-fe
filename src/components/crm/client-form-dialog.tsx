@@ -43,7 +43,7 @@ interface Props {
   client?: ClientRow | null
 }
 
-export function ClientFormDialog({ open, onOpenChange, client }: Props) {
+export const ClientFormDialog = ({ open, onOpenChange, client }: Props) => {
   const createClient = useCreateClient()
   const updateClient = useUpdateClient()
   const isEditing = !!client
@@ -57,7 +57,7 @@ export function ClientFormDialog({ open, onOpenChange, client }: Props) {
   const [status, setStatus] = useState<ClientStatus>(client?.status ?? 'active')
   const [notes, setNotes] = useState(client?.notes ?? '')
 
-  function reset() {
+  const reset = () => {
     setName('')
     setEmail('')
     setPhone('')
@@ -68,7 +68,7 @@ export function ClientFormDialog({ open, onOpenChange, client }: Props) {
     setNotes('')
   }
 
-  function handleSubmit(e: React.FormEvent) {
+  const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
     const payload = {
       name,

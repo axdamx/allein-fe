@@ -15,7 +15,7 @@ import { GoalModal } from './goals-modal'
 import { cn } from '@/lib/utils'
 import { AnimatePresence, motion } from '@/lib/animations'
 
-export function GoalsFab() {
+export const GoalsFab = () => {
   const { data: goals, isLoading } = useFinancialGoals()
   const navigate = useNavigate()
   const [modalOpen, setModalOpen] = useState(false)

@@ -11,7 +11,7 @@ import { PLAN_CONFIGS } from '@/lib/plans'
 import { showUsageWarning } from '@/lib/usage-warnings'
 import type { PlanState } from '@/server/profile'
 
-export function useDocuments(agentId?: string, clientId?: string) {
+export const useDocuments = (agentId?: string, clientId?: string) => {
   return useQuery({
     queryKey: ['documents', agentId, clientId],
     queryFn: () => getDocuments({ data: { agentId, clientId } }),
@@ -32,7 +32,7 @@ export function useDocuments(agentId?: string, clientId?: string) {
   })
 }
 
-export function useUploadDocument() {
+export const useUploadDocument = () => {
   const qc = useQueryClient()
   return useMutation({
     mutationFn: (input: {
@@ -75,7 +75,7 @@ export function useUploadDocument() {
   })
 }
 
-export function useDocumentUrl(documentId: string | null) {
+export const useDocumentUrl = (documentId: string | null) => {
   return useQuery({
     queryKey: ['documents', 'url', documentId],
     queryFn: () => getDocumentUrl({ data: { documentId: documentId! } }),
@@ -84,7 +84,7 @@ export function useDocumentUrl(documentId: string | null) {
   })
 }
 
-export function useDeleteDocument() {
+export const useDeleteDocument = () => {
   const qc = useQueryClient()
   return useMutation({
     mutationFn: (documentId: string) =>

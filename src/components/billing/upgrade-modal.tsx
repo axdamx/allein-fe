@@ -58,12 +58,12 @@ const FEATURE_LABELS: Record<FeatureKey, string> = {
   telegramBot: 'Telegram bot',
 }
 
-export function UpgradeModal({
+export const UpgradeModal = ({
   open,
   onOpenChange,
   currentTier,
   reason = { kind: 'general' },
-}: UpgradeModalProps) {
+}: UpgradeModalProps) => {
   // Only show tiers higher than the current one.
   const upgradeOptions = PLAN_ORDER.filter((t) => isHigherTier(currentTier, t))
 
@@ -167,11 +167,9 @@ export function UpgradeModal({
   )
 }
 
-function LimitRow({ label, value }: { label: string; value: number | null }) {
-  return (
-    <li className="flex items-center justify-between">
-      <span className="text-muted-foreground">{label}</span>
-      <span className="font-medium">{value === null ? '∞' : value}</span>
-    </li>
-  )
-}
+const LimitRow = ({ label, value }: { label: string; value: number | null }) => (
+  <li className="flex items-center justify-between">
+    <span className="text-muted-foreground">{label}</span>
+    <span className="font-medium">{value === null ? '∞' : value}</span>
+  </li>
+)

@@ -3,16 +3,7 @@ import { createFileRoute, redirect } from '@tanstack/react-router'
 import { AuthForm } from '@/components/auth/auth-form'
 import { Brand } from '@/components/brand'
 
-export const Route = createFileRoute('/login')({
-  beforeLoad: ({ context }) => {
-    if (context.user) {
-      throw redirect({ to: '/dashboard' })
-    }
-  },
-  component: LoginPage,
-})
-
-function LoginPage() {
+const LoginPage = () => {
   return (
     <div className="flex min-h-svh">
       {/* Left: animated brand panel */}
@@ -58,3 +49,12 @@ function LoginPage() {
     </div>
   )
 }
+
+export const Route = createFileRoute('/login')({
+  beforeLoad: ({ context }) => {
+    if (context.user) {
+      throw redirect({ to: '/dashboard' })
+    }
+  },
+  component: LoginPage,
+})

@@ -12,7 +12,7 @@ const LABELS: Record<LimitMetric, string> = {
   telegramMessages: 'Telegram messages',
 }
 
-export function showUsageWarning({
+export const showUsageWarning = ({
   metric,
   percentUsed,
   remaining,
@@ -22,7 +22,7 @@ export function showUsageWarning({
   percentUsed: number
   remaining: number | null
   tier: string
-}) {
+}) => {
   if (remaining === null || remaining < 0) return
 
   const label = LABELS[metric]

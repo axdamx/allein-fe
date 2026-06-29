@@ -51,7 +51,7 @@ const PLANS = [
   },
 ]
 
-export function PricingSection() {
+export const PricingSection = () => {
   return (
     <section id="pricing" className="bg-white px-6 py-24 md:py-32">
       <div className="mx-auto max-w-6xl text-center">

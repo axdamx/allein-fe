@@ -1,14 +1,16 @@
 import { useState } from 'react'
-import { ArrowRight, Bot, CalendarDays, Check, FileText, MessageSquare, Plus, TrendingUp, Users } from 'lucide-react'
+import { Bot, FileText, MessageSquare, Plus, TrendingUp, Users } from 'lucide-react'
 import { createFileRoute, Link } from '@tanstack/react-router'
-import { isPast, parseISO } from 'date-fns'
 
 import { StatCard } from '@/components/dashboard/stat-card'
+import { TodaysBox } from '@/components/dashboard/todays-box'
+import { OverviewRow } from '@/components/dashboard/overview-row'
+import { EmptyAgents } from '@/components/dashboard/empty-agents'
+import { getGreeting, formatNumber, formatCurrency } from '@/components/dashboard/dashboard-utils'
 import { UsageLimitBanner } from '@/components/billing/usage-limit-banner'
 import { NewAgentModal } from '@/components/agents/new-agent-modal'
 import { GoalsDashboardCard } from '@/components/goals/goals-dashboard-card'
 import { DashboardShell } from '@/components/layout/dashboard-shell'
-import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import {
   Card,
@@ -20,16 +22,10 @@ import {
 import { Skeleton } from '@/components/ui/skeleton'
 import { useDashboardStats } from '@/hooks/use-dashboard'
 import { useAgents } from '@/hooks/use-agents'
-import { useTodaysLeads, useUpdateLead } from '@/hooks/use-crm'
 import { motion } from '@/lib/animations'
-import { cn } from '@/lib/utils'
 import type { Stat } from '@/lib/types'
 
-export const Route = createFileRoute('/_authed/dashboard')({
-  component: DashboardPage,
-})
-
-function DashboardPage() {
+const DashboardPage = () => {
   const { user } = Route.useRouteContext()
   const { data: stats, isLoading: statsLoading } = useDashboardStats()
   const { data: agents, isLoading: agentsLoading } = useAgents()
@@ -228,158 +224,6 @@ function DashboardPage() {
   )
 }
 
-function TodaysBox() {
-  const { data: todaysLeads, isLoading } = useTodaysLeads()
-  const updateLead = useUpdateLead()
-
-  if (isLoading) {
-    return (
-      <div className="mt-4">
-        <Card>
-          <CardHeader className="pb-3">
-            <Skeleton className="h-5 w-32" />
-          </CardHeader>
-          <CardContent>
-            <Skeleton className="h-12 w-full" />
-          </CardContent>
-        </Card>
-      </div>
-    )
-  }
-
-  if (!todaysLeads || todaysLeads.length === 0) return null
-
-  return (
-    <motion.div
-      initial={{ opacity: 0, y: 16 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1], delay: 0.15 }}
-      className="mt-4"
-    >
-      <Card className="border-primary/20">
-        <CardHeader className="flex flex-row items-center justify-between pb-3">
-          <div>
-            <CardTitle className="flex items-center gap-2 text-base">
-              <CalendarDays className="size-4 text-primary" />
-              Today's Box
-            </CardTitle>
-            <CardDescription>
-              {todaysLeads.length} card{todaysLeads.length === 1 ? '' : 's'} in today's slot
-            </CardDescription>
-          </div>
-          <Button variant="ghost" size="sm" asChild>
-            <Link to="/crm/leads">
-              View all <ArrowRight className="ml-1 size-3" />
-            </Link>
-          </Button>
-        </CardHeader>
-        <CardContent className="pb-3 pt-0">
-          <div className="space-y-1">
-            {todaysLeads.slice(0, 5).map((lead) => {
-              const isOverdue = lead.scheduled_date && isPast(parseISO(lead.scheduled_date)) && lead.scheduled_date !== new Date().toISOString().split('T')[0]
-              return (
-                <div
-                  key={lead.id}
-                  className={cn(
-                    'flex items-center justify-between rounded-md px-2 py-1.5 hover:bg-muted/50',
-                    isOverdue && 'border-l-2 border-red-400 pl-[6px]',
-                  )}
-                >
-                  <div className="flex min-w-0 flex-1 items-center gap-2">
-                    <Link
-                      to="/crm/leads/$leadId"
-                      params={{ leadId: lead.id }}
-                      className="truncate text-sm font-medium hover:underline"
-                    >
-                      {lead.name}
-                    </Link>
-                    <span className="text-xs text-muted-foreground">
-                      {lead.company && `· ${lead.company}`}
-                    </span>
-                  </div>
-                  <div className="flex items-center gap-2 shrink-0">
-                    <Badge variant="outline" className="text-[10px] capitalize">
-                      {lead.status}
-                    </Badge>
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      className="h-7 px-2 text-xs"
-                      onClick={() =>
-                        updateLead.mutate({
-                          id: lead.id,
-                          scheduled_date: null,
-                        })
-                      }
-                    >
-                      <Check className="size-3" /> Done
-                    </Button>
-                  </div>
-                </div>
-              )
-            })}
-          </div>
-        </CardContent>
-      </Card>
-    </motion.div>
-  )
-}
-
-function OverviewRow({
-  icon,
-  label,
-  value,
-}: {
-  icon: React.ReactNode
-  label: string
-  value: string
-}) {
-  return (
-    <div className="flex items-center justify-between">
-      <div className="flex items-center gap-2 text-sm text-muted-foreground">
-        {icon}
-        {label}
-      </div>
-      <span className="font-medium">{value}</span>
-    </div>
-  )
-}
-
-function EmptyAgents({ onCreate }: { onCreate: () => void }) {
-  return (
-    <div className="flex flex-col items-center justify-center gap-3 py-8 text-center">
-      <div className="flex size-12 items-center justify-center rounded-full bg-muted">
-        <Bot className="size-5 text-muted-foreground" />
-      </div>
-      <div>
-        <p className="text-sm font-medium">No agents yet</p>
-        <p className="text-xs text-muted-foreground">
-          Create your first AI agent to get started.
-        </p>
-      </div>
-      <Button size="sm" onClick={onCreate}>
-        <Plus className="size-4" /> Create agent
-      </Button>
-    </div>
-  )
-}
-
-function getGreeting() {
-  const h = new Date().getHours()
-  if (h < 12) return 'Good morning'
-  if (h < 18) return 'Good afternoon'
-  return 'Good evening'
-}
-
-function formatNumber(n: number): string {
-  if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`
-  if (n >= 1_000) return `${(n / 1_000).toFixed(1)}K`
-  return String(n)
-}
-
-function formatCurrency(n: number): string {
-  if (n === 0) return '$0'
-  if (n >= 1_000_000) return `$${(n / 1_000_000).toFixed(1)}M`
-  if (n >= 1_000) return `$${(n / 1_000).toFixed(1)}K`
-  return `$${n}`
-}
+export const Route = createFileRoute('/_authed/dashboard')({
+  component: DashboardPage,
+})

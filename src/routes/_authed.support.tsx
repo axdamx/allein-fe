@@ -11,11 +11,7 @@ import {
 } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 
-export const Route = createFileRoute('/_authed/support')({
-  component: SupportPage,
-})
-
-function SupportPage() {
+const SupportPage = () => {
   const { user } = Route.useRouteContext()
 
   return (
@@ -119,3 +115,7 @@ function SupportPage() {
     </DashboardShell>
   )
 }
+
+export const Route = createFileRoute('/_authed/support')({
+  component: SupportPage,
+})

@@ -6,13 +6,13 @@ import { PLAN_CONFIGS, type PlanTier } from '@/lib/plans'
  * Small badge showing the user's current plan tier.
  * Uses the tier's accent color.
  */
-export function PlanBadge({
+export const PlanBadge = ({
   tier,
   className,
 }: {
   tier: PlanTier
   className?: string
-}) {
+}) => {
   const config = PLAN_CONFIGS[tier]
   return (
     <Badge

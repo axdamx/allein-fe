@@ -16,7 +16,7 @@ interface Props {
   placeholder?: string
 }
 
-export function ChatInput({
+export const ChatInput = ({
   input,
   onInputChange,
   onSubmit,
@@ -25,7 +25,7 @@ export function ChatInput({
   isCreatingConversation,
   disabled,
   placeholder = 'Type your message…',
-}: Props) {
+}: Props) => {
   const textareaRef = useRef<HTMLTextAreaElement>(null)
 
   useEffect(() => {
@@ -36,7 +36,7 @@ export function ChatInput({
     }
   }, [input])
 
-  function handleKeyDown(e: React.KeyboardEvent) {
+  const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault()
       if (input.trim() && !isStreaming && !disabled) {

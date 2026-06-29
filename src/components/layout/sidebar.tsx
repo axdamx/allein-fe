@@ -47,11 +47,10 @@ const footerNav: NavItem[] = [
 ];
 
 /** Determine if a nav item matches the current path. */
-function isActive(currentPath: string, to: string): boolean {
-  return currentPath === to || currentPath.startsWith(`${to}/`);
-}
+const isActive = (currentPath: string, to: string): boolean =>
+  currentPath === to || currentPath.startsWith(`${to}/`)
 
-export function Sidebar({
+export const Sidebar = ({
   userEmail,
   userName,
   userPlan = "free",
@@ -68,7 +67,7 @@ export function Sidebar({
     icon: string | null;
     accent_color: string;
   } | null;
-}) {
+}) => {
   const displayName =
     userName ?? (userEmail ? userEmail.split("@")[0] : "Guest");
   const initials = displayName.slice(0, 2).toUpperCase();
@@ -146,7 +145,7 @@ export function Sidebar({
   );
 }
 
-function NavLink({ item, active }: { item: NavItem; active?: boolean }) {
+const NavLink = ({ item, active }: { item: NavItem; active?: boolean }) => {
   const Icon = item.icon;
   return (
     <Link

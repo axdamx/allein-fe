@@ -18,13 +18,13 @@ interface Props {
   onOpenChange: (open: boolean) => void
 }
 
-export function DocumentPreviewDialog({
+export const DocumentPreviewDialog = ({
   documentId,
   fileName,
   mimeType,
   open,
   onOpenChange,
-}: Props) {
+}: Props) => {
   const { data: urlData, isLoading } = useDocumentUrl(open ? documentId : null)
   const signedUrl =
     urlData && !('error' in urlData) ? urlData.signed_url : null
@@ -75,7 +75,7 @@ export function DocumentPreviewDialog({
   )
 }
 
-function PreviewContent({
+const PreviewContent = ({
   signedUrl,
   mimeType,
   fileName,
@@ -83,7 +83,7 @@ function PreviewContent({
   signedUrl: string
   mimeType: string
   fileName: string
-}) {
+}) => {
   if (mimeType.startsWith('image/')) {
     return (
       <div className="flex items-center justify-center h-full">
@@ -127,12 +127,12 @@ function PreviewContent({
   )
 }
 
-function TextPreview({
+const TextPreview = ({
   signedUrl,
 }: {
   signedUrl: string
   fileName: string
-}) {
+}) => {
   const [text, setText] = useState<string | null>(null)
   const [error, setError] = useState(false)
 

@@ -16,14 +16,14 @@ import {
   MoreHorizontal,
   Plus,
   Search,
-  Users,
 } from 'lucide-react'
 import { formatDistanceToNow } from 'date-fns'
 import { createFileRoute, Link } from '@tanstack/react-router'
 
 import { ClientFormDialog } from '@/components/crm/client-form-dialog'
+import { StatusBadge } from '@/components/crm/client-status-badge'
+import { EmptyClients } from '@/components/crm/empty-clients'
 import { Button } from '@/components/ui/button'
-import { Badge } from '@/components/ui/badge'
 import {
   Card,
   CardContent,
@@ -47,16 +47,11 @@ import {
 } from '@/components/ui/table'
 import { useClients, useDeleteClient } from '@/hooks/use-clients'
 import type { ClientRow, ClientStatus } from '@/server/clients'
-import { CLIENT_STATUSES } from '@/server/clients'
 import { cn } from '@/lib/utils'
-
-export const Route = createFileRoute('/_authed/crm/clients/')({
-  component: ClientsPage,
-})
 
 const PAGE_SIZE = 20
 
-function ClientsPage() {
+const ClientsPage = () => {
   const [page, setPage] = useState(1)
   const [search, setSearch] = useState('')
   const debounceRef = useRef<ReturnType<typeof setTimeout>>(undefined)
@@ -186,7 +181,7 @@ function ClientsPage() {
     getFilteredRowModel: getFilteredRowModel(),
   })
 
-  function handleNewClient() {
+  const handleNewClient = () => {
     setEditingClient(null)
     setFormOpen(true)
   }
@@ -316,39 +311,6 @@ function ClientsPage() {
   )
 }
 
-function StatusBadge({ status }: { status: ClientStatus }) {
-  const cfg = CLIENT_STATUSES.find((s) => s.value === status)
-  if (!cfg) return null
-  return (
-    <Badge
-      className="text-xs"
-      style={{
-        backgroundColor: cfg.color + '20',
-        color: cfg.color,
-        borderColor: cfg.color + '40',
-      }}
-      variant="outline"
-    >
-      {cfg.label}
-    </Badge>
-  )
-}
-
-function EmptyClients({ onCreate }: { onCreate: () => void }) {
-  return (
-    <div className="flex flex-col items-center justify-center gap-3 py-16 text-center">
-      <div className="flex size-12 items-center justify-center rounded-full bg-muted">
-        <Users className="size-5 text-muted-foreground" />
-      </div>
-      <div>
-        <p className="font-medium">No clients yet</p>
-        <p className="text-sm text-muted-foreground">
-          Add your first client to start managing your customer database.
-        </p>
-      </div>
-      <Button onClick={onCreate}>
-        <Plus className="size-4" /> Add client
-      </Button>
-    </div>
-  )
-}
+export const Route = createFileRoute('/_authed/crm/clients/')({
+  component: ClientsPage,
+})

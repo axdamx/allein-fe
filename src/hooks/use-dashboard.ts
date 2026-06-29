@@ -7,7 +7,7 @@ import {
 } from '@/server/dashboard'
 
 /** Aggregated dashboard numbers for stat cards. */
-export function useDashboardStats() {
+export const useDashboardStats = () => {
   return useQuery({
     queryKey: ['dashboard-stats'],
     queryFn: () => getDashboardStats(),
@@ -16,7 +16,7 @@ export function useDashboardStats() {
 }
 
 /** Recent cross-entity activity for the dashboard feed. */
-export function useRecentActivity() {
+export const useRecentActivity = () => {
   return useQuery({
     queryKey: ['recent-activity'],
     queryFn: () => getRecentActivity(),

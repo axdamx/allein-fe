@@ -13,7 +13,7 @@ const NAV_LINKS = [
   { label: 'Pricing', href: '#pricing' },
 ]
 
-export function Navbar() {
+export const Navbar = () => {
   const [isWhite, setIsWhite] = useState(false)
   const [mobileOpen, setMobileOpen] = useState(false)
 

@@ -13,30 +13,21 @@ import {
   ArrowUp,
   Calendar,
   CalendarDays,
-  ChevronDown,
-  MoreHorizontal,
   Plus,
   Search,
-  Users,
 } from 'lucide-react'
 import { format, formatDistanceToNow, isToday, isPast, parseISO } from 'date-fns'
 import { createFileRoute, Link } from '@tanstack/react-router'
 
-import { LeadStatusBadge } from '@/components/crm/lead-status-badge'
 import { NewLeadDialog } from '@/components/crm/new-lead-dialog'
+import { StatusCell } from '@/components/crm/leads-status-cell'
+import { ActionsCell } from '@/components/crm/leads-actions-cell'
+import { EmptyLeads } from '@/components/crm/empty-leads'
 import { Button } from '@/components/ui/button'
 import {
   Card,
   CardContent,
 } from '@/components/ui/card'
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu'
 import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -48,20 +39,13 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
-import { useLeads, useUpdateLead, useDeleteLead } from '@/hooks/use-crm'
-import type { LeadRow, LeadStatus } from '@/server/crm'
-import { LEAD_STATUSES } from '@/server/crm'
+import { useLeads } from '@/hooks/use-crm'
+import type { LeadRow } from '@/server/crm'
 import { cn } from '@/lib/utils'
 
-export const Route = createFileRoute('/_authed/crm/leads/')({
-  component: LeadsPage,
-})
+export type FilterMode = 'all' | 'today'
 
-const STATUS_OPTIONS = LEAD_STATUSES
-
-type FilterMode = 'all' | 'today'
-
-function LeadsPage() {
+const LeadsPage = () => {
   const { data: leads, isLoading } = useLeads()
   const [newLeadOpen, setNewLeadOpen] = useState(false)
   const [sorting, setSorting] = useState<SortingState>([])
@@ -333,111 +317,8 @@ function LeadsPage() {
   )
 }
 
-function StatusCell({ lead }: { lead: LeadRow }) {
-  const updateLead = useUpdateLead()
-  return (
-    <DropdownMenu>
-      <DropdownMenuTrigger asChild>
-        <button className="inline-flex">
-          <LeadStatusBadge status={lead.status} />
-          <ChevronDown className="ml-1 size-3 text-muted-foreground" />
-        </button>
-      </DropdownMenuTrigger>
-      <DropdownMenuContent>
-        {STATUS_OPTIONS.map((opt) => (
-          <DropdownMenuItem
-            key={opt.value}
-            onClick={() =>
-              updateLead.mutate({ id: lead.id, status: opt.value })
-            }
-          >
-            <LeadStatusBadge status={opt.value} />
-          </DropdownMenuItem>
-        ))}
-      </DropdownMenuContent>
-    </DropdownMenu>
-  )
-}
+export const Route = createFileRoute('/_authed/crm/leads/')({
+  component: LeadsPage,
+})
 
-function ActionsCell({ lead }: { lead: LeadRow }) {
-  const deleteLead = useDeleteLead()
-  const updateLead = useUpdateLead()
-  const todayStr = new Date().toISOString().split('T')[0]
-  const isScheduledToday = lead.scheduled_date === todayStr
-
-  return (
-    <DropdownMenu>
-      <DropdownMenuTrigger asChild>
-        <Button variant="ghost" size="icon" className="size-8">
-          <MoreHorizontal className="size-4" />
-        </Button>
-      </DropdownMenuTrigger>
-      <DropdownMenuContent align="end">
-        <DropdownMenuLabel>Actions</DropdownMenuLabel>
-        <DropdownMenuItem asChild>
-          <Link to="/crm/leads/$leadId" params={{ leadId: lead.id }}>
-            View details
-          </Link>
-        </DropdownMenuItem>
-        <DropdownMenuItem
-          onClick={() =>
-            updateLead.mutate({
-              id: lead.id,
-              scheduled_date: isScheduledToday ? null : todayStr,
-            })
-          }
-        >
-          <Calendar className="mr-2 size-3.5" />
-          {isScheduledToday ? 'Remove from today' : 'Add to today'}
-        </DropdownMenuItem>
-        <DropdownMenuSeparator />
-        <DropdownMenuItem
-          variant="destructive"
-          onClick={() => deleteLead.mutate(lead.id)}
-        >
-          Delete lead
-        </DropdownMenuItem>
-      </DropdownMenuContent>
-    </DropdownMenu>
-  )
-}
-
-function EmptyLeads({ onCreate, filterMode }: { onCreate: () => void; filterMode: FilterMode }) {
-  if (filterMode === 'today') {
-    return (
-      <div className="flex flex-col items-center justify-center gap-3 py-16 text-center">
-        <div className="flex size-12 items-center justify-center rounded-full bg-muted">
-          <CalendarDays className="size-5 text-muted-foreground" />
-        </div>
-        <div>
-          <p className="font-medium">Nothing scheduled for today</p>
-          <p className="text-sm text-muted-foreground">
-            Place a lead card in today's slot to see it here.
-          </p>
-        </div>
-        <Button onClick={() => window.location.href = '/crm/leads'} variant="outline" size="sm">
-          View all leads
-        </Button>
-      </div>
-    )
-  }
-
-  return (
-    <div className="flex flex-col items-center justify-center gap-3 py-16 text-center">
-      <div className="flex size-12 items-center justify-center rounded-full bg-muted">
-        <Users className="size-5 text-muted-foreground" />
-      </div>
-      <div>
-        <p className="font-medium">No leads yet</p>
-        <p className="text-sm text-muted-foreground">
-          Add your first prospect or let your agents capture leads for you.
-        </p>
-      </div>
-      <Button onClick={onCreate}>
-        <Plus className="size-4" /> Add lead
-      </Button>
-    </div>
-  )
-}
-
-export type { LeadStatus }
+export type { LeadStatus } from '@/server/crm'

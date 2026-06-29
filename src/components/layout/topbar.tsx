@@ -19,20 +19,20 @@ import { Input } from '@/components/ui/input'
 import { Separator } from '@/components/ui/separator'
 import { motion } from '@/lib/animations'
 
-function initialsFromEmail(email: string) {
+const initialsFromEmail = (email: string) => {
   const name = email.split('@')[0]
   return name.slice(0, 2).toUpperCase()
 }
 
-export function Topbar({
+export const Topbar = ({
   userEmail,
 }: {
   userEmail: string | null | undefined
-}) {
+}) => {
   const router = useRouter()
   const queryClient = useQueryClient()
 
-  async function handleSignOut() {
+  const handleSignOut = async () => {
     const result = await logoutFn()
     if (result?.error) {
       toast.error(result.message)

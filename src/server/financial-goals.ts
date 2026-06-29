@@ -9,7 +9,7 @@ import type {
 
 export type { FinancialGoalRow, CreateGoalInput, UpdateGoalInput, GoalStatus, GoalCategory }
 
-export function getTimeframeLabel(timeframe: string): string {
+export const getTimeframeLabel = (timeframe: string): string => {
   const labels: Record<string, string> = {
     daily: 'Daily',
     weekly: 'Weekly',

@@ -30,7 +30,7 @@ import type { PlanState } from '@/server/profile'
 // Leads
 // ---------------------------------------------------------------------------
 
-export function useLeads() {
+export const useLeads = () => {
   return useQuery({
     queryKey: ['crm', 'leads'],
     queryFn: () => getLeads(),
@@ -38,7 +38,7 @@ export function useLeads() {
   })
 }
 
-export function useTodaysLeads() {
+export const useTodaysLeads = () => {
   return useQuery({
     queryKey: ['crm', 'leads', 'today'],
     queryFn: () => getTodaysLeads(),
@@ -46,7 +46,7 @@ export function useTodaysLeads() {
   })
 }
 
-export function useCreateLead() {
+export const useCreateLead = () => {
   const qc = useQueryClient()
   return useMutation({
     mutationFn: (input: CreateLeadInput) => createLead({ data: input }),
@@ -78,7 +78,7 @@ export function useCreateLead() {
   })
 }
 
-export function useUpdateLead() {
+export const useUpdateLead = () => {
   const qc = useQueryClient()
   return useMutation({
     mutationFn: (input: UpdateLeadInput) => updateLead({ data: input }),
@@ -92,7 +92,7 @@ export function useUpdateLead() {
   })
 }
 
-export function useDeleteLead() {
+export const useDeleteLead = () => {
   const qc = useQueryClient()
   return useMutation({
     mutationFn: (id: string) => deleteLead({ data: { id } }),
@@ -112,7 +112,7 @@ export function useDeleteLead() {
 // Deals
 // ---------------------------------------------------------------------------
 
-export function useDeals() {
+export const useDeals = () => {
   return useQuery({
     queryKey: ['crm', 'deals'],
     queryFn: () => getDeals(),
@@ -120,7 +120,7 @@ export function useDeals() {
   })
 }
 
-export function useCreateDeal() {
+export const useCreateDeal = () => {
   const qc = useQueryClient()
   return useMutation({
     mutationFn: (input: CreateDealInput) => createDeal({ data: input }),
@@ -135,7 +135,7 @@ export function useCreateDeal() {
   })
 }
 
-export function useUpdateDealStage() {
+export const useUpdateDealStage = () => {
   const qc = useQueryClient()
   return useMutation({
     mutationFn: (vars: { dealId: string; stage: DealStage }) =>
@@ -154,7 +154,7 @@ export function useUpdateDealStage() {
 // Reminders
 // ---------------------------------------------------------------------------
 
-export function useReminders() {
+export const useReminders = () => {
   return useQuery({
     queryKey: ['crm', 'reminders'],
     queryFn: () => getReminders(),
@@ -162,7 +162,7 @@ export function useReminders() {
   })
 }
 
-export function useCreateReminder() {
+export const useCreateReminder = () => {
   const qc = useQueryClient()
   return useMutation({
     mutationFn: (input: CreateReminderInput) =>
@@ -178,7 +178,7 @@ export function useCreateReminder() {
   })
 }
 
-export function useUpdateReminderStatus() {
+export const useUpdateReminderStatus = () => {
   const qc = useQueryClient()
   return useMutation({
     mutationFn: (vars: { reminderId: string; status: ReminderStatusType }) =>

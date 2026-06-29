@@ -46,10 +46,6 @@ import {
 import type { PostPlatform, GeneratedPost } from '@/hooks/use-marketing'
 import { cn } from '@/lib/utils'
 
-export const Route = createFileRoute('/_authed/studio')({
-  component: StudioPage,
-})
-
 const PLATFORMS: { value: PostPlatform; label: string; emoji: string }[] = [
   { value: 'instagram', label: 'Instagram', emoji: '📷' },
   { value: 'facebook', label: 'Facebook', emoji: '📘' },
@@ -65,7 +61,7 @@ const TONES = ['Professional', 'Casual', 'Funny', 'Inspirational', 'Bold']
 
 type Step = 'form' | 'generating' | 'preview'
 
-function StudioPage() {
+const StudioPage = () => {
   const { user } = Route.useRouteContext()
   const { data: posts, isLoading } = usePosts()
   const generatePost = useGeneratePost()
@@ -78,7 +74,7 @@ function StudioPage() {
   const [tone, setTone] = useState('Professional')
   const [generated, setGenerated] = useState<GeneratedPost | null>(null)
 
-  async function handleGenerate(e: React.FormEvent) {
+  const handleGenerate = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!prompt.trim()) return
     setStep('generating')
@@ -95,7 +91,7 @@ function StudioPage() {
     }
   }
 
-  function handleReset() {
+  const handleReset = () => {
     setStep('form')
     setGenerated(null)
     setPrompt('')
@@ -267,11 +263,15 @@ function StudioPage() {
   )
 }
 
+export const Route = createFileRoute('/_authed/studio')({
+  component: StudioPage,
+})
+
 // ---------------------------------------------------------------------------
 // Post Preview (step 3 of state machine)
 // ---------------------------------------------------------------------------
 
-function PostPreview({
+const PostPreview = ({
   generated,
   platform,
   onSave,
@@ -283,13 +283,13 @@ function PostPreview({
   onSave: (scheduledFor?: string) => void
   onReset: () => void
   saving: boolean
-}) {
+}) => {
   const [scheduleEnabled, setScheduleEnabled] = useState(false)
   const [scheduledFor, setScheduledFor] = useState('')
   const [copied, setCopied] = useState(false)
   const platformInfo = PLATFORMS.find((p) => p.value === platform)
 
-  function handleCopy() {
+  const handleCopy = () => {
     const text = `${generated.title}\n\n${generated.caption}\n\n${generated.hashtags.map((h) => `#${h}`).join(' ')}`
     navigator.clipboard.writeText(text)
     setCopied(true)
@@ -419,7 +419,7 @@ function PostPreview({
 // Post Card (in the list)
 // ---------------------------------------------------------------------------
 
-function PostCard({ post }: { post: import('@/server/marketing').PostRow }) {
+const PostCard = ({ post }: { post: import('@/server/marketing').PostRow }) => {
   const deletePost = useDeletePost()
   const platformInfo = PLATFORMS.find((p) => p.value === post.platform)
 

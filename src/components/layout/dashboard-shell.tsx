@@ -7,7 +7,7 @@ import { useAgentTypes } from '@/hooks/use-agents'
 import { getProfile } from '@/server/settings'
 import { motion } from '@/lib/animations'
 
-export function DashboardShell({
+export const DashboardShell = ({
   children,
   userEmail,
   userName,
@@ -15,7 +15,7 @@ export function DashboardShell({
   children: React.ReactNode
   userEmail?: string | null
   userName?: string | null
-}) {
+}) => {
   const { tier } = usePlan()
   const { data: profile } = useQuery({
     queryKey: ['profile'],

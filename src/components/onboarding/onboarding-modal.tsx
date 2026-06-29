@@ -21,7 +21,7 @@ import { getLucideIcon } from '@/lib/icons'
 import { updateUserAgentType } from '@/server/settings'
 import type { AgentTypeKey } from '@/lib/agent-types'
 
-function Icon({
+const Icon = ({
   name,
   className,
   style,
@@ -29,12 +29,12 @@ function Icon({
   name: string
   className?: string
   style?: React.CSSProperties
-}) {
+}) => {
   const Cmp = getLucideIcon(name)
   return <Cmp className={className} style={style} />
 }
 
-export function OnboardingModal() {
+export const OnboardingModal = () => {
   const router = useRouter()
   const queryClient = useQueryClient()
   const { data: agentTypes, isLoading } = useAgentTypes()

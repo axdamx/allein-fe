@@ -13,11 +13,11 @@ import { PDFParse } from 'pdf-parse'
  * @param mimeType The file's MIME type
  * @param isBase64 Whether content is base64-encoded (true for binary files)
  */
-export async function extractText(
+export const extractText = async (
   content: string,
   mimeType: string,
   isBase64 = false,
-): Promise<string> {
+): Promise<string> => {
   // PDF — use pdf-parse v2 (PDFParse class) for proper extraction
   if (mimeType.includes('pdf')) {
     try {
@@ -63,11 +63,11 @@ export async function extractText(
  * @param maxChunkSize Target size per chunk in chars (default 500)
  * @param overlap Overlap between chunks in chars (default 50)
  */
-export function chunkText(
+export const chunkText = (
   text: string,
   maxChunkSize = 500,
   overlap = 50,
-): string[] {
+): string[] => {
   if (!text.trim()) return []
 
   // Step 1: Split into paragraphs

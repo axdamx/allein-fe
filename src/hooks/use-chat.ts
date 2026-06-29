@@ -19,7 +19,7 @@ import type { PlanState } from '@/server/profile'
 // Conversations
 // ---------------------------------------------------------------------------
 
-export function useConversations(agentId?: string) {
+export const useConversations = (agentId?: string) => {
   return useQuery({
     queryKey: ['chat', 'conversations', agentId],
     queryFn: () => getConversations({ data: { agentId } }),
@@ -27,7 +27,7 @@ export function useConversations(agentId?: string) {
   })
 }
 
-export function useCreateConversation() {
+export const useCreateConversation = () => {
   const qc = useQueryClient()
   return useMutation({
     mutationFn: (input: { agentId: string; title?: string }) =>
@@ -42,7 +42,7 @@ export function useCreateConversation() {
   })
 }
 
-export function useDeleteConversation() {
+export const useDeleteConversation = () => {
   const qc = useQueryClient()
   return useMutation({
     mutationFn: (conversationId: string) =>
@@ -62,7 +62,7 @@ export function useDeleteConversation() {
 // Messages
 // ---------------------------------------------------------------------------
 
-export function useMessages(conversationId: string | null) {
+export const useMessages = (conversationId: string | null) => {
   return useQuery({
     queryKey: ['chat', 'messages', conversationId],
     queryFn: () => getMessages({ data: { conversationId: conversationId! } }),
@@ -91,7 +91,7 @@ const TEMP_ID_PREFIX = 'temp-'
  * Tool call results (e.g. "Lead created") are surfaced as toasts and
  * trigger query invalidation so new leads/reminders show up instantly.
  */
-export function useChatStream(conversationId: string | null) {
+export const useChatStream = (conversationId: string | null) => {
   const qc = useQueryClient()
   const [state, setState] = useState<StreamState>({
     isStreaming: false,

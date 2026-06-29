@@ -12,13 +12,7 @@ import {
   type UpdateClientInput,
 } from '@/server/clients'
 
-export function useClients(): UseQueryResult<ClientRow[]>
-export function useClients(
-  page: number,
-  pageSize: number,
-  search?: string,
-): UseQueryResult<{ data: ClientRow[]; total: number }>
-export function useClients(page?: number, pageSize?: number, search?: string) {
+export const useClients = ((page?: number, pageSize?: number, search?: string) => {
   if (page === undefined || pageSize === undefined) {
     return useQuery({
       queryKey: ['crm', 'clients'],
@@ -31,9 +25,12 @@ export function useClients(page?: number, pageSize?: number, search?: string) {
     queryFn: () => getClientsPaginated({ data: { page, pageSize, search } }),
     staleTime: 20 * 1000,
   })
+}) as {
+  (): UseQueryResult<ClientRow[]>
+  (page: number, pageSize: number, search?: string): UseQueryResult<{ data: ClientRow[]; total: number }>
 }
 
-export function useClient(id: string | undefined) {
+export const useClient = (id: string | undefined) => {
   return useQuery({
     queryKey: ['crm', 'clients', id],
     queryFn: () => getClient({ data: { id: id! } }),
@@ -41,7 +38,7 @@ export function useClient(id: string | undefined) {
   })
 }
 
-export function useCreateClient() {
+export const useCreateClient = () => {
   const qc = useQueryClient()
   return useMutation({
     mutationFn: (input: CreateClientInput) => createClient({ data: input }),
@@ -57,7 +54,7 @@ export function useCreateClient() {
   })
 }
 
-export function useUpdateClient() {
+export const useUpdateClient = () => {
   const qc = useQueryClient()
   return useMutation({
     mutationFn: (input: UpdateClientInput) => updateClient({ data: input }),
@@ -72,7 +69,7 @@ export function useUpdateClient() {
   })
 }
 
-export function useDeleteClient() {
+export const useDeleteClient = () => {
   const qc = useQueryClient()
   return useMutation({
     mutationFn: (id: string) => deleteClient({ data: { id } }),

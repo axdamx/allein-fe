@@ -36,33 +36,7 @@ const fetchUser = createServerFn({ method: 'GET' }).handler(async () => {
   }
 })
 
-export const Route = createRootRouteWithContext<RouterContext>()({
-  beforeLoad: async () => {
-    const user = await fetchUser()
-    // Only return serializable data — the QueryClient in `context`
-    // is already available to children via useRouteContext().
-    return { user }
-  },
-  head: () => ({
-    meta: [
-      { charSet: 'utf-8' },
-      {
-        name: 'viewport',
-        content: 'width=device-width, initial-scale=1',
-      },
-      { title: 'Allein — AI Agent Platform' },
-    ],
-    links: [{ rel: 'stylesheet', href: appCss }],
-  }),
-  notFoundComponent: () => (
-    <div className="flex min-h-svh items-center justify-center">
-      <p className="text-muted-foreground">Page not found</p>
-    </div>
-  ),
-  component: RootComponent,
-})
-
-function RootComponent() {
+const RootComponent = () => {
   const { queryClient } = Route.useRouteContext()
 
   return (
@@ -88,3 +62,29 @@ function RootComponent() {
     </ThemeProvider>
   )
 }
+
+export const Route = createRootRouteWithContext<RouterContext>()({
+  beforeLoad: async () => {
+    const user = await fetchUser()
+    // Only return serializable data — the QueryClient in `context`
+    // is already available to children via useRouteContext().
+    return { user }
+  },
+  head: () => ({
+    meta: [
+      { charSet: 'utf-8' },
+      {
+        name: 'viewport',
+        content: 'width=device-width, initial-scale=1',
+      },
+      { title: 'Allein — AI Agent Platform' },
+    ],
+    links: [{ rel: 'stylesheet', href: appCss }],
+  }),
+  notFoundComponent: () => (
+    <div className="flex min-h-svh items-center justify-center">
+      <p className="text-muted-foreground">Page not found</p>
+    </div>
+  ),
+  component: RootComponent,
+})

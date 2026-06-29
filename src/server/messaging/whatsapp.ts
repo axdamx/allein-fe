@@ -2,7 +2,7 @@ import twilio from 'twilio'
 
 let client: ReturnType<typeof twilio> | null = null
 
-function getClient() {
+const getClient = () => {
   if (!client) {
     const sid = process.env.TWILIO_ACCOUNT_SID
     const token = process.env.TWILIO_AUTH_TOKEN
@@ -16,10 +16,10 @@ function getClient() {
   return client
 }
 
-export async function sendWhatsApp(
+export const sendWhatsApp = async (
   to: string,
   body: string,
-): Promise<{ success: true; messageId: string } | { success: false; error: string }> {
+): Promise<{ success: true; messageId: string } | { success: false; error: string }> => {
   try {
     const fromNumber = process.env.TWILIO_WHATSAPP_NUMBER
     if (!fromNumber) {
@@ -37,12 +37,12 @@ export async function sendWhatsApp(
   }
 }
 
-export function formatInboundWhatsApp(formData: FormData): {
+export const formatInboundWhatsApp = (formData: FormData): {
   from: string
   body: string
   messageSid: string
   profileName?: string
-} {
+} => {
   const from = (formData.get('From') as string).replace('whatsapp:', '')
   const body = (formData.get('Body') as string) ?? ''
   const messageSid = (formData.get('MessageSid') as string) ?? ''
@@ -50,7 +50,7 @@ export function formatInboundWhatsApp(formData: FormData): {
   return { from, body, messageSid, profileName }
 }
 
-export function twilioTextResponse(message: string): Response {
+export const twilioTextResponse = (message: string): Response => {
   return new Response(
     `<?xml version="1.0" encoding="UTF-8"?><Response><Message>${message}</Message></Response>`,
     {
@@ -60,7 +60,7 @@ export function twilioTextResponse(message: string): Response {
   )
 }
 
-export function twilioEmptyResponse(): Response {
+export const twilioEmptyResponse = (): Response => {
   return new Response(
     '<?xml version="1.0" encoding="UTF-8"?><Response></Response>',
     {

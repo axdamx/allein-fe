@@ -10,7 +10,7 @@ import {
 } from '@/server/planner'
 import type { TaskRow, TaskStatus, TaskPriority, TimeFrame } from '@/server/planner'
 
-export function useTasks(timeFrame?: string, plannedDate?: string) {
+export const useTasks = (timeFrame?: string, plannedDate?: string) => {
   return useQuery({
     queryKey: ['tasks', timeFrame, plannedDate],
     queryFn: () => getTasks({ data: { timeFrame, plannedDate } }),
@@ -18,7 +18,7 @@ export function useTasks(timeFrame?: string, plannedDate?: string) {
   })
 }
 
-export function useCreateTask() {
+export const useCreateTask = () => {
   const qc = useQueryClient()
   return useMutation({
     mutationFn: (input: {
@@ -43,7 +43,7 @@ export function useCreateTask() {
   })
 }
 
-export function useUpdateTask() {
+export const useUpdateTask = () => {
   const qc = useQueryClient()
   return useMutation({
     mutationFn: (input: {
@@ -69,7 +69,7 @@ export function useUpdateTask() {
   })
 }
 
-export function useDeleteTask() {
+export const useDeleteTask = () => {
   const qc = useQueryClient()
   return useMutation({
     mutationFn: (taskId: string) => deleteTask({ data: { taskId } }),
@@ -84,7 +84,7 @@ export function useDeleteTask() {
   })
 }
 
-export function useGeneratePlan() {
+export const useGeneratePlan = () => {
   const qc = useQueryClient()
   return useMutation({
     mutationFn: (input: {
@@ -107,7 +107,7 @@ export function useGeneratePlan() {
   })
 }
 
-export function useReorderTasks() {
+export const useReorderTasks = () => {
   const qc = useQueryClient()
   return useMutation({
     mutationFn: (updates: { taskId: string; status: TaskStatus; sortOrder: number }[]) =>

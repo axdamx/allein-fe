@@ -36,13 +36,13 @@ export const DEFAULT_MODEL_ID =
  * const model = getDefaultModel()
  * const result = await streamText({ model, messages, tools })
  */
-export function getDefaultModel() {
+export const getDefaultModel = () => {
   return provider(DEFAULT_MODEL_ID)
 }
 
 /**
  * Get a specific model by ID (for when you need a different model).
  */
-export function getModel(modelId: string) {
+export const getModel = (modelId: string) => {
   return provider(modelId)
 }

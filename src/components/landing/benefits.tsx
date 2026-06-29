@@ -28,7 +28,7 @@ const BENEFITS = [
   },
 ]
 
-export function Benefits() {
+export const Benefits = () => {
   const sectionRef = useRef<HTMLElement>(null)
   const isInView = useInView(sectionRef, { once: true, margin: '-100px' })
 

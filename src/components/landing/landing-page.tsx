@@ -9,7 +9,7 @@ import { Testimonials } from './testimonials'
 import { PricingSection } from './pricing-section'
 import { FinalCta } from './final-cta'
 
-export function LandingPage() {
+export const LandingPage = () => {
   return (
     <div className="relative">
       <Navbar />

@@ -14,7 +14,7 @@ import { useFinancialGoals } from '@/hooks/use-financial-goals'
 import { getTimeframeLabel } from '@/server/financial-goals'
 import { motion } from '@/lib/animations'
 
-export function GoalsDashboardCard() {
+export const GoalsDashboardCard = () => {
   const { data: goals, isLoading } = useFinancialGoals()
 
   const activeGoals =

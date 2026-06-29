@@ -201,7 +201,7 @@ export type FeatureKey = keyof PlanConfig['features']
  * Returns true if `from` tier is lower than `to` tier.
  * Used to determine if an upgrade is required.
  */
-export function isHigherTier(from: PlanTier, to: PlanTier): boolean {
+export const isHigherTier = (from: PlanTier, to: PlanTier): boolean => {
   return PLAN_ORDER.indexOf(to) > PLAN_ORDER.indexOf(from)
 }
 
@@ -209,7 +209,7 @@ export function isHigherTier(from: PlanTier, to: PlanTier): boolean {
  * Returns the minimum tier that includes a given feature.
  * Returns null if no tier has the feature (shouldn't happen).
  */
-export function minTierForFeature(feature: FeatureKey): PlanTier | null {
+export const minTierForFeature = (feature: FeatureKey): PlanTier | null => {
   for (const tier of PLAN_ORDER) {
     if (PLAN_CONFIGS[tier].features[feature]) return tier
   }
@@ -220,10 +220,10 @@ export function minTierForFeature(feature: FeatureKey): PlanTier | null {
  * Returns the minimum tier that has at least `requiredCount` of a metric.
  * Used for upgrade prompts when a limit is hit.
  */
-export function minTierForLimit(
+export const minTierForLimit = (
   metric: LimitMetric,
   requiredCount: number,
-): PlanTier | null {
+): PlanTier | null => {
   for (const tier of PLAN_ORDER) {
     const { max } = PLAN_CONFIGS[tier].limits[metric]
     if (max === null || max >= requiredCount) return tier

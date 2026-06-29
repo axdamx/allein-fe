@@ -34,12 +34,12 @@ export interface StreamCallbacks {
  * Stream a chat completion from the configured LLM provider.
  * Uses SSE (Server-Sent Events) — standard OpenAI format.
  */
-export async function streamChatCompletion(
+export const streamChatCompletion = async (
   messages: ChatMessage[],
   model: string,
   callbacks: StreamCallbacks,
   options?: { temperature?: number; maxTokens?: number },
-): Promise<void> {
+): Promise<void> => {
   if (!LLM_API_KEY) {
     callbacks.onError(new Error('LLM_API_KEY is not configured'))
     return
@@ -123,11 +123,11 @@ export async function streamChatCompletion(
 /**
  * Non-streaming chat completion (for simple tasks like title generation).
  */
-export async function chatCompletion(
+export const chatCompletion = async (
   messages: ChatMessage[],
   model: string,
   options?: { temperature?: number; maxTokens?: number },
-): Promise<string> {
+): Promise<string> => {
   if (!LLM_API_KEY) {
     throw new Error('LLM_API_KEY is not configured')
   }

@@ -10,7 +10,7 @@ import {
   type UpdateGoalInput,
 } from '@/server/financial-goals'
 
-export function useFinancialGoals() {
+export const useFinancialGoals = () => {
   return useQuery({
     queryKey: ['financial-goals'],
     queryFn: () => getGoals(),
@@ -18,7 +18,7 @@ export function useFinancialGoals() {
   })
 }
 
-export function useCreateGoal() {
+export const useCreateGoal = () => {
   const qc = useQueryClient()
   return useMutation({
     mutationFn: (input: CreateGoalInput) => createGoal({ data: input }),
@@ -33,7 +33,7 @@ export function useCreateGoal() {
   })
 }
 
-export function useUpdateGoal() {
+export const useUpdateGoal = () => {
   const qc = useQueryClient()
   return useMutation({
     mutationFn: (input: UpdateGoalInput) => updateGoal({ data: input }),
@@ -47,7 +47,7 @@ export function useUpdateGoal() {
   })
 }
 
-export function useDeleteGoal() {
+export const useDeleteGoal = () => {
   const qc = useQueryClient()
   return useMutation({
     mutationFn: (goalId: string) => deleteGoal({ data: { goalId } }),

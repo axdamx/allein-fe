@@ -4,17 +4,13 @@ import { DashboardShell } from '@/components/layout/dashboard-shell'
 import { FeatureGate } from '@/components/billing/feature-gate'
 import { cn } from '@/lib/utils'
 
-export const Route = createFileRoute('/_authed/crm')({
-  component: CrmLayout,
-})
-
 const TABS = [
   { label: 'Leads', to: '/crm/leads' },
   { label: 'Pipeline', to: '/crm/pipeline' },
   { label: 'Clients', to: '/crm/clients' },
 ]
 
-function CrmLayout() {
+const CrmLayout = () => {
   const { user } = Route.useRouteContext()
   const pathname = useRouterState({ select: (s) => s.location.pathname })
 
@@ -45,3 +41,7 @@ function CrmLayout() {
     </FeatureGate>
   )
 }
+
+export const Route = createFileRoute('/_authed/crm')({
+  component: CrmLayout,
+})

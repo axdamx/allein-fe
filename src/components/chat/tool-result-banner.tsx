@@ -4,13 +4,13 @@ import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 import type { SendMessageResult } from '@/server/chat'
 
-export function ToolResultBanner({
+export const ToolResultBanner = ({
   results,
   onDismiss,
 }: {
   results: SendMessageResult['toolCalls']
   onDismiss: () => void
-}) {
+}) => {
   return (
     <div className="space-y-2">
       {results.map((tc, i) => (

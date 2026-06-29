@@ -37,13 +37,13 @@ const STATUS_CONFIG: Record<
   },
 }
 
-export function LeadStatusBadge({
+export const LeadStatusBadge = ({
   status,
   className,
 }: {
   status: LeadStatus
   className?: string
-}) {
+}) => {
   const cfg = STATUS_CONFIG[status]
   return (
     <span

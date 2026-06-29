@@ -23,7 +23,7 @@ import { UpgradeModal } from '@/components/billing/upgrade-modal'
 import { getLucideIcon } from '@/lib/icons'
 
 /** Render a lucide icon by its kebab-case name. */
-function Icon({
+const Icon = ({
   name,
   className,
   style,
@@ -31,12 +31,12 @@ function Icon({
   name: string
   className?: string
   style?: React.CSSProperties
-}) {
+}) => {
   const Cmp = getLucideIcon(name)
   return <Cmp className={className} style={style} />
 }
 
-export function NewAgentModal({
+export const NewAgentModal = ({
   open,
   onOpenChange,
   userAgentType,
@@ -44,7 +44,7 @@ export function NewAgentModal({
   open: boolean
   onOpenChange: (open: boolean) => void
   userAgentType?: string | null
-}) {
+}) => {
   const { data: agentTypes, isLoading: typesLoading } = useAgentTypes()
   const createAgent = useCreateAgent()
   const { canDo, usage, config, tier } = usePlan()
@@ -70,13 +70,13 @@ export function NewAgentModal({
     }
   }, [open, availableTypes, selectedType])
 
-  function handleClose() {
+  const handleClose = () => {
     setSelectedType(null)
     setAgentName('')
     onOpenChange(false)
   }
 
-  function handleSelectType(type: AgentTypeRow) {
+  const handleSelectType = (type: AgentTypeRow) => {
     if (atLimit) {
       setUpgradeOpen(true)
       return
@@ -86,7 +86,7 @@ export function NewAgentModal({
     setAgentName(`My ${type.label}`)
   }
 
-  function handleCreate(e: React.FormEvent) {
+  const handleCreate = (e: React.FormEvent) => {
     e.preventDefault()
     if (!selectedType) return
     createAgent.mutate(

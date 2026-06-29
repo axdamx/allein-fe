@@ -2,7 +2,7 @@ import { ArrowRight } from 'lucide-react'
 import { Link } from '@tanstack/react-router'
 import { motion } from 'framer-motion'
 
-export function FinalCta() {
+export const FinalCta = () => {
   return (
     <section className="relative overflow-hidden px-6 py-24 md:py-40">
       <div className="relative z-10 mx-auto max-w-3xl text-center">

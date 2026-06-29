@@ -60,34 +60,7 @@ import {
   useAdminAnalytics,
 } from '@/hooks/use-admin'
 
-export const Route = createFileRoute('/_authed/admin')({
-  beforeLoad: async ({ context }) => {
-    if (!context.user) {
-      throw new Error('Not authenticated')
-    }
-    const { checkAdminAccess } = await import('@/server/admin')
-    const isAdmin = await checkAdminAccess()
-    if (!isAdmin) {
-      throw new Error('Admin access required')
-    }
-  },
-  component: AdminPage,
-  errorComponent: ({ error }) => (
-    <div className="flex min-h-svh items-center justify-center p-4">
-      <Card className="max-w-md">
-        <CardContent className="pt-6 text-center">
-          <Shield className="mx-auto size-10 text-muted-foreground" />
-          <h2 className="mt-3 font-semibold">Access denied</h2>
-          <p className="mt-1 text-sm text-muted-foreground">
-            {error.message || 'You need admin access to view this page.'}
-          </p>
-        </CardContent>
-      </Card>
-    </div>
-  ),
-})
-
-function AdminPage() {
+const AdminPage = () => {
   const { user } = Route.useRouteContext()
 
   return (
@@ -137,11 +110,38 @@ function AdminPage() {
   )
 }
 
+export const Route = createFileRoute('/_authed/admin')({
+  beforeLoad: async ({ context }) => {
+    if (!context.user) {
+      throw new Error('Not authenticated')
+    }
+    const { checkAdminAccess } = await import('@/server/admin')
+    const isAdmin = await checkAdminAccess()
+    if (!isAdmin) {
+      throw new Error('Admin access required')
+    }
+  },
+  component: AdminPage,
+  errorComponent: ({ error }) => (
+    <div className="flex min-h-svh items-center justify-center p-4">
+      <Card className="max-w-md">
+        <CardContent className="pt-6 text-center">
+          <Shield className="mx-auto size-10 text-muted-foreground" />
+          <h2 className="mt-3 font-semibold">Access denied</h2>
+          <p className="mt-1 text-sm text-muted-foreground">
+            {error.message || 'You need admin access to view this page.'}
+          </p>
+        </CardContent>
+      </Card>
+    </div>
+  ),
+})
+
 // ---------------------------------------------------------------------------
 // Overview Tab
 // ---------------------------------------------------------------------------
 
-function OverviewTab() {
+const OverviewTab = () => {
   const { data: stats, isLoading } = useAdminStats()
 
   if (isLoading || !stats || 'error' in stats) {
@@ -257,7 +257,7 @@ function OverviewTab() {
 // Users Tab
 // ---------------------------------------------------------------------------
 
-function UsersTab() {
+const UsersTab = () => {
   const { data: users, isLoading } = useAdminUsers()
   const updateRole = useUpdateUserRole()
   const updatePlan = useUpdateUserPlan()
@@ -375,7 +375,7 @@ function UsersTab() {
 // Agent Config Tab
 // ---------------------------------------------------------------------------
 
-function AgentConfigTab() {
+const AgentConfigTab = () => {
   const { data: types, isLoading } = useAgentTypeConfigs()
 
   if (isLoading) {
@@ -407,18 +407,18 @@ function AgentConfigTab() {
   )
 }
 
-function AgentTypeEditor({
+const AgentTypeEditor = ({
   type,
 }: {
   type: import('@/hooks/use-admin').AdminAgentTypeRow
-}) {
+}) => {
   const updateConfig = useUpdateAgentTypeConfig()
   const [label, setLabel] = useState(type.label)
   const [description, setDescription] = useState(type.description ?? '')
   const [systemPrompt, setSystemPrompt] = useState(type.system_prompt)
   const [expanded, setExpanded] = useState(false)
 
-  function handleSave() {
+  const handleSave = () => {
     updateConfig.mutate({
       key: type.key,
       label,
@@ -427,7 +427,7 @@ function AgentTypeEditor({
     })
   }
 
-  function toggleActive() {
+  const toggleActive = () => {
     updateConfig.mutate({
       key: type.key,
       isActive: !type.is_active,
@@ -523,7 +523,7 @@ function AgentTypeEditor({
 // Billing Tab
 // ---------------------------------------------------------------------------
 
-function BillingTab() {
+const BillingTab = () => {
   const { data: billing, isLoading } = useAdminBilling()
 
   if (isLoading) {
@@ -693,7 +693,7 @@ function BillingTab() {
 // System Health Tab
 // ---------------------------------------------------------------------------
 
-function SystemConfigTab() {
+const SystemConfigTab = () => {
   const { data: health, isLoading } = useSystemHealth()
 
   if (isLoading) {
@@ -926,7 +926,7 @@ function SystemConfigTab() {
   )
 }
 
-function TokenRow({ label, value, color }: { label: string; value: number; color: string }) {
+const TokenRow = ({ label, value, color }: { label: string; value: number; color: string }) => {
   const maxVal = 100_000_000
   const pct = Math.min((value / maxVal) * 100, 100)
   return (
@@ -942,7 +942,7 @@ function TokenRow({ label, value, color }: { label: string; value: number; color
   )
 }
 
-function TrendStat({ label, value }: { label: string; value: number }) {
+const TrendStat = ({ label, value }: { label: string; value: number }) => {
   return (
     <div className="rounded-lg border p-3">
       <p className="text-2xl font-semibold tabular-nums">{formatNumber(value)}</p>
@@ -951,7 +951,7 @@ function TrendStat({ label, value }: { label: string; value: number }) {
   )
 }
 
-function LogIcon({ type }: { type: string }) {
+const LogIcon = ({ type }: { type: string }) => {
   const config: Record<string, { icon: typeof Bot; color: string }> = {
     agent_created: { icon: Bot, color: 'text-violet-500 bg-violet-500/10' },
     conversation: { icon: MessageSquare, color: 'text-amber-500 bg-amber-500/10' },
@@ -968,7 +968,7 @@ function LogIcon({ type }: { type: string }) {
   )
 }
 
-function IntegrationRow({
+const IntegrationRow = ({
   provider,
   description,
   configured,
@@ -976,7 +976,7 @@ function IntegrationRow({
   provider: string
   description: string
   configured: boolean
-}) {
+}) => {
   return (
     <div className="flex items-center justify-between rounded-md border p-3">
       <div>
@@ -1002,7 +1002,7 @@ function IntegrationRow({
   )
 }
 
-function EnvRow({ label, value }: { label: string; value: string }) {
+const EnvRow = ({ label, value }: { label: string; value: string }) => {
   return (
     <div className="flex items-center justify-between">
       <span className="text-muted-foreground">{label}</span>
@@ -1015,7 +1015,7 @@ function EnvRow({ label, value }: { label: string; value: string }) {
 // Platform-wide Analytics Tab
 // ---------------------------------------------------------------------------
 
-function AnalyticsTab() {
+const AnalyticsTab = () => {
   const { data: trends, isLoading } = useAdminAnalytics()
 
   if (isLoading) {
@@ -1139,7 +1139,7 @@ function AnalyticsTab() {
   )
 }
 
-function GrowthBadge({ growth }: { growth: number }) {
+const GrowthBadge = ({ growth }: { growth: number }) => {
   if (growth === 0) return null
   const isUp = growth > 0
   return (
@@ -1158,13 +1158,13 @@ function GrowthBadge({ growth }: { growth: number }) {
   )
 }
 
-function formatTokenCount(n: number): string {
+const formatTokenCount = (n: number): string => {
   if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`
   if (n >= 1_000) return `${(n / 1_000).toFixed(1)}K`
   return String(n)
 }
 
-function formatNumber(n: number): string {
+const formatNumber = (n: number): string => {
   if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`
   if (n >= 1_000) return `${(n / 1_000).toFixed(1)}K`
   return String(n)

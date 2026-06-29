@@ -19,7 +19,7 @@ import {
 } from '@/server/admin'
 import type { PlanTier } from '@/lib/plans'
 
-export function useAdminStats() {
+export const useAdminStats = () => {
   return useQuery({
     queryKey: ['admin', 'stats'],
     queryFn: () => getAdminStats(),
@@ -27,7 +27,7 @@ export function useAdminStats() {
   })
 }
 
-export function useAdminUsers() {
+export const useAdminUsers = () => {
   return useQuery({
     queryKey: ['admin', 'users'],
     queryFn: () => getAdminUsers(),
@@ -35,7 +35,7 @@ export function useAdminUsers() {
   })
 }
 
-export function useUpdateUserRole() {
+export const useUpdateUserRole = () => {
   const qc = useQueryClient()
   return useMutation({
     mutationFn: (input: { userId: string; role: 'member' | 'admin' | 'owner' }) =>
@@ -51,7 +51,7 @@ export function useUpdateUserRole() {
   })
 }
 
-export function useUpdateUserPlan() {
+export const useUpdateUserPlan = () => {
   const qc = useQueryClient()
   return useMutation({
     mutationFn: (input: { userId: string; plan: PlanTier }) =>
@@ -68,7 +68,7 @@ export function useUpdateUserPlan() {
   })
 }
 
-export function useSystemHealth() {
+export const useSystemHealth = () => {
   return useQuery({
     queryKey: ['admin', 'system-health'],
     queryFn: () => getSystemHealth(),
@@ -76,7 +76,7 @@ export function useSystemHealth() {
   })
 }
 
-export function useAdminBilling() {
+export const useAdminBilling = () => {
   return useQuery({
     queryKey: ['admin', 'billing'],
     queryFn: () => getAdminBilling(),
@@ -84,7 +84,7 @@ export function useAdminBilling() {
   })
 }
 
-export function useAgentTypeConfigs() {
+export const useAgentTypeConfigs = () => {
   return useQuery({
     queryKey: ['admin', 'agent-types'],
     queryFn: () => getAgentTypeConfigs(),
@@ -92,7 +92,7 @@ export function useAgentTypeConfigs() {
   })
 }
 
-export function useUpdateAgentTypeConfig() {
+export const useUpdateAgentTypeConfig = () => {
   const qc = useQueryClient()
   return useMutation({
     mutationFn: (input: {
@@ -114,7 +114,7 @@ export function useUpdateAgentTypeConfig() {
   })
 }
 
-export function useAdminAnalytics() {
+export const useAdminAnalytics = () => {
   return useQuery({
     queryKey: ['admin', 'analytics'],
     queryFn: () => getAdminAnalytics(),

@@ -43,13 +43,13 @@ const QUICK_DATES = [
   { label: '+7 days', value: addDays(new Date(), 7) },
 ]
 
-export function NewLeadDialog({
+export const NewLeadDialog = ({
   open,
   onOpenChange,
 }: {
   open: boolean
   onOpenChange: (open: boolean) => void
-}) {
+}) => {
   const createLead = useCreateLead()
   const [name, setName] = useState('')
   const [email, setEmail] = useState('')
@@ -60,7 +60,7 @@ export function NewLeadDialog({
   const [scheduledDate, setScheduledDate] = useState<string | null>(null)
   const [customDate, setCustomDate] = useState('')
 
-  function reset() {
+  const reset = () => {
     setName('')
     setEmail('')
     setPhone('')
@@ -71,7 +71,7 @@ export function NewLeadDialog({
     setCustomDate('')
   }
 
-  function selectQuickDate(date: Date | null) {
+  const selectQuickDate = (date: Date | null) => {
     if (date) {
       setScheduledDate(format(date, 'yyyy-MM-dd'))
     } else {
@@ -80,7 +80,7 @@ export function NewLeadDialog({
     setCustomDate('')
   }
 
-  function handleSubmit(e: React.FormEvent) {
+  const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
     createLead.mutate(
       {

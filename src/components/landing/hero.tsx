@@ -2,7 +2,7 @@ import { ArrowRight } from 'lucide-react'
 import { Link } from '@tanstack/react-router'
 import { motion } from 'framer-motion'
 
-export function Hero() {
+export const Hero = () => {
   return (
     <section className="relative flex min-h-svh items-center overflow-hidden px-6 pt-24">
       <div className="relative z-10 mx-auto flex w-full max-w-7xl flex-col items-start gap-6 md:flex-row md:items-center md:gap-16">

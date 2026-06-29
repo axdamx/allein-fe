@@ -2,7 +2,7 @@ import { Bot } from 'grammy'
 
 let bot: Bot | null = null
 
-function getBot() {
+const getBot = () => {
   if (!bot) {
     const token = process.env.TELEGRAM_BOT_TOKEN
     if (!token) {
@@ -13,10 +13,10 @@ function getBot() {
   return bot
 }
 
-export async function sendTelegram(
+export const sendTelegram = async (
   chatId: string | number,
   text: string,
-): Promise<{ success: true; messageId: number } | { success: false; error: string }> {
+): Promise<{ success: true; messageId: number } | { success: false; error: string }> => {
   try {
     const msg = await getBot().api.sendMessage(Number(chatId), text)
     return { success: true, messageId: msg.message_id }
@@ -26,13 +26,13 @@ export async function sendTelegram(
   }
 }
 
-export function parseTelegramUpdate(update: Record<string, unknown>): {
+export const parseTelegramUpdate = (update: Record<string, unknown>): {
   chatId: number
   text?: string
   username?: string
   firstName?: string
   type: 'start' | 'message' | 'other'
-} | null {
+} | null => {
   if (!update.message || typeof update.message !== 'object') return null
 
   const msg = update.message as Record<string, unknown>
@@ -56,16 +56,16 @@ export function parseTelegramUpdate(update: Record<string, unknown>): {
   return { chatId, type: 'other' }
 }
 
-export function getTelegramWebhookUrl(baseUrl: string): string {
+export const getTelegramWebhookUrl = (baseUrl: string): string => {
   const token = process.env.TELEGRAM_BOT_TOKEN
   if (!token) throw new Error('TELEGRAM_BOT_TOKEN not set')
   return `${baseUrl.replace(/\/$/, '')}/api/messaging/telegram`
 }
 
-export async function setTelegramWebhook(url: string): Promise<void> {
+export const setTelegramWebhook = async (url: string): Promise<void> => {
   await getBot().api.setWebhook(url)
 }
 
-export async function deleteTelegramWebhook(): Promise<void> {
+export const deleteTelegramWebhook = async (): Promise<void> => {
   await getBot().api.deleteWebhook()
 }

@@ -27,11 +27,7 @@ import { useRecentActivity } from '@/hooks/use-dashboard'
 import { cn } from '@/lib/utils'
 import type { Stat } from '@/lib/types'
 
-export const Route = createFileRoute('/_authed/analytics')({
-  component: AnalyticsPage,
-})
-
-function AnalyticsPage() {
+const AnalyticsPage = () => {
   const { user } = Route.useRouteContext()
   const { data: trends, isLoading } = useAnalyticsTrends()
 
@@ -79,7 +75,11 @@ function AnalyticsPage() {
   )
 }
 
-function AnalyticsContent({ trends }: { trends: AnalyticsTrends }) {
+export const Route = createFileRoute('/_authed/analytics')({
+  component: AnalyticsPage,
+})
+
+const AnalyticsContent = ({ trends }: { trends: AnalyticsTrends }) => {
   const statCards: Stat[] = [
     {
       id: 'agents',
@@ -133,7 +133,7 @@ function AnalyticsContent({ trends }: { trends: AnalyticsTrends }) {
   )
 }
 
-function GrowthCard({ trends }: { trends: AnalyticsTrends }) {
+const GrowthCard = ({ trends }: { trends: AnalyticsTrends }) => {
   const metrics: {
     label: string
     value: number
@@ -186,7 +186,7 @@ function GrowthCard({ trends }: { trends: AnalyticsTrends }) {
   )
 }
 
-function ActivityCard() {
+const ActivityCard = () => {
   const { data: activities, isLoading } = useRecentActivity()
 
   return (
@@ -226,7 +226,7 @@ function ActivityCard() {
   )
 }
 
-function ActivityIcon({ type }: { type: string }) {
+const ActivityIcon = ({ type }: { type: string }) => {
   const icons: Record<string, typeof Bot> = {
     agent: Bot,
     lead: Users,
@@ -247,7 +247,7 @@ function ActivityIcon({ type }: { type: string }) {
   )
 }
 
-function SummaryCard({ trends }: { trends: AnalyticsTrends }) {
+const SummaryCard = ({ trends }: { trends: AnalyticsTrends }) => {
   const rows: { label: string; value: string; sub: string }[] = [
     { label: 'Active Agents', value: String(trends.activeAgents), sub: `of ${trends.totalAgents} total` },
     { label: 'Total Messages', value: formatNumber(trends.totalMessages), sub: 'all time' },
@@ -277,7 +277,7 @@ function SummaryCard({ trends }: { trends: AnalyticsTrends }) {
   )
 }
 
-function GrowthBadge({ growth }: { growth: number }) {
+const GrowthBadge = ({ growth }: { growth: number }) => {
   if (growth === 0) return null
   const isUp = growth > 0
   return (
@@ -296,13 +296,13 @@ function GrowthBadge({ growth }: { growth: number }) {
   )
 }
 
-function formatNumber(n: number): string {
+const formatNumber = (n: number): string => {
   if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`
   if (n >= 1_000) return `${(n / 1_000).toFixed(1)}K`
   return String(n)
 }
 
-function formatCurrency(n: number): string {
+const formatCurrency = (n: number): string => {
   if (n === 0) return '$0'
   if (n >= 1_000_000) return `$${(n / 1_000_000).toFixed(1)}M`
   if (n >= 1_000) return `$${(n / 1_000).toFixed(1)}K`

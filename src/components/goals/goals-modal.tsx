@@ -45,7 +45,7 @@ interface GoalModalProps {
   editGoal?: FinancialGoalRow | null
 }
 
-export function GoalModal({ open, onOpenChange, editGoal }: GoalModalProps) {
+export const GoalModal = ({ open, onOpenChange, editGoal }: GoalModalProps) => {
   const createGoal = useCreateGoal()
   const updateGoal = useUpdateGoal()
   const isEditing = !!editGoal
@@ -57,7 +57,7 @@ export function GoalModal({ open, onOpenChange, editGoal }: GoalModalProps) {
   const [currentAmount, setCurrentAmount] = useState(editGoal ? String(editGoal.current_amount) : '')
   const [timeframe, setTimeframe] = useState(editGoal?.timeframe ?? '1y')
 
-  function handleOpenChange(open: boolean) {
+  const handleOpenChange = (open: boolean) => {
     if (!open) {
       setTitle(editGoal?.title ?? '')
       setDescription(editGoal?.description ?? '')
@@ -69,7 +69,7 @@ export function GoalModal({ open, onOpenChange, editGoal }: GoalModalProps) {
     onOpenChange(open)
   }
 
-  function handleSubmit(e: React.FormEvent) {
+  const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
     if (!title.trim() || !targetAmount) return
 

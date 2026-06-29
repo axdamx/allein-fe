@@ -15,7 +15,7 @@ export interface RouterContext {
   user?: AppUser | null
 }
 
-export function getRouter() {
+export const getRouter = () => {
   const queryClient = new QueryClient({
     defaultOptions: {
       queries: { refetchOnWindowFocus: false, staleTime: 30_000 },

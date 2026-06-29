@@ -7,7 +7,7 @@ import {
   type CalendarEventRow,
 } from '@/server/planner'
 
-export function useCalendarEvents() {
+export const useCalendarEvents = () => {
   return useQuery({
     queryKey: ['calendar-events'],
     queryFn: () => getCalendarEvents(),
@@ -15,7 +15,7 @@ export function useCalendarEvents() {
   })
 }
 
-export function useImportCalendarEvents() {
+export const useImportCalendarEvents = () => {
   const qc = useQueryClient()
   return useMutation({
     mutationFn: (icsContent: string) => importCalendarEvents({ data: { icsContent } }),
@@ -34,7 +34,7 @@ export function useImportCalendarEvents() {
   })
 }
 
-export function useDeleteCalendarEvent() {
+export const useDeleteCalendarEvent = () => {
   const qc = useQueryClient()
   return useMutation({
     mutationFn: (id: string) => deleteCalendarEvent({ data: { id } }),

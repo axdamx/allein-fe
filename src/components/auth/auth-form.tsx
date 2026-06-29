@@ -24,7 +24,7 @@ import { loginFn, signupFn } from '@/server/auth'
 
 type Mode = 'login' | 'signup'
 
-export function AuthForm() {
+export const AuthForm = () => {
   const router = useRouter()
   const queryClient = useQueryClient()
   const [mode, setMode] = useState<Mode>('login')
@@ -178,32 +178,28 @@ export function AuthForm() {
   )
 }
 
-function Field({
+const Field = ({
   id,
   label,
   ...props
-}: { id: string; label: string } & React.InputHTMLAttributes<HTMLInputElement>) {
-  return (
-    <div className="space-y-2">
-      <Label htmlFor={id}>{label}</Label>
-      {/* `name` must be set for FormData.get() to retrieve the value.
-          Default it to the same value as `id` unless overridden. */}
-      <Input id={id} name={id} required {...props} />
-    </div>
-  )
-}
+}: { id: string; label: string } & React.InputHTMLAttributes<HTMLInputElement>) => (
+  <div className="space-y-2">
+    <Label htmlFor={id}>{label}</Label>
+    {/* `name` must be set for FormData.get() to retrieve the value.
+        Default it to the same value as `id` unless overridden. */}
+    <Input id={id} name={id} required {...props} />
+  </div>
+)
 
-function SubmitButton({
+const SubmitButton = ({
   submitting,
   label,
 }: {
   submitting: boolean
   label: string
-}) {
-  return (
-    <Button type="submit" className="w-full" disabled={submitting}>
-      {submitting ? <Loader2 className="size-4 animate-spin" /> : null}
-      {label}
-    </Button>
-  )
-}
+}) => (
+  <Button type="submit" className="w-full" disabled={submitting}>
+    {submitting ? <Loader2 className="size-4 animate-spin" /> : null}
+    {label}
+  </Button>
+)
