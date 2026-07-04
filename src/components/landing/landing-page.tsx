@@ -1,29 +1,37 @@
 'use client'
 
 import { Navbar } from './navbar'
-import { ChromeDiscScene } from './chrome-disc'
 import { Hero } from './hero'
-import { Solutions } from './solutions'
-import { Benefits } from './benefits'
-import { Testimonials } from './testimonials'
+import { Problem } from './problem'
+import { Solution } from './solution'
+import { Product } from './product'
+import { WhyWeWin } from './why-we-win'
 import { PricingSection } from './pricing-section'
 import { FinalCta } from './final-cta'
+import { useIsWhiteSection } from './use-white-section'
 
 export const LandingPage = () => {
+  // Tracks whether a white-background section sits at viewport center; used by
+  // the Navbar to flip text contrast.
+  useIsWhiteSection()
+
   return (
     <div className="relative">
       <Navbar />
-      <ChromeDiscScene visible />
 
+      {/* Warm gradient: hero → problem → solution */}
       <div className="bg-gradient-to-b from-[#E8804A] to-[#2A1408]">
         <Hero />
-        <Solutions />
-        <Benefits />
+        <Problem />
+        <Solution />
       </div>
 
-      <Testimonials />
+      {/* Light: product modules, comparison, pricing */}
+      <Product />
+      <WhyWeWin />
       <PricingSection />
 
+      {/* Warm gradient: final CTA + footer */}
       <div className="bg-gradient-to-b from-[#E8804A] to-[#2A1408]">
         <FinalCta />
       </div>

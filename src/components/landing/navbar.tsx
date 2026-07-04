@@ -1,36 +1,22 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { Link } from '@tanstack/react-router'
 import { ArrowRight } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
+import { useIsWhiteSection } from './use-white-section'
 
 const NAV_LINKS = [
-  { label: 'Solutions', href: '#solutions' },
-  { label: 'Features', href: '#benefits' },
-  { label: 'AI Power', href: '#testimonials' },
+  { label: 'Problem', href: '#problem' },
+  { label: 'Product', href: '#product' },
+  { label: 'Why Allein', href: '#why' },
   { label: 'Pricing', href: '#pricing' },
 ]
 
 export const Navbar = () => {
-  const [isWhite, setIsWhite] = useState(false)
+  const isWhite = useIsWhiteSection()
   const [mobileOpen, setMobileOpen] = useState(false)
-
-  useEffect(() => {
-    const whiteSection = document.getElementById('testimonials')
-    if (!whiteSection) return
-
-    const observer = new IntersectionObserver(
-      ([entry]) => {
-        setIsWhite(entry.isIntersecting)
-      },
-      { threshold: 0 },
-    )
-
-    observer.observe(whiteSection)
-    return () => observer.disconnect()
-  }, [])
 
   return (
     <nav
@@ -42,8 +28,11 @@ export const Navbar = () => {
       )}
     >
       <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-4">
-        <Link to="/" className="text-lg font-semibold tracking-tight">
-          Creative Marketing Agency
+        <Link to="/" className="flex items-center gap-2 text-lg font-semibold tracking-tight">
+          <span className="flex size-8 items-center justify-center rounded-lg bg-black text-white">
+            A
+          </span>
+          Allein AI
         </Link>
 
         <div className="hidden items-center gap-8 md:flex">
@@ -57,17 +46,10 @@ export const Navbar = () => {
             </a>
           ))}
           <Link to="/login">
-            <Button
-              className={cn(
-                'rounded-full',
-                isWhite
-                  ? 'bg-black text-white hover:bg-black/90'
-                  : 'bg-white text-black hover:bg-white/90',
-              )}
-            >
-              Get Started
-              <span className="ml-1 flex size-5 items-center justify-center rounded-full bg-black/10">
-                <ArrowRight className="size-3" />
+            <Button className="rounded-full bg-black text-white hover:bg-black/90">
+              Start Free
+              <span className="ml-1 flex size-5 items-center justify-center rounded-full bg-white">
+                <ArrowRight className="size-3 text-black" />
               </span>
             </Button>
           </Link>
@@ -120,17 +102,10 @@ export const Navbar = () => {
             </a>
           ))}
           <Link to="/login" onClick={() => setMobileOpen(false)}>
-            <Button
-              className={cn(
-                'w-full rounded-full',
-                isWhite
-                  ? 'bg-black text-white hover:bg-black/90'
-                  : 'bg-white text-black hover:bg-white/90',
-              )}
-            >
-              Get Started
-              <span className="ml-1 flex size-5 items-center justify-center rounded-full bg-black/10">
-                <ArrowRight className="size-3" />
+            <Button className="w-full rounded-full bg-black text-white hover:bg-black/90">
+              Start Free
+              <span className="ml-1 flex size-5 items-center justify-center rounded-full bg-white">
+                <ArrowRight className="size-3 text-black" />
               </span>
             </Button>
           </Link>

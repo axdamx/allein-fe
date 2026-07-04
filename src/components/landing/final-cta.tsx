@@ -5,6 +5,11 @@ import { motion } from 'framer-motion'
 export const FinalCta = () => {
   return (
     <section className="relative overflow-hidden px-6 py-24 md:py-40">
+      <div className="pointer-events-none absolute inset-0 select-none">
+        <div className="absolute left-1/4 top-10 size-80 animate-float-slow rounded-full bg-white/10 blur-3xl" />
+        <div className="absolute bottom-0 right-1/4 size-96 animate-float rounded-full bg-orange-300/10 blur-3xl" />
+      </div>
+
       <div className="relative z-10 mx-auto max-w-3xl text-center">
         <motion.h2
           className="text-4xl font-semibold leading-tight tracking-tight text-white md:text-6xl"
@@ -13,9 +18,8 @@ export const FinalCta = () => {
           viewport={{ once: true }}
           transition={{ duration: 0.6 }}
         >
-          Grow with Creative Marketing Agency.
-          <br />
-          Start your journey today.
+          Let&apos;s build the AI operating system every Malaysian agent
+          deserves.
         </motion.h2>
 
         <motion.div
@@ -26,16 +30,16 @@ export const FinalCta = () => {
           transition={{ duration: 0.6, delay: 0.2 }}
         >
           <Link to="/login">
-            <button className="inline-flex items-center gap-2 rounded-full bg-white px-6 py-3 text-sm font-medium text-black transition-opacity hover:opacity-90">
-              Get Started
-              <span className="flex size-5 items-center justify-center rounded-full bg-black/10">
-                <ArrowRight className="size-3" />
+            <button className="inline-flex items-center gap-2 rounded-full bg-white px-6 py-3 text-sm font-medium text-black transition-transform hover:scale-[1.02]">
+              Start free
+              <span className="flex size-5 items-center justify-center rounded-full bg-black">
+                <ArrowRight className="size-3 text-white" />
               </span>
             </button>
           </Link>
-          <a href="#solutions">
+          <a href="#pricing">
             <button className="inline-flex items-center gap-2 rounded-full border border-white/30 px-6 py-3 text-sm font-medium text-white/80 transition-colors hover:border-white/60 hover:text-white">
-              Learn More
+              View pricing
             </button>
           </a>
         </motion.div>
@@ -43,14 +47,24 @@ export const FinalCta = () => {
 
       <footer className="relative z-10 mx-auto mt-32 flex max-w-7xl flex-col items-start justify-between gap-8 border-t border-white/10 pt-12 md:flex-row md:items-end">
         <div>
-          <div className="text-lg font-semibold text-white">
-            Creative Marketing Agency
+          <div className="flex items-center gap-2 text-lg font-semibold text-white">
+            <span className="flex size-8 items-center justify-center rounded-lg bg-white text-black">
+              A
+            </span>
+            Allein AI
           </div>
+          <div className="mt-1 text-sm text-white/50">For Agents, By Agents</div>
           <a
-            href="mailto:contact@creativemarketing.com"
-            className="mt-2 block text-sm text-white/60 transition-colors hover:text-white"
+            href="mailto:hello@alleinai.com"
+            className="mt-3 block text-sm text-white/60 transition-colors hover:text-white"
           >
-            contact@creativemarketing.com
+            hello@alleinai.com
+          </a>
+          <a
+            href="https://alleinai.com"
+            className="block text-sm text-white/60 transition-colors hover:text-white"
+          >
+            alleinai.com
           </a>
         </div>
 
@@ -60,31 +74,18 @@ export const FinalCta = () => {
               Menu
             </div>
             <div className="flex flex-col gap-2">
-              {['Solutions', 'Features', 'AI Power', 'Pricing'].map(
-                (item) => (
-                  <a
-                    key={item}
-                    href={`#${item.toLowerCase().replace(' ', '-')}`}
-                    className="text-sm text-white/60 transition-colors hover:text-white"
-                  >
-                    {item}
-                  </a>
-                ),
-              )}
-            </div>
-          </div>
-          <div>
-            <div className="mb-3 text-[11px] font-semibold uppercase tracking-[3px] text-white/40">
-              Socials
-            </div>
-            <div className="flex flex-col gap-2">
-              {['Instagram', 'LinkedIn', 'X'].map((item) => (
+              {[
+                { label: 'Problem', href: '#problem' },
+                { label: 'Product', href: '#product' },
+                { label: 'Why Allein', href: '#why' },
+                { label: 'Pricing', href: '#pricing' },
+              ].map((item) => (
                 <a
-                  key={item}
-                  href="#"
+                  key={item.href}
+                  href={item.href}
                   className="text-sm text-white/60 transition-colors hover:text-white"
                 >
-                  {item}
+                  {item.label}
                 </a>
               ))}
             </div>
