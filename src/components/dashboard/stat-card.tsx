@@ -13,6 +13,9 @@ import type { Stat } from '@/lib/types'
 export const StatCard = ({ stat, index = 0 }: { stat: Stat; index?: number }) => {
   const Icon = stat.icon
   const positive = stat.trend === 'up'
+  // Hide the trend indicator when there's no real delta — avoids showing a
+  // misleading "+0% vs last month" for stats we don't yet compute trends on.
+  const showTrend = stat.delta !== 0 && stat.delta != null
 
   return (
     <motion.div
@@ -37,22 +40,26 @@ export const StatCard = ({ stat, index = 0 }: { stat: Stat; index?: number }) =>
           <div className="text-2xl font-semibold tracking-tight">
             {stat.value}
           </div>
-          <div className="mt-1 flex items-center gap-1 text-xs">
-            <span
-              className={cn(
-                'inline-flex items-center gap-0.5 font-medium',
-                positive ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400',
-              )}
-            >
-              {positive ? (
-                <ArrowUpRight className="size-3" />
-              ) : (
-                <ArrowDownRight className="size-3" />
-              )}
-              {stat.delta}%
-            </span>
-            <span className="text-muted-foreground">vs last month</span>
-          </div>
+          {showTrend ? (
+            <div className="mt-1 flex items-center gap-1 text-xs">
+              <span
+                className={cn(
+                  'inline-flex items-center gap-0.5 font-medium',
+                  positive ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400',
+                )}
+              >
+                {positive ? (
+                  <ArrowUpRight className="size-3" />
+                ) : (
+                  <ArrowDownRight className="size-3" />
+                )}
+                {stat.delta}%
+              </span>
+              <span className="text-muted-foreground">vs last month</span>
+            </div>
+          ) : (
+            <div className="mt-1 h-4" />
+          )}
         </CardContent>
       </Card>
     </motion.div>

@@ -1,15 +1,17 @@
-import { useState } from 'react'
-import { Bot, FileText, MessageSquare, Plus, TrendingUp, Users } from 'lucide-react'
+import { useState, useEffect } from 'react'
+import { Bot, MessageSquare, Plus, TrendingUp, Users } from 'lucide-react'
 import { createFileRoute, Link } from '@tanstack/react-router'
 
 import { StatCard } from '@/components/dashboard/stat-card'
 import { TodaysBox } from '@/components/dashboard/todays-box'
-import { OverviewRow } from '@/components/dashboard/overview-row'
+import { QuickActions } from '@/components/dashboard/quick-actions'
+import { GettingStartedCard } from '@/components/dashboard/getting-started-card'
 import { EmptyAgents } from '@/components/dashboard/empty-agents'
 import { getGreeting, formatNumber, formatCurrency } from '@/components/dashboard/dashboard-utils'
 import { UsageLimitBanner } from '@/components/billing/usage-limit-banner'
 import { NewAgentModal } from '@/components/agents/new-agent-modal'
 import { GoalsDashboardCard } from '@/components/goals/goals-dashboard-card'
+import { startTour, hasSeenTour } from '@/components/onboarding/product-tour'
 import { DashboardShell } from '@/components/layout/dashboard-shell'
 import { Button } from '@/components/ui/button'
 import {
@@ -32,6 +34,15 @@ const DashboardPage = () => {
   const [newAgentOpen, setNewAgentOpen] = useState(false)
 
   const greeting = getGreeting()
+
+  // Auto-run the product tour once for new users (after data + layout settle).
+  useEffect(() => {
+    if (hasSeenTour()) return
+    // Small delay so the dashboard layout is painted before driver.js measures
+    // the target elements.
+    const t = setTimeout(() => { void startTour() }, 600)
+    return () => clearTimeout(t)
+  }, [])
 
   const statCards: Stat[] = [
     {
@@ -85,6 +96,8 @@ const DashboardPage = () => {
       </div>
 
       <UsageLimitBanner className="mb-4" />
+
+      <GettingStartedCard />
 
       {/* Stat cards */}
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
@@ -178,40 +191,13 @@ const DashboardPage = () => {
           </Card>
         </motion.div>
 
-        {/* Quick stats sidebar */}
+        {/* Quick actions — surfaces modules not linked elsewhere on the dashboard */}
         <motion.div
           initial={{ opacity: 0, y: 16 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1], delay: 0.3 }}
         >
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base">Overview</CardTitle>
-              <CardDescription>At a glance</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              <OverviewRow
-                icon={<MessageSquare className="size-4" />}
-                label="Messages sent"
-                value={formatNumber(stats?.messages ?? 0)}
-              />
-              <OverviewRow
-                icon={<Users className="size-4" />}
-                label="New leads"
-                value={String(stats?.new_leads ?? 0)}
-              />
-              <OverviewRow
-                icon={<TrendingUp className="size-4" />}
-                label="Open deals"
-                value={String(stats?.open_deals ?? 0)}
-              />
-              <OverviewRow
-                icon={<FileText className="size-4" />}
-                label="Documents"
-                value={String(stats?.documents ?? 0)}
-              />
-            </CardContent>
-          </Card>
+          <QuickActions />
         </motion.div>
       </div>
 

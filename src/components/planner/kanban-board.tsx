@@ -1,4 +1,5 @@
 import { useState, useCallback, type DragEvent } from 'react'
+import { CalendarDays } from 'lucide-react'
 
 import { cn } from '@/lib/utils'
 import { Badge } from '@/components/ui/badge'
@@ -6,6 +7,8 @@ import { Card, CardContent } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
 import { useTasks, useUpdateTask } from '@/hooks/use-planner'
 import type { TaskStatus } from '@/hooks/use-planner'
+import { GeneratePlanDialog } from './generate-plan-dialog'
+import { AddTaskDialog } from './add-task-dialog'
 import { TaskCard } from './task-card'
 
 const COLUMNS: { status: TaskStatus; label: string; color: string }[] = [
@@ -75,6 +78,29 @@ export const KanbanBoard = () => {
       <Card>
         <CardContent className="py-8 text-center text-sm text-muted-foreground">
           {tasks && 'error' in tasks ? tasks.error : 'Failed to load tasks'}
+        </CardContent>
+      </Card>
+    )
+  }
+
+  // First-run empty state: all columns empty → guide the user to their first task.
+  if (tasks.length === 0) {
+    return (
+      <Card className="border-dashed">
+        <CardContent className="flex flex-col items-center justify-center gap-3 py-20 text-center">
+          <div className="flex size-12 items-center justify-center rounded-full bg-muted">
+            <CalendarDays className="size-6 text-muted-foreground" />
+          </div>
+          <div>
+            <p className="font-medium">No tasks yet</p>
+            <p className="text-sm text-muted-foreground">
+              Generate a plan with AI, or add your first task to get started.
+            </p>
+          </div>
+          <div className="mt-1 flex flex-wrap justify-center gap-2">
+            <GeneratePlanDialog timeFrame="week" />
+            <AddTaskDialog timeFrame="week" />
+          </div>
         </CardContent>
       </Card>
     )

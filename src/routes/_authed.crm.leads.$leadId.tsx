@@ -1,4 +1,4 @@
-import { ArrowLeft, DollarSign } from 'lucide-react'
+import { ArrowLeft, DollarSign, MessageSquare } from 'lucide-react'
 import { formatDistanceToNow } from 'date-fns'
 import { createFileRoute, Link } from '@tanstack/react-router'
 
@@ -77,7 +77,14 @@ const LeadDetailPage = () => {
               )}
             </p>
           </div>
-          <LeadStatusDropdown leadId={lead.id} />
+          <div className="flex items-center gap-2">
+            <Button asChild variant="outline" size="sm" data-tour="lead-message">
+              <Link to="/chat">
+                <MessageSquare className="size-4" /> Message
+              </Link>
+            </Button>
+            <LeadStatusDropdown leadId={lead.id} />
+          </div>
         </div>
       </div>
 

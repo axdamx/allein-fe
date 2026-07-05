@@ -1,4 +1,5 @@
 import { CalendarDays, Plus, Users } from 'lucide-react'
+import { Link } from '@tanstack/react-router'
 import { Button } from '@/components/ui/button'
 import type { FilterMode } from '@/routes/_authed.crm.leads.index'
 
@@ -15,8 +16,8 @@ export const EmptyLeads = ({ onCreate, filterMode }: { onCreate: () => void; fil
             Place a lead card in today's slot to see it here.
           </p>
         </div>
-        <Button onClick={() => window.location.href = '/crm/leads'} variant="outline" size="sm">
-          View all leads
+        <Button asChild variant="outline" size="sm">
+          <Link to="/crm/leads">View all leads</Link>
         </Button>
       </div>
     )

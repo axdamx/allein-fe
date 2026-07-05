@@ -1,5 +1,6 @@
-import { CheckCircle2, Circle, EllipsisVertical, Pencil, Trash2 } from 'lucide-react'
+import { CheckCircle2, Circle, EllipsisVertical, Pencil, CalendarPlus, Trash2 } from 'lucide-react'
 import { format } from 'date-fns'
+import { Link } from '@tanstack/react-router'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import {
@@ -68,6 +69,18 @@ export const GoalCard = ({ goal, onEdit, onDelete, onComplete }: GoalCardProps) 
                   <DropdownMenuContent align="end" className="w-36">
                     <DropdownMenuItem onClick={onEdit}>
                       <Pencil className="size-3.5" /> Edit
+                    </DropdownMenuItem>
+                    <DropdownMenuItem asChild>
+                      <Link
+                        to="/planner"
+                        search={{
+                          prefill: `Help me reach my goal: ${goal.title} ($${goal.current_amount.toLocaleString()} of $${goal.target_amount.toLocaleString()}${
+                            goal.deadline ? `, due ${format(new Date(goal.deadline), 'MMM d, yyyy')}` : ''
+                          })`,
+                        }}
+                      >
+                        <CalendarPlus className="size-3.5" /> Plan it
+                      </Link>
                     </DropdownMenuItem>
                     <DropdownMenuItem onClick={onComplete}>
                       <CheckCircle2 className="size-3.5" /> Mark done

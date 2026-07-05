@@ -37,7 +37,13 @@ export const DashboardShell = ({
         agentType={agentTypeInfo ?? null}
       />
       <div className="flex min-w-0 flex-1 flex-col">
-        <Topbar userEmail={userEmail} />
+        <Topbar
+          userEmail={userEmail}
+          userName={userName}
+          userPlan={tier}
+          isAdmin={isAdmin}
+          agentType={agentTypeInfo ?? null}
+        />
         <motion.main
           initial={{ opacity: 0, y: 8 }}
           animate={{ opacity: 1, y: 0 }}

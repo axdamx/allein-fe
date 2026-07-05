@@ -16,10 +16,18 @@ import { Textarea } from '@/components/ui/textarea'
 import { useGeneratePlan } from '@/hooks/use-planner'
 import type { TimeFrame } from '@/hooks/use-planner'
 
-export const GeneratePlanDialog = ({ timeFrame }: { timeFrame: TimeFrame }) => {
-  const [open, setOpen] = useState(false)
+export const GeneratePlanDialog = ({
+  timeFrame,
+  initialPrompt = '',
+  defaultOpen = false,
+}: {
+  timeFrame: TimeFrame
+  initialPrompt?: string
+  defaultOpen?: boolean
+}) => {
+  const [open, setOpen] = useState(defaultOpen)
   const generate = useGeneratePlan()
-  const [prompt, setPrompt] = useState('')
+  const [prompt, setPrompt] = useState(initialPrompt)
 
   const suggestions: Record<TimeFrame, string[]> = {
     day: [

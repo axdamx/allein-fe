@@ -28,6 +28,7 @@ type ViewMode = 'board' | 'calendar'
 
 const PlannerPage = () => {
   const { user } = Route.useRouteContext()
+  const { prefill } = Route.useSearch()
   const [timeFrame, setTimeFrame] = useState<TimeFrame>('week')
   const [view, setView] = useState<ViewMode>('board')
 
@@ -42,7 +43,11 @@ const PlannerPage = () => {
                 <h1 className="text-2xl font-semibold tracking-tight">Planner</h1>
               </div>
               <div className="flex items-center gap-2">
-                <GeneratePlanDialog timeFrame={timeFrame} />
+                <GeneratePlanDialog
+                  timeFrame={timeFrame}
+                  initialPrompt={prefill ?? ''}
+                  defaultOpen={Boolean(prefill)}
+                />
                 <ImportCalendarDialog />
                 <AddTaskDialog timeFrame={timeFrame} />
               </div>
@@ -104,5 +109,8 @@ const PlannerPage = () => {
 }
 
 export const Route = createFileRoute('/_authed/planner')({
+  validateSearch: (search: Record<string, unknown>): { prefill?: string } => ({
+    prefill: typeof search.prefill === 'string' ? search.prefill : undefined,
+  }),
   component: PlannerPage,
 })
