@@ -7,8 +7,156 @@
  */
 import { getSupabaseServerClient } from '@/lib/supabase/server.server'
 import { PLAN_CONFIGS, minTierForFeature, minTierForLimit } from '@/lib/plans'
-import type { PlanTier, LimitMetric } from '@/lib/plans'
+import type { PlanTier, LimitMetric, LimitWindow } from '@/lib/plans'
 import type { PlanState } from '@/server/profile'
+
+/**
+ * Local timezone for daily quota windows. All users are in Malaysia; if/when
+ * multi-region support lands, make this per-account. Keep it in one place.
+ */
+export const QUOTA_TIMEZONE = 'Asia/Kuala_Lumpur'
+
+/**
+ * Window key for a given window at "now", as a YYYY-MM-DD string suitable for
+ * the date column on usage_windows. Computed in the app because Postgres
+ * cannot derive a local calendar day from a timestamp without a tz extension.
+ *
+ * Node's Intl.DateTimeFormat with ` timeZone` + `calendar: 'gregory'` gives
+ * the correct local date regardless of the host's TZ env var.
+ */
+export function windowKeyForWindow(
+  window: LimitWindow,
+  now: Date = new Date(),
+): string | null {
+  if (window === 'day') {
+    // Parts are formatted with leading zeros where applicable.
+    const parts = new Intl.DateTimeFormat('en-CA', {
+      timeZone: QUOTA_TIMEZONE,
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+    }).formatToParts(now)
+    const y = parts.find((p) => p.type === 'year')!.value
+    const m = parts.find((p) => p.type === 'month')!.value
+    const d = parts.find((p) => p.type === 'day')!.value
+    return `${y}-${m}-${d}`
+  }
+  // 'lifetime' and 'month' are not windowed by usage_windows today.
+  return null
+}
+
+/**
+ * Maps a LimitMetric to the metric string stored in usage_windows.metric.
+ * Today they happen to match, but keeping an explicit map avoids drift.
+ */
+const METRIC_KEY: Record<LimitMetric, string> = {
+  agents: 'agents',
+  conversations: 'conversations',
+  messages: 'messages',
+  posts: 'posts',
+  documents: 'documents',
+  leads: 'leads',
+  whatsappMessages: 'whatsapp_messages',
+  telegramMessages: 'telegram_messages',
+}
+
+export interface ConsumeResult {
+  /** Whether the operation was allowed (under the cap). */
+  allowed: boolean
+  /** Current count for this window after the consume attempt. */
+  used: number
+  /** Remaining quota in this window. `null` for unlimited tiers. */
+  remaining: number | null
+  /** Max for this metric on the user's tier. `null` for unlimited. */
+  max: number | null
+  /** ISO timestamp when the window resets (start of next local day). */
+  resetAt: string
+}
+
+/**
+ * Atomically checks the daily quota for `metric` and consumes one unit if
+ * allowed. Race-proof: the underlying try_consume RPC takes a row lock, so
+ * concurrent calls are serialised — exactly `max` succeed under any load.
+ *
+ * Returns the resulting quota state. The caller MUST bail out (without
+ * performing the metered operation) when `allowed === false`.
+ *
+ * For lifetime metrics this is a no-op (returns allowed:true) — those are
+ * enforced at create-time via enforceLimitImpl, not on the chat hot path.
+ *
+ * Two call modes:
+ *  - Authed user (default): looks up the profile from the request session.
+ *  - Explicit `userId`: used by webhook/service-role paths where there is no
+ *    user session (e.g. inbound WhatsApp/Telegram triggering the owner's
+ *    agent). The plan is looked up via the given supabase client.
+ */
+export async function consumeQuota(
+  metric: LimitMetric,
+  opts?: {
+    userId?: string
+    plan?: PlanTier
+    supabase?: ReturnType<typeof getSupabaseServerClient>
+  },
+): Promise<ConsumeResult> {
+  let userId: string
+  let plan: PlanTier
+
+  if (opts?.userId && opts?.plan) {
+    userId = opts.userId
+    plan = opts.plan
+  } else {
+    const profile = await getCurrentUserProfile()
+    if (!profile) throw new Error('Not authenticated')
+    userId = profile.id
+    plan = profile.plan as PlanTier
+  }
+
+  const config = PLAN_CONFIGS[plan] ?? PLAN_CONFIGS.free
+  const limit = config.limits[metric]
+  const windowKey = limit.window ? windowKeyForWindow(limit.window) : null
+
+  // Lifetime metrics: not consumed here. Caller should use enforceLimitImpl.
+  if (!windowKey) {
+    return {
+      allowed: true,
+      used: 0,
+      remaining: limit.max,
+      max: limit.max,
+      resetAt: new Date(0).toISOString(),
+    }
+  }
+
+  const supabase = opts?.supabase ?? getSupabaseServerClient()
+  const { data, error } = await supabase.rpc('try_consume', {
+    p_user_id: userId,
+    p_metric: METRIC_KEY[metric],
+    p_max: limit.max, // null → unlimited
+    p_window_key: windowKey,
+  })
+
+  if (error || !data || data.length === 0) {
+    // On RPC failure, fail CLOSED for paid limits, OPEN for unlimited.
+    if (limit.max === null) {
+      return {
+        allowed: true,
+        used: 0,
+        remaining: null,
+        max: null,
+        resetAt: new Date(0).toISOString(),
+      }
+    }
+    throw new Error(`Failed to consume quota for ${metric}: ${error?.message ?? 'no data'}`)
+  }
+
+  const row = data[0]
+  return {
+    allowed: row.allowed,
+    used: row.used,
+    remaining: row.remaining,
+    max: row.max_out,
+    resetAt: row.reset_at,
+  }
+}
 
 /** Fetch the logged-in user's id + profile row. Returns null if unauthed. */
 export async function getCurrentUserProfile() {
@@ -40,6 +188,41 @@ async function countUserLeads(userId: string): Promise<number> {
     .select('*', { count: 'exact', head: true })
     .eq('owner_id', userId)
   return count ?? 0
+}
+
+/**
+ * For each metric whose limit has a window (day), read today's used count
+ * from usage_windows. Returns a partial override map. Single round-trip
+ * per metric — kept O(metrics) since there are only a handful. Lifetime
+ * metrics are absent from the result and fall back to profile counters.
+ */
+async function getWindowedUsage(
+  userId: string,
+  plan: PlanTier,
+): Promise<Partial<Record<LimitMetric, number>>> {
+  const config = PLAN_CONFIGS[plan] ?? PLAN_CONFIGS.free
+  const supabase = getSupabaseServerClient()
+  const today = windowKeyForWindow('day')
+  if (!today) return {}
+
+  const out: Partial<Record<LimitMetric, number>> = {}
+  const windowedMetrics = (Object.keys(config.limits) as LimitMetric[]).filter(
+    (m) => config.limits[m].window === 'day',
+  )
+
+  await Promise.all(
+    windowedMetrics.map(async (metric) => {
+      const { data } = await supabase.rpc('get_window_usage', {
+        p_user_id: userId,
+        p_metric: METRIC_KEY[metric],
+        p_window_key: today,
+      })
+      // RPC returns a single-row table with a `used` column.
+      const row = Array.isArray(data) ? data[0] : data
+      out[metric] = Number(row?.used ?? 0)
+    }),
+  )
+  return out
 }
 
 function computeRemaining(used: number, max: number | null): number | null {
@@ -108,8 +291,22 @@ export async function getPlanStateImpl(): Promise<PlanState | null> {
   const profile = await getCurrentUserProfile()
   if (!profile) return null
 
-  const leadsCount = await countUserLeads(profile.id)
-  return buildPlanState(profile, leadsCount)
+  const [leadsCount, windowed] = await Promise.all([
+    countUserLeads(profile.id),
+    getWindowedUsage(profile.id, profile.plan as PlanTier),
+  ])
+  const state = buildPlanState(profile, leadsCount)
+
+  // Override windowed metrics with today's windowed usage so the UI shows
+  // the correct "remaining today" instead of a lifetime counter.
+  ;(Object.keys(windowed) as LimitMetric[]).forEach((metric) => {
+    const used = windowed[metric] ?? 0
+    state.usage[metric] = used
+    const max = PLAN_CONFIGS[state.tier].limits[metric].max
+    state.remaining[metric] = computeRemaining(used, max)
+  })
+
+  return state
 }
 
 /** Implementation of enforceLimit — runs on server only. */

@@ -14,6 +14,7 @@ import {
   PLAN_CONFIGS,
   PLAN_ORDER,
   isHigherTier,
+  formatPrice,
   type PlanTier,
 } from '@/lib/plans'
 import { cn } from '@/lib/utils'
@@ -41,8 +42,8 @@ export const PlanTab = ({ currentPlan }: { currentPlan: PlanTier }) => {
         <CardTitle className="text-base">Plan &amp; Billing</CardTitle>
         <CardDescription>
           You're currently on the{' '}
-          <PlanBadge tier={currentPlan} /> plan. Real billing integration ships
-          in Phase 7 — for now you can switch plans to test gating.
+          <PlanBadge tier={currentPlan} /> plan. Billing integration is coming
+          soon — for now you can switch plans to test gating.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-3">
@@ -67,11 +68,7 @@ export const PlanTab = ({ currentPlan }: { currentPlan: PlanTier }) => {
               </div>
               <div className="text-right">
                 <p className="font-semibold">
-                  {cfg.price === null
-                    ? 'Custom'
-                    : cfg.price === 0
-                      ? 'Free'
-                      : `$${cfg.price}/mo`}
+                  {formatPrice(cfg, true)}
                 </p>
                 <Button
                   size="sm"

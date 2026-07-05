@@ -8,6 +8,7 @@ import { createFileRoute, Link } from '@tanstack/react-router'
 
 import { DashboardShell } from '@/components/layout/dashboard-shell'
 import { MessageBubble, StreamingBubble } from '@/components/chat/message-bubble'
+import { UsageLimitBanner } from '@/components/billing/usage-limit-banner'
 
 import { ChatInput } from '@/components/chat/chat-input'
 import { Button } from '@/components/ui/button'
@@ -114,6 +115,13 @@ function ChatPage() {
           </p>
         </div>
       </div>
+
+      {/* Soft pre-warning at 80% of the daily message quota. Only shown
+          when a conversation is active — no point nagging on the empty
+          state. The banner is dismissible per-session. */}
+      {activeConvoId && (
+        <UsageLimitBanner metric="messages" className="mb-4" />
+      )}
 
       <div className="grid h-[calc(100vh-12rem)] grid-cols-1 gap-4 lg:grid-cols-[280px_1fr]">
         {/* Conversation list sidebar */}

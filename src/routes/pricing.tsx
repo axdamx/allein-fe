@@ -10,6 +10,7 @@ import { cn } from '@/lib/utils'
 import {
   PLAN_CONFIGS,
   PLAN_ORDER,
+  formatPrice,
   type PlanTier,
 } from '@/lib/plans'
 import { getProfile } from '@/server/settings'
@@ -115,16 +116,12 @@ const PricingPage = () => {
                   </div>
                   <div className="mt-2">
                     <span className="text-3xl font-bold">
-                      {cfg.price === null
-                        ? 'Custom'
-                        : cfg.price === 0
-                          ? '$0'
-                          : `$${cfg.price}`}
+                      {formatPrice(cfg)}
                     </span>
                     {cfg.price !== null && cfg.price > 0 && (
                       <span className="text-sm text-muted-foreground">
                         {' '}
-                        /mo
+                        {cfg.period}
                       </span>
                     )}
                   </div>
@@ -142,10 +139,12 @@ const PricingPage = () => {
                     <LimitRow
                       label="Messages"
                       value={cfg.limits.messages.max}
+                      suffix={cfg.limits.messages.window === 'day' ? '/day' : undefined}
                     />
                     <LimitRow
-                      label="Posts"
+                      label="Marketing posts"
                       value={cfg.limits.posts.max}
+                      suffix={cfg.limits.posts.window === 'day' ? '/day' : undefined}
                     />
                     <LimitRow
                       label="Documents"
@@ -188,7 +187,7 @@ const PricingPage = () => {
 
         <p className="mt-10 text-center text-sm text-muted-foreground">
           All plans include unlimited conversations on paid tiers. Prices in
-          USD. Cancel anytime.
+          MYR (RM). Cancel anytime.
         </p>
       </main>
     </div>
@@ -206,14 +205,19 @@ export const Route = createFileRoute('/pricing')({
 const LimitRow = ({
   label,
   value,
+  suffix,
 }: {
   label: string
   value: number | null
+  suffix?: string
 }) => {
   return (
     <li className="flex items-center justify-between">
       <span className="text-muted-foreground">{label}</span>
-      <span className="font-medium">{value === null ? 'Unlimited' : value}</span>
+      <span className="font-medium tabular-nums">
+        {value === null ? 'Unlimited' : value}
+        {suffix ? <span className="text-muted-foreground"> {suffix}</span> : null}
+      </span>
     </li>
   )
 }

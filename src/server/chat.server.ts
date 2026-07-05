@@ -1,6 +1,7 @@
 import { getSupabaseServerClient } from '@/lib/supabase/server.server'
 import { retrieveContext } from '@/server/documents.server'
 import { getAgentByType } from '@/mastra'
+import { consumeQuota } from '@/server/profile.server'
 import type { SupabaseClient } from '@supabase/supabase-js'
 
 export interface ConversationRow {
@@ -32,6 +33,21 @@ export interface SendMessageResult {
     success: boolean
     message: string
   }>
+  /** Updated daily-quota state after this message. Client merges this into plan state. */
+  quota?: {
+    used: number
+    remaining: number | null
+    max: number | null
+    resetAt: string
+  }
+}
+
+/** Returned when the user's daily message quota is exhausted. */
+export interface SendMessageLimitResult {
+  error: 'daily_message_limit_reached'
+  remaining: number
+  max: number | null
+  resetAt: string
 }
 
 async function buildUserContext(
@@ -156,12 +172,27 @@ export async function getMessagesImpl(
 export async function sendMessageImpl(input: {
   conversationId: string
   content: string
-}): Promise<SendMessageResult | { error: string }> {
+}): Promise<SendMessageResult | SendMessageLimitResult | { error: string }> {
   const supabase = getSupabaseServerClient()
   const {
     data: { user },
   } = await supabase.auth.getUser()
   if (!user) return { error: 'Not authenticated' }
+
+  // ── Daily quota gate ────────────────────────────────────────────────
+  // Atomically consumes one message credit. Race-proof: the underlying
+  // try_consume RPC takes a row lock, so concurrent sends (multiple tabs,
+  // or many users at once) cannot exceed the cap. Bails out BEFORE the
+  // LLM call — quota denial never costs us a token.
+  const quota = await consumeQuota('messages')
+  if (!quota.allowed) {
+    return {
+      error: 'daily_message_limit_reached',
+      remaining: quota.remaining ?? 0,
+      max: quota.max,
+      resetAt: quota.resetAt,
+    }
+  }
 
   const { data: conversation } = await supabase
     .from('conversations')
@@ -203,11 +234,11 @@ export async function sendMessageImpl(input: {
     content: input.content,
   })
 
-  await supabase.rpc('increment_usage', {
-    p_user_id: user.id,
-    p_metric: 'messages_count',
-    p_amount: 1,
-  })
+  // NOTE: the daily quota was already incremented atomically by consumeQuota
+  // above. The lifetime messages_count on profiles is no longer bumped here
+  // — usage_windows is the source of truth for daily quotas. If you still
+  // need the lifetime counter for dashboards, increment it in a fire-and-
+  // forget manner (not on the enforcement path).
 
   const relevantChunks = await retrieveContext(input.content, agent.id, 5)
 
@@ -307,6 +338,12 @@ Rule: Call the tool first, explain later. Never ask "what details?" — use what
   return {
     reply: replyText,
     toolCalls,
+    quota: {
+      used: quota.used,
+      remaining: quota.remaining,
+      max: quota.max,
+      resetAt: quota.resetAt,
+    },
   }
 }
 
@@ -315,7 +352,7 @@ export async function sendMessageForOwnerImpl(input: {
   agentId: string
   conversationId: string
   content: string
-}): Promise<SendMessageResult | { error: string }> {
+}): Promise<SendMessageResult | SendMessageLimitResult | { error: string }> {
   const { getSupabaseServiceClient } = await import(
     '@/lib/supabase/service.server'
   )
@@ -328,6 +365,31 @@ export async function sendMessageForOwnerImpl(input: {
     .single()
 
   if (!agent) return { error: 'Agent not found' }
+
+  // Look up the owner's plan so we can enforce the daily message quota on
+  // inbound-triggered replies too (a contact texting the agent's WhatsApp
+  // consumes the owner's daily credit).
+  const { data: ownerProfile } = await supabase
+    .from('profiles')
+    .select('plan')
+    .eq('id', input.ownerId)
+    .single()
+  const ownerPlan = (ownerProfile?.plan ?? 'free') as import('@/lib/plans').PlanTier
+
+  // ── Daily quota gate (service-role path) ────────────────────────────
+  const quota = await consumeQuota('messages', {
+    userId: input.ownerId,
+    plan: ownerPlan,
+    supabase,
+  })
+  if (!quota.allowed) {
+    return {
+      error: 'daily_message_limit_reached',
+      remaining: quota.remaining ?? 0,
+      max: quota.max,
+      resetAt: quota.resetAt,
+    }
+  }
 
   let systemPrompt = agent.system_prompt
   if (!systemPrompt) {
@@ -447,5 +509,11 @@ Rule: Call the tool first, explain later. Never ask "what details?" — use what
   return {
     reply: replyText,
     toolCalls,
+    quota: {
+      used: quota.used,
+      remaining: quota.remaining,
+      max: quota.max,
+      resetAt: quota.resetAt,
+    },
   }
 }

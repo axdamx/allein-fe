@@ -14,6 +14,7 @@ import {
   PLAN_CONFIGS,
   PLAN_ORDER,
   isHigherTier,
+  formatPrice,
   type PlanTier,
   type LimitMetric,
   type FeatureKey,
@@ -104,17 +105,7 @@ export const UpgradeModal = ({
                     {cfg.label}
                   </h3>
                   <p className="text-2xl font-bold">
-                    {cfg.price === null
-                      ? 'Custom'
-                      : cfg.price === 0
-                        ? 'Free'
-                        : `$${cfg.price}`}
-                    {cfg.price !== null && cfg.price > 0 && (
-                      <span className="text-xs font-normal text-muted-foreground">
-                        {' '}
-                        /mo
-                      </span>
-                    )}
+                    {formatPrice(cfg, true)}
                   </p>
                   <p className="mt-1 text-xs text-muted-foreground">
                     {cfg.tagline}
@@ -123,14 +114,19 @@ export const UpgradeModal = ({
 
                 <ul className="mb-4 flex-1 space-y-1.5 text-xs">
                   <LimitRow
-                    label="Agents"
+                    label="AI agents"
                     value={cfg.limits.agents.max}
                   />
                   <LimitRow
                     label="Messages"
                     value={cfg.limits.messages.max}
+                    suffix={cfg.limits.messages.window === 'day' ? '/day' : undefined}
                   />
-                  <LimitRow label="Posts" value={cfg.limits.posts.max} />
+                  <LimitRow
+                    label="Marketing posts"
+                    value={cfg.limits.posts.max}
+                    suffix={cfg.limits.posts.window === 'day' ? '/day' : undefined}
+                  />
                   <LimitRow
                     label="Documents"
                     value={cfg.limits.documents.max}
@@ -160,16 +156,27 @@ export const UpgradeModal = ({
         </div>
 
         <DialogFooter className="text-xs text-muted-foreground">
-          Billing integration ships in Phase 7. For now these are plan presets.
+          Billing integration coming soon. For now these are plan presets.
         </DialogFooter>
       </DialogContent>
     </Dialog>
   )
 }
 
-const LimitRow = ({ label, value }: { label: string; value: number | null }) => (
+const LimitRow = ({
+  label,
+  value,
+  suffix,
+}: {
+  label: string
+  value: number | null
+  suffix?: string
+}) => (
   <li className="flex items-center justify-between">
     <span className="text-muted-foreground">{label}</span>
-    <span className="font-medium">{value === null ? '∞' : value}</span>
+    <span className="font-medium tabular-nums">
+      {value === null ? '∞' : value}
+      {suffix ? <span className="text-muted-foreground"> {suffix}</span> : null}
+    </span>
   </li>
 )

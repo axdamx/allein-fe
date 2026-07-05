@@ -135,7 +135,30 @@ export const useChatStream = (conversationId: string | null) => {
       try {
         const result = (await sendMessage({
           data: { conversationId: id, content },
-        })) as SendMessageResult | { error: string }
+        })) as
+          | SendMessageResult
+          | { error: 'daily_message_limit_reached'; remaining: number; max: number | null; resetAt: string }
+          | { error: string }
+
+        const isLimit = (
+          r: typeof result,
+        ): r is { error: 'daily_message_limit_reached'; remaining: number; max: number | null; resetAt: string } =>
+          'error' in r &&
+          typeof (r as { remaining?: unknown }).remaining === 'number'
+
+        if (isLimit(result)) {
+          const reset = new Date(result.resetAt)
+          const resetLabel = reset.toLocaleString([], {
+            hour: '2-digit',
+            minute: '2-digit',
+          })
+          toast.error(
+            `Daily message limit reached (${result.max ?? '—'}). Resets at ${resetLabel}.`,
+          )
+          qc.invalidateQueries({ queryKey: ['plan-state'] })
+          setState((s) => ({ ...s, isStreaming: false, error: null }))
+          return
+        }
 
         if ('error' in result) {
           throw new Error(result.error)

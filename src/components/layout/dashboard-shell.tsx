@@ -1,7 +1,8 @@
 import { useQuery } from '@tanstack/react-query'
 import { Sidebar } from '@/components/layout/sidebar'
 import { Topbar } from '@/components/layout/topbar'
-import { GoalsFab } from '@/components/goals/goals-fab'
+// GoalsFab temporarily hidden — re-enable when goals feature ships.
+// import { GoalsFab } from '@/components/goals/goals-fab'
 import { usePlan } from '@/hooks/use-plan'
 import { useAgentTypes } from '@/hooks/use-agents'
 import { getProfile } from '@/server/settings'
@@ -53,7 +54,8 @@ export const DashboardShell = ({
           {children}
         </motion.main>
       </div>
-      <GoalsFab />
+      {/* Hidden for now — will re-enable once goals feature is ready.
+      <GoalsFab /> */}
     </div>
   )
 }

@@ -33,6 +33,21 @@ export interface SendMessageResult {
     success: boolean
     message: string
   }>
+  /** Updated daily-quota state after this message (merged into plan state). */
+  quota?: {
+    used: number
+    remaining: number | null
+    max: number | null
+    resetAt: string
+  }
+}
+
+/** Returned when the user's daily message quota is exhausted. */
+export interface SendMessageLimitResult {
+  error: 'daily_message_limit_reached'
+  remaining: number
+  max: number | null
+  resetAt: string
 }
 
 export const getConversations = createServerFn({ method: 'GET' })
@@ -66,9 +81,9 @@ export const getMessages = createServerFn({ method: 'GET' })
 export const sendMessage = createServerFn({ method: 'POST' })
   .validator((d: { conversationId: string; content: string }) => d)
   .handler(async ({ data }) => {
-    const { enforceLimitImpl } = await import('./profile.server')
-    await enforceLimitImpl('messages')
-
+    // Daily quota is enforced atomically inside sendMessageImpl via the
+    // try_consume RPC (race-proof). The previous lifetime enforceLimit
+    // call here was both wrong-window and redundant — removed.
     const { sendMessageImpl } = await import('./chat.server')
     return sendMessageImpl(data)
   })
