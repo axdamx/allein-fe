@@ -26,8 +26,12 @@ import { Route as AuthedChatRouteImport } from './routes/_authed.chat'
 import { Route as AuthedAnalyticsRouteImport } from './routes/_authed.analytics'
 import { Route as AuthedAgentsRouteImport } from './routes/_authed.agents'
 import { Route as AuthedAdminRouteImport } from './routes/_authed.admin'
+import { Route as AuthedStudioIndexRouteImport } from './routes/_authed.studio.index'
 import { Route as ApiMessagingWhatsappRouteImport } from './routes/api/messaging/whatsapp'
 import { Route as ApiMessagingTelegramRouteImport } from './routes/api/messaging/telegram'
+import { Route as AuthedStudioStoryboardRouteImport } from './routes/_authed.studio.storyboard'
+import { Route as AuthedStudioLibraryRouteImport } from './routes/_authed.studio.library'
+import { Route as AuthedStudioChatRouteImport } from './routes/_authed.studio.chat'
 import { Route as AuthedCrmPipelineRouteImport } from './routes/_authed.crm.pipeline'
 import { Route as AuthedCrmLeadsRouteImport } from './routes/_authed.crm.leads'
 import { Route as AuthedCrmClientsRouteImport } from './routes/_authed.crm.clients'
@@ -120,6 +124,11 @@ const AuthedAdminRoute = AuthedAdminRouteImport.update({
   path: '/admin',
   getParentRoute: () => AuthedRoute,
 } as any)
+const AuthedStudioIndexRoute = AuthedStudioIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => AuthedStudioRoute,
+} as any)
 const ApiMessagingWhatsappRoute = ApiMessagingWhatsappRouteImport.update({
   id: '/api/messaging/whatsapp',
   path: '/api/messaging/whatsapp',
@@ -129,6 +138,21 @@ const ApiMessagingTelegramRoute = ApiMessagingTelegramRouteImport.update({
   id: '/api/messaging/telegram',
   path: '/api/messaging/telegram',
   getParentRoute: () => rootRouteImport,
+} as any)
+const AuthedStudioStoryboardRoute = AuthedStudioStoryboardRouteImport.update({
+  id: '/storyboard',
+  path: '/storyboard',
+  getParentRoute: () => AuthedStudioRoute,
+} as any)
+const AuthedStudioLibraryRoute = AuthedStudioLibraryRouteImport.update({
+  id: '/library',
+  path: '/library',
+  getParentRoute: () => AuthedStudioRoute,
+} as any)
+const AuthedStudioChatRoute = AuthedStudioChatRouteImport.update({
+  id: '/chat',
+  path: '/chat',
+  getParentRoute: () => AuthedStudioRoute,
 } as any)
 const AuthedCrmPipelineRoute = AuthedCrmPipelineRouteImport.update({
   id: '/pipeline',
@@ -182,13 +206,17 @@ export interface FileRoutesByFullPath {
   '/knowledge-base': typeof AuthedKnowledgeBaseRoute
   '/planner': typeof AuthedPlannerRoute
   '/settings': typeof AuthedSettingsRoute
-  '/studio': typeof AuthedStudioRoute
+  '/studio': typeof AuthedStudioRouteWithChildren
   '/support': typeof AuthedSupportRoute
   '/crm/clients': typeof AuthedCrmClientsRouteWithChildren
   '/crm/leads': typeof AuthedCrmLeadsRouteWithChildren
   '/crm/pipeline': typeof AuthedCrmPipelineRoute
+  '/studio/chat': typeof AuthedStudioChatRoute
+  '/studio/library': typeof AuthedStudioLibraryRoute
+  '/studio/storyboard': typeof AuthedStudioStoryboardRoute
   '/api/messaging/telegram': typeof ApiMessagingTelegramRoute
   '/api/messaging/whatsapp': typeof ApiMessagingWhatsappRoute
+  '/studio/': typeof AuthedStudioIndexRoute
   '/crm/clients/$clientId': typeof AuthedCrmClientsClientIdRoute
   '/crm/leads/$leadId': typeof AuthedCrmLeadsLeadIdRoute
   '/crm/clients/': typeof AuthedCrmClientsIndexRoute
@@ -209,11 +237,14 @@ export interface FileRoutesByTo {
   '/knowledge-base': typeof AuthedKnowledgeBaseRoute
   '/planner': typeof AuthedPlannerRoute
   '/settings': typeof AuthedSettingsRoute
-  '/studio': typeof AuthedStudioRoute
   '/support': typeof AuthedSupportRoute
   '/crm/pipeline': typeof AuthedCrmPipelineRoute
+  '/studio/chat': typeof AuthedStudioChatRoute
+  '/studio/library': typeof AuthedStudioLibraryRoute
+  '/studio/storyboard': typeof AuthedStudioStoryboardRoute
   '/api/messaging/telegram': typeof ApiMessagingTelegramRoute
   '/api/messaging/whatsapp': typeof ApiMessagingWhatsappRoute
+  '/studio': typeof AuthedStudioIndexRoute
   '/crm/clients/$clientId': typeof AuthedCrmClientsClientIdRoute
   '/crm/leads/$leadId': typeof AuthedCrmLeadsLeadIdRoute
   '/crm/clients': typeof AuthedCrmClientsIndexRoute
@@ -236,13 +267,17 @@ export interface FileRoutesById {
   '/_authed/knowledge-base': typeof AuthedKnowledgeBaseRoute
   '/_authed/planner': typeof AuthedPlannerRoute
   '/_authed/settings': typeof AuthedSettingsRoute
-  '/_authed/studio': typeof AuthedStudioRoute
+  '/_authed/studio': typeof AuthedStudioRouteWithChildren
   '/_authed/support': typeof AuthedSupportRoute
   '/_authed/crm/clients': typeof AuthedCrmClientsRouteWithChildren
   '/_authed/crm/leads': typeof AuthedCrmLeadsRouteWithChildren
   '/_authed/crm/pipeline': typeof AuthedCrmPipelineRoute
+  '/_authed/studio/chat': typeof AuthedStudioChatRoute
+  '/_authed/studio/library': typeof AuthedStudioLibraryRoute
+  '/_authed/studio/storyboard': typeof AuthedStudioStoryboardRoute
   '/api/messaging/telegram': typeof ApiMessagingTelegramRoute
   '/api/messaging/whatsapp': typeof ApiMessagingWhatsappRoute
+  '/_authed/studio/': typeof AuthedStudioIndexRoute
   '/_authed/crm/clients/$clientId': typeof AuthedCrmClientsClientIdRoute
   '/_authed/crm/leads/$leadId': typeof AuthedCrmLeadsLeadIdRoute
   '/_authed/crm/clients/': typeof AuthedCrmClientsIndexRoute
@@ -270,8 +305,12 @@ export interface FileRouteTypes {
     | '/crm/clients'
     | '/crm/leads'
     | '/crm/pipeline'
+    | '/studio/chat'
+    | '/studio/library'
+    | '/studio/storyboard'
     | '/api/messaging/telegram'
     | '/api/messaging/whatsapp'
+    | '/studio/'
     | '/crm/clients/$clientId'
     | '/crm/leads/$leadId'
     | '/crm/clients/'
@@ -292,11 +331,14 @@ export interface FileRouteTypes {
     | '/knowledge-base'
     | '/planner'
     | '/settings'
-    | '/studio'
     | '/support'
     | '/crm/pipeline'
+    | '/studio/chat'
+    | '/studio/library'
+    | '/studio/storyboard'
     | '/api/messaging/telegram'
     | '/api/messaging/whatsapp'
+    | '/studio'
     | '/crm/clients/$clientId'
     | '/crm/leads/$leadId'
     | '/crm/clients'
@@ -323,8 +365,12 @@ export interface FileRouteTypes {
     | '/_authed/crm/clients'
     | '/_authed/crm/leads'
     | '/_authed/crm/pipeline'
+    | '/_authed/studio/chat'
+    | '/_authed/studio/library'
+    | '/_authed/studio/storyboard'
     | '/api/messaging/telegram'
     | '/api/messaging/whatsapp'
+    | '/_authed/studio/'
     | '/_authed/crm/clients/$clientId'
     | '/_authed/crm/leads/$leadId'
     | '/_authed/crm/clients/'
@@ -462,6 +508,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthedAdminRouteImport
       parentRoute: typeof AuthedRoute
     }
+    '/_authed/studio/': {
+      id: '/_authed/studio/'
+      path: '/'
+      fullPath: '/studio/'
+      preLoaderRoute: typeof AuthedStudioIndexRouteImport
+      parentRoute: typeof AuthedStudioRoute
+    }
     '/api/messaging/whatsapp': {
       id: '/api/messaging/whatsapp'
       path: '/api/messaging/whatsapp'
@@ -475,6 +528,27 @@ declare module '@tanstack/react-router' {
       fullPath: '/api/messaging/telegram'
       preLoaderRoute: typeof ApiMessagingTelegramRouteImport
       parentRoute: typeof rootRouteImport
+    }
+    '/_authed/studio/storyboard': {
+      id: '/_authed/studio/storyboard'
+      path: '/storyboard'
+      fullPath: '/studio/storyboard'
+      preLoaderRoute: typeof AuthedStudioStoryboardRouteImport
+      parentRoute: typeof AuthedStudioRoute
+    }
+    '/_authed/studio/library': {
+      id: '/_authed/studio/library'
+      path: '/library'
+      fullPath: '/studio/library'
+      preLoaderRoute: typeof AuthedStudioLibraryRouteImport
+      parentRoute: typeof AuthedStudioRoute
+    }
+    '/_authed/studio/chat': {
+      id: '/_authed/studio/chat'
+      path: '/chat'
+      fullPath: '/studio/chat'
+      preLoaderRoute: typeof AuthedStudioChatRouteImport
+      parentRoute: typeof AuthedStudioRoute
     }
     '/_authed/crm/pipeline': {
       id: '/_authed/crm/pipeline'
@@ -571,6 +645,24 @@ const AuthedCrmRouteWithChildren = AuthedCrmRoute._addFileChildren(
   AuthedCrmRouteChildren,
 )
 
+interface AuthedStudioRouteChildren {
+  AuthedStudioChatRoute: typeof AuthedStudioChatRoute
+  AuthedStudioLibraryRoute: typeof AuthedStudioLibraryRoute
+  AuthedStudioStoryboardRoute: typeof AuthedStudioStoryboardRoute
+  AuthedStudioIndexRoute: typeof AuthedStudioIndexRoute
+}
+
+const AuthedStudioRouteChildren: AuthedStudioRouteChildren = {
+  AuthedStudioChatRoute: AuthedStudioChatRoute,
+  AuthedStudioLibraryRoute: AuthedStudioLibraryRoute,
+  AuthedStudioStoryboardRoute: AuthedStudioStoryboardRoute,
+  AuthedStudioIndexRoute: AuthedStudioIndexRoute,
+}
+
+const AuthedStudioRouteWithChildren = AuthedStudioRoute._addFileChildren(
+  AuthedStudioRouteChildren,
+)
+
 interface AuthedRouteChildren {
   AuthedAdminRoute: typeof AuthedAdminRoute
   AuthedAgentsRoute: typeof AuthedAgentsRoute
@@ -582,7 +674,7 @@ interface AuthedRouteChildren {
   AuthedKnowledgeBaseRoute: typeof AuthedKnowledgeBaseRoute
   AuthedPlannerRoute: typeof AuthedPlannerRoute
   AuthedSettingsRoute: typeof AuthedSettingsRoute
-  AuthedStudioRoute: typeof AuthedStudioRoute
+  AuthedStudioRoute: typeof AuthedStudioRouteWithChildren
   AuthedSupportRoute: typeof AuthedSupportRoute
 }
 
@@ -597,7 +689,7 @@ const AuthedRouteChildren: AuthedRouteChildren = {
   AuthedKnowledgeBaseRoute: AuthedKnowledgeBaseRoute,
   AuthedPlannerRoute: AuthedPlannerRoute,
   AuthedSettingsRoute: AuthedSettingsRoute,
-  AuthedStudioRoute: AuthedStudioRoute,
+  AuthedStudioRoute: AuthedStudioRouteWithChildren,
   AuthedSupportRoute: AuthedSupportRoute,
 }
 

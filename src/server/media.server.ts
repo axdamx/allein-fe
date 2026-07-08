@@ -1,0 +1,396 @@
+/**
+ * Server-only implementation for AI media generation (image + video).
+ *
+ * Each generated asset is mirrored to the `media` Supabase Storage bucket and
+ * tracked in `studio_assets` so users get a persistent library and the chat
+ * agent / storyboard can reference prior outputs later.
+ *
+ * Plan gating is enforced in the public wrapper (`src/server/media.ts`) before
+ * these implementations run, so we don't re-check the feature flag here.
+ */
+import { getSupabaseServerClient } from '@/lib/supabase/server.server'
+import { generateCogViewImage, ZaiMediaError } from '@/lib/media/cogview'
+import {
+  submitCogVideoXJob,
+  pollCogVideoXJob,
+} from '@/lib/media/cogvideox'
+
+// ---------------------------------------------------------------------------
+// Types
+// ---------------------------------------------------------------------------
+
+export type MediaKind = 'image' | 'video'
+
+export interface StudioAssetRow {
+  id: string
+  owner_id: string
+  kind: MediaKind
+  prompt: string
+  provider: string
+  provider_model: string | null
+  provider_id: string | null
+  status: 'pending' | 'processing' | 'ready' | 'failed'
+  storage_path: string | null
+  url: string | null
+  aspect_ratio: string | null
+  duration_ms: number | null
+  error: string | null
+  meta: {
+    size?: string
+    remote_url?: string
+    cover_image_url?: string
+    [key: string]: string | number | boolean | null | undefined
+  }
+  reference_id: string | null
+  created_at: string
+  updated_at: string
+}
+
+// ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
+
+async function getCurrentUserId(): Promise<string> {
+  const supabase = getSupabaseServerClient()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+  if (!user) throw new Error('Not authenticated')
+  return user.id
+}
+
+/**
+ * Mirror a remote asset (ZAI URL) into our public `media` bucket so it stays
+ * available even after ZAI's ephemeral URLs expire. Returns the public URL
+ * and storage path.
+ */
+async function mirrorToStorage(
+  userId: string,
+  remoteUrl: string,
+  ext: 'png' | 'jpg' | 'webp' | 'mp4' | 'webm',
+): Promise<{ storagePath: string; publicUrl: string }> {
+  const supabase = getSupabaseServerClient()
+  const filename = `${crypto.randomUUID()}.${ext}`
+  const storagePath = `${userId}/${filename}`
+
+  const bufRes = await fetch(remoteUrl)
+  if (!bufRes.ok) {
+    throw new Error(`Failed to download asset (${bufRes.status})`)
+  }
+  const buffer = Buffer.from(await bufRes.arrayBuffer())
+
+  const { error: upErr } = await supabase.storage
+    .from('media')
+    .upload(storagePath, buffer, {
+      contentType:
+        ext === 'mp4' ? 'video/mp4' : ext === 'webm' ? 'video/webm' : `image/${ext}`,
+      cacheControl: '3600',
+      upsert: false,
+    })
+  if (upErr) throw new Error(`Storage upload failed: ${upErr.message}`)
+
+  const { data: pub } = supabase.storage.from('media').getPublicUrl(storagePath)
+  return { storagePath, publicUrl: pub.publicUrl }
+}
+
+// ---------------------------------------------------------------------------
+// Image generation
+// ---------------------------------------------------------------------------
+
+export interface GenerateImageInput {
+  prompt: string
+  aspectRatio?: '1:1' | '16:9' | '9:16' | '4:3' | '3:4'
+}
+
+export async function generateImageImpl(
+  input: GenerateImageInput,
+): Promise<StudioAssetRow | { error: string }> {
+  try {
+    const userId = await getCurrentUserId()
+    const supabase = getSupabaseServerClient()
+
+    // Create a pending row first so we always have a handle even on failure.
+    const { data: row, error: rowErr } = await supabase
+      .from('studio_assets')
+      .insert({
+        owner_id: userId,
+        kind: 'image',
+        prompt: input.prompt,
+        provider: 'zai',
+        provider_model: 'cogview-4-250304',
+        status: 'processing',
+        aspect_ratio: input.aspectRatio ?? '1:1',
+      })
+      .select('*')
+      .single()
+    if (rowErr) return { error: rowErr.message }
+
+    let result
+    try {
+      result = await generateCogViewImage({
+        prompt: input.prompt,
+        aspectRatio: input.aspectRatio ?? '1:1',
+      })
+    } catch (err) {
+      const msg = err instanceof ZaiMediaError ? err.message : 'Image generation failed'
+      await supabase
+        .from('studio_assets')
+        .update({ status: 'failed', error: msg })
+        .eq('id', row.id)
+      return { error: msg }
+    }
+
+    // Mirror to our bucket so the URL is durable.
+    let publicUrl = result.remoteUrl
+    let storagePath: string | null = null
+    try {
+      const ext = (result.b64 ? 'png' : 'png') as 'png' | 'jpg' | 'webp'
+      const mirrored = await mirrorToStorage(userId, result.remoteUrl, ext)
+      publicUrl = mirrored.publicUrl
+      storagePath = mirrored.storagePath
+    } catch (err) {
+      // Non-fatal — fall back to the remote URL.
+      console.warn('[media.server] mirror failed, using remote URL:', err)
+    }
+
+    const { data: updated, error: updErr } = await supabase
+      .from('studio_assets')
+      .update({
+        status: 'ready',
+        url: publicUrl,
+        storage_path: storagePath,
+        meta: { size: result.size, remote_url: result.remoteUrl },
+      })
+      .eq('id', row.id)
+      .select('*')
+      .single()
+    if (updErr) return { error: updErr.message }
+
+    return updated as unknown as StudioAssetRow
+  } catch (err) {
+    return {
+      error: err instanceof Error ? err.message : 'Image generation failed',
+    }
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Video generation (async)
+// ---------------------------------------------------------------------------
+
+export interface SubmitVideoInput {
+  prompt: string
+  imageUrl?: string
+  /** Aspect ratio token like '16:9' (mapped to a valid ZAI size). */
+  aspectRatio?: string
+  durationSeconds?: number
+  quality?: 'speed' | 'quality'
+}
+
+export async function submitVideoImpl(
+  input: SubmitVideoInput,
+): Promise<StudioAssetRow | { error: string }> {
+  try {
+    const userId = await getCurrentUserId()
+    const supabase = getSupabaseServerClient()
+
+    const { data: row, error: rowErr } = await supabase
+      .from('studio_assets')
+      .insert({
+        owner_id: userId,
+        kind: 'video',
+        prompt: input.prompt,
+        provider: 'zai',
+        provider_model: 'cogvideox-3',
+        status: 'processing',
+        aspect_ratio: input.aspectRatio ?? null,
+        duration_ms: input.durationSeconds ? input.durationSeconds * 1000 : null,
+      })
+      .select('*')
+      .single()
+    if (rowErr) return { error: rowErr.message }
+
+    let submission
+    try {
+      submission = await submitCogVideoXJob({
+        prompt: input.prompt,
+        imageUrl: input.imageUrl,
+        aspectRatio: input.aspectRatio,
+        durationSeconds: input.durationSeconds,
+        quality: input.quality,
+      })
+    } catch (err) {
+      const msg = err instanceof ZaiMediaError ? err.message : 'Video submit failed'
+      await supabase
+        .from('studio_assets')
+        .update({ status: 'failed', error: msg })
+        .eq('id', row.id)
+      return { error: msg }
+    }
+
+    const { data: updated, error: updErr } = await supabase
+      .from('studio_assets')
+      .update({
+        provider_id: submission.taskId,
+        provider_model: submission.model,
+      })
+      .eq('id', row.id)
+      .select('*')
+      .single()
+    if (updErr) return { error: updErr.message }
+
+    return updated as unknown as StudioAssetRow
+  } catch (err) {
+    return {
+      error: err instanceof Error ? err.message : 'Video submit failed',
+    }
+  }
+}
+
+export interface PollVideoInput {
+  assetId: string
+}
+
+/**
+ * Poll ZAI for one video asset. If complete, mirrors the result to Storage and
+ * marks the row ready. Returns the latest asset state.
+ */
+export async function pollVideoImpl(
+  input: PollVideoInput,
+): Promise<StudioAssetRow | { error: string }> {
+  try {
+    const userId = await getCurrentUserId()
+    const supabase = getSupabaseServerClient()
+
+    const { data: row, error } = await supabase
+      .from('studio_assets')
+      .select('*')
+      .eq('id', input.assetId)
+      .eq('owner_id', userId) // RLS doubles up
+      .single()
+    if (error || !row) return { error: error?.message ?? 'Asset not found' }
+
+    // Already resolved — return as-is.
+    if (row.status === 'ready' || row.status === 'failed') {
+      return row as unknown as StudioAssetRow
+    }
+
+    if (!row.provider_id) {
+      return { error: 'Asset has no provider task id' }
+    }
+
+    const result = await pollCogVideoXJob(row.provider_id)
+
+    if (result.status === 'processing') {
+      return row as unknown as StudioAssetRow
+    }
+
+    if (result.status === 'failed') {
+      const { data: failed } = await supabase
+        .from('studio_assets')
+        .update({ status: 'failed', error: result.error ?? 'Generation failed' })
+        .eq('id', input.assetId)
+        .select('*')
+        .single()
+      return (failed ?? row) as unknown as StudioAssetRow
+    }
+
+    // Success — mirror video + cover to our bucket.
+    let videoUrl = result.videoUrl
+    let coverUrl = result.coverImageUrl
+    let storagePath: string | null = null
+    try {
+      if (videoUrl) {
+        const mirrored = await mirrorToStorage(userId, videoUrl, 'mp4')
+        videoUrl = mirrored.publicUrl
+        storagePath = mirrored.storagePath
+      }
+      if (coverUrl) {
+        try {
+          const cover = await mirrorToStorage(userId, coverUrl, 'jpg')
+          coverUrl = cover.publicUrl
+        } catch {
+          // cover is optional
+        }
+      }
+    } catch (err) {
+      console.warn('[media.server] video mirror failed:', err)
+    }
+
+    const { data: ready } = await supabase
+      .from('studio_assets')
+      .update({
+        status: 'ready',
+        url: videoUrl ?? null,
+        storage_path: storagePath,
+        meta: { cover_image_url: coverUrl },
+      })
+      .eq('id', input.assetId)
+      .select('*')
+      .single()
+
+    return (ready ?? row) as unknown as StudioAssetRow
+  } catch (err) {
+    return { error: err instanceof Error ? err.message : 'Poll failed' }
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Library queries
+// ---------------------------------------------------------------------------
+
+export async function listAssetsImpl(
+  kind?: MediaKind,
+): Promise<StudioAssetRow[]> {
+  const supabase = getSupabaseServerClient()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+  if (!user) return []
+
+  let query = supabase
+    .from('studio_assets')
+    .select('*')
+    .eq('owner_id', user.id)
+    .order('created_at', { ascending: false })
+  if (kind) query = query.eq('kind', kind)
+
+  const { data, error } = await query
+  if (error || !data) return []
+  return data as unknown as StudioAssetRow[]
+}
+
+export async function getAssetImpl(
+  assetId: string,
+): Promise<StudioAssetRow | null> {
+  const supabase = getSupabaseServerClient()
+  const { data, error } = await supabase
+    .from('studio_assets')
+    .select('*')
+    .eq('id', assetId)
+    .single()
+  if (error || !data) return null
+  return data as unknown as StudioAssetRow
+}
+
+export async function deleteAssetImpl(
+  assetId: string,
+): Promise<{ error: string } | null> {
+  const supabase = getSupabaseServerClient()
+  const { data: row } = await supabase
+    .from('studio_assets')
+    .select('storage_path')
+    .eq('id', assetId)
+    .single()
+
+  if (row?.storage_path) {
+    await supabase.storage.from('media').remove([row.storage_path])
+  }
+
+  const { error } = await supabase
+    .from('studio_assets')
+    .delete()
+    .eq('id', assetId)
+  if (error) return { error: error.message }
+  return null
+}

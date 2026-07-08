@@ -12,6 +12,7 @@ import { generateText } from 'ai'
 import { getSupabaseServerClient } from '@/lib/supabase/server.server'
 import { getDefaultModel } from '@/lib/ai-provider'
 import { retrieveContext } from '@/server/documents.server'
+import { extractJson } from '@/lib/json-extract'
 
 // ---------------------------------------------------------------------------
 // Types
@@ -136,14 +137,17 @@ Rules:
       temperature: 0.8,
     })
 
-    // Extract JSON from the response (handles markdown fences + reasoning)
-    const raw = result.text
-    const jsonMatch = raw.match(/\{[\s\S]*\}/)
-    if (!jsonMatch) {
+    // GLM frequently emits trailing commas or prose around the JSON — use the
+    // hardened extractor instead of a raw JSON.parse on a greedy regex.
+    const parsed = extractJson<{
+      title?: string
+      caption?: string
+      hashtags?: unknown[]
+    }>(result.text)
+
+    if (!parsed) {
       return { error: 'AI did not return valid content. Please try again.' }
     }
-
-    const parsed = JSON.parse(jsonMatch[0])
 
     // Validate required fields
     if (!parsed.title || !parsed.caption) {
@@ -154,7 +158,9 @@ Rules:
       title: String(parsed.title).slice(0, 100),
       caption: String(parsed.caption),
       hashtags: Array.isArray(parsed.hashtags)
-        ? parsed.hashtags.map((h: string) => String(h).replace(/^#/, '')).slice(0, 15)
+        ? parsed.hashtags
+            .map((h) => String(h).replace(/^#/, ''))
+            .slice(0, 15)
         : [],
     }
   } catch (err) {

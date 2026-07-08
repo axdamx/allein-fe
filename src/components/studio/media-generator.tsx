@@ -1,3 +1,15 @@
+/**
+ * AI media generator card — image OR video.
+ *
+ * Wired to real generation hooks (ZAI CogView for images, CogVideoX for video).
+ * Image generation is a one-shot mutation. Video generation is async; this
+ * component renders the polling state and stays correct if the user navigates
+ * away (the asset row persists server-side and can be reattached from the
+ * library later).
+ *
+ * Plan-gated: image requires `aiImageGen`, video requires `aiVideoGen`.
+ * Locked tiers see an upgrade prompt instead of the form.
+ */
 import { useState } from 'react'
 import {
   ImageIcon,
@@ -23,17 +35,22 @@ import { Label } from '@/components/ui/label'
 import { Badge } from '@/components/ui/badge'
 import { usePlan } from '@/hooks/use-plan'
 import { UpgradeModal } from '@/components/billing/upgrade-modal'
+import {
+  useGenerateImage,
+  useGenerateVideo,
+} from '@/hooks/use-media'
 import { cn } from '@/lib/utils'
 
 type MediaType = 'image' | 'video'
-type GenState = 'idle' | 'generating' | 'ready' | 'error'
 
 const ASPECT_RATIOS = [
-  { value: '1:1', label: 'Square (1:1)', dims: '1024×1024' },
-  { value: '16:9', label: 'Landscape (16:9)', dims: '1792×1024' },
-  { value: '9:16', label: 'Portrait (9:16)', dims: '1024×1792' },
-  { value: '4:3', label: 'Classic (4:3)', dims: '1024×768' },
-]
+  { value: '1:1', label: 'Square (1:1)' },
+  { value: '16:9', label: 'Landscape (16:9)' },
+  { value: '9:16', label: 'Portrait (9:16)' },
+  { value: '4:3', label: 'Classic (4:3)' },
+] as const
+
+type AspectRatio = (typeof ASPECT_RATIOS)[number]['value']
 
 export const MediaGenerator = ({
   mediaType,
@@ -52,14 +69,39 @@ export const MediaGenerator = ({
 
   const [upgradeOpen, setUpgradeOpen] = useState(false)
   const [prompt, setPrompt] = useState('')
-  const [aspectRatio, setAspectRatio] = useState('1:1')
-  const [state, setState] = useState<GenState>('idle')
-  const [mediaUrl, setMediaUrl] = useState<string | null>(null)
-  const [progress, setProgress] = useState(0)
+  const [aspectRatio, setAspectRatio] = useState<AspectRatio>('1:1')
+
+  // Image hook (one-shot).
+  const imageGen = useGenerateImage()
+
+  // Video hook (submit + auto-poll).
+  const videoGen = useGenerateVideo()
 
   const Icon = mediaType === 'image' ? ImageIcon : Video
   const label = mediaType === 'image' ? 'Image' : 'Video'
-  const estimatedTime = mediaType === 'image' ? '~10s' : '~2-5 min'
+
+  // Derive "ready" state from whichever hook is active.
+  const imageReady =
+    imageGen.data && 'id' in imageGen.data ? imageGen.data : null
+  const readyUrl =
+    mediaType === 'image'
+      ? imageReady?.url ?? null
+      : videoGen.state.status === 'ready'
+        ? videoGen.state.asset?.url
+        : null
+
+  const isBusy =
+    mediaType === 'image'
+      ? imageGen.isPending
+      : videoGen.state.status === 'submitting' ||
+        videoGen.state.status === 'processing'
+
+  const errorMsg =
+    mediaType === 'image'
+      ? imageGen.data && !('id' in imageGen.data)
+        ? imageGen.data.error
+        : null
+      : videoGen.state.error
 
   // Auto-derive prompt from caption
   const derivePrompt = () => {
@@ -75,44 +117,29 @@ export const MediaGenerator = ({
     }
     if (!prompt.trim()) return
 
-    setState('generating')
-    setProgress(0)
-    setMediaUrl(null)
-
-    // --- MOCK GENERATION ---
-    // When API keys are available, replace this block with:
-    //   Image: fetch('/api/generate-image', { body: { prompt, size } })
-    //   Video: fetch('/api/generate-video', { body: { prompt } })
-    //
-    // For now, simulate the generation with a progress animation.
-
-    const totalTime = mediaType === 'image' ? 3000 : 6000
-    const interval = 100
-    const steps = totalTime / interval
-
-    for (let i = 0; i <= steps; i++) {
-      await new Promise((r) => setTimeout(r, interval))
-      setProgress(Math.min(95, Math.round((i / steps) * 100)))
+    if (mediaType === 'image') {
+      const result = await imageGen.mutateAsync({ prompt, aspectRatio })
+      if (result && 'id' in result && result.url) {
+        onMediaGenerated(result.url, 'image')
+      }
+    } else {
+      const result = await videoGen.submit({
+        prompt,
+        aspectRatio,
+        durationSeconds: 5,
+      })
+      if (result && 'id' in result && result.status === 'ready' && result.url) {
+        onMediaGenerated(result.url, 'video')
+      }
     }
-
-    // Use a placeholder image so the UI shows something real
-    // In production, this would be the URL returned by the image/video API
-    const seed = Math.random().toString(36).slice(7)
-    const placeholderUrl =
-      mediaType === 'image'
-        ? `https://picsum.photos/seed/${seed}/600/600`
-        : `https://picsum.photos/seed/${seed}/600/600` // video would be a video URL
-
-    setMediaUrl(placeholderUrl)
-    setProgress(100)
-    setState('ready')
-    onMediaGenerated(placeholderUrl, mediaType)
   }
 
   const handleRegenerate = () => {
-    setMediaUrl(null)
-    setState('idle')
-    setProgress(0)
+    if (mediaType === 'image') {
+      imageGen.reset()
+    } else {
+      videoGen.reset()
+    }
     handleGenerate()
   }
 
@@ -145,6 +172,8 @@ export const MediaGenerator = ({
       </Card>
     )
   }
+
+  const showForm = !readyUrl && !isBusy
 
   return (
     <Card>
@@ -182,7 +211,7 @@ export const MediaGenerator = ({
             placeholder={`Describe the ${label} you want...`}
             rows={2}
             className="text-sm"
-            disabled={state === 'generating'}
+            disabled={isBusy}
           />
         </div>
 
@@ -192,7 +221,7 @@ export const MediaGenerator = ({
             <button
               key={ar.value}
               onClick={() => setAspectRatio(ar.value)}
-              disabled={state === 'generating'}
+              disabled={isBusy}
               className={cn(
                 'rounded-md border px-2 py-1 text-xs',
                 aspectRatio === ar.value
@@ -206,7 +235,7 @@ export const MediaGenerator = ({
         </div>
 
         {/* Generate button */}
-        {state === 'idle' && (
+        {showForm && (
           <Button
             onClick={handleGenerate}
             disabled={!prompt.trim()}
@@ -218,52 +247,44 @@ export const MediaGenerator = ({
           </Button>
         )}
 
-        {/* Generating state with progress */}
-        {state === 'generating' && (
+        {/* Generating state */}
+        {isBusy && (
           <div className="space-y-2">
             <div className="flex items-center gap-2 text-sm">
               <Loader2 className="size-4 animate-spin text-primary" />
               <span>
-                Generating {label}… {progress}%
+                {mediaType === 'image'
+                  ? 'Generating image…'
+                  : videoGen.state.status === 'submitting'
+                    ? 'Submitting video job…'
+                    : 'Generating video… this takes ~2-5 min'}
               </span>
             </div>
-            <div className="h-2 overflow-hidden rounded-full bg-muted">
-              <div
-                className="h-full rounded-full bg-primary transition-all duration-100"
-                style={{ width: `${progress}%` }}
-              />
-            </div>
-            <p className="text-xs text-muted-foreground">
-              {mediaType === 'image'
-                ? 'Creating your image with AI'
-                : 'Video generation takes longer (~2-5 min)'}
-            </p>
+            {mediaType === 'video' && (
+              <p className="text-xs text-muted-foreground">
+                You can keep using the app — we'll show the result here when
+                ready.
+              </p>
+            )}
           </div>
         )}
 
         {/* Ready state with preview */}
-        {state === 'ready' && mediaUrl && (
+        {readyUrl && (
           <div className="space-y-2">
             <div className="relative overflow-hidden rounded-lg border bg-muted">
               {mediaType === 'image' ? (
                 <img
-                  src={mediaUrl}
+                  src={readyUrl}
                   alt="Generated content"
                   className="aspect-square w-full object-cover"
                 />
               ) : (
-                <div className="relative aspect-square">
-                  <img
-                    src={mediaUrl}
-                    alt="Video thumbnail"
-                    className="aspect-square w-full object-cover"
-                  />
-                  <div className="absolute inset-0 flex items-center justify-center bg-black/30">
-                    <div className="flex size-12 items-center justify-center rounded-full bg-white/90">
-                      <Video className="size-5 text-black" />
-                    </div>
-                  </div>
-                </div>
+                <video
+                  src={readyUrl}
+                  controls
+                  className="aspect-square w-full object-cover"
+                />
               )}
             </div>
             <div className="flex gap-2">
@@ -272,12 +293,13 @@ export const MediaGenerator = ({
                 size="sm"
                 className="flex-1"
                 onClick={handleRegenerate}
+                disabled={isBusy}
               >
                 <RefreshCw className="size-3.5" />
                 Regenerate
               </Button>
               <Button variant="outline" size="sm" asChild>
-                <a href={mediaUrl} download target="_blank" rel="noopener">
+                <a href={readyUrl} download target="_blank" rel="noopener">
                   <Download className="size-3.5" />
                 </a>
               </Button>
@@ -286,23 +308,11 @@ export const MediaGenerator = ({
         )}
 
         {/* Error state */}
-        {state === 'error' && (
+        {errorMsg && !isBusy && (
           <div className="flex items-center gap-2 rounded-md border border-destructive/30 bg-destructive/5 p-3 text-sm text-destructive">
             <AlertCircle className="size-4 shrink-0" />
-            <span>Generation failed. Try again.</span>
+            <span>{errorMsg}</span>
           </div>
-        )}
-
-        {/* Disclaimer */}
-        {state === 'idle' && (
-          <p className="flex items-start gap-1 text-xs text-muted-foreground">
-            <AlertCircle className="mt-0.5 size-3 shrink-0" />
-            <span>
-              Demo mode — generates placeholder {label}s. Connect an API key
-              (OpenAI gpt-image-1 for images, Kling for video) for real generation.
-              Estimated time: {estimatedTime}
-            </span>
-          </p>
         )}
       </CardContent>
     </Card>
