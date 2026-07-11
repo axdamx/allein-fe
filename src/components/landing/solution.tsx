@@ -43,11 +43,13 @@ export const Solution = () => {
           >
             <SectionLabel className="text-white/60">THE SOLUTION</SectionLabel>
             <h2 className="text-4xl font-semibold leading-tight tracking-tight text-white md:text-5xl">
-              One AI agent that runs the entire practice.
+              One dashboard replaces{' '}
+              <span className="text-orange-200">3–4 tools</span>.
             </h2>
             <p className="mt-4 max-w-md text-base leading-relaxed text-white/80">
-              Built by agents, for agents — Allein AI plugs into how you already
-              work: WhatsApp, Telegram, and one dashboard.
+              CRM, AI chat, marketing studio, reminders, and social posting —
+              all in one place, sharing one memory. No app-switching, no
+              copy-paste, no leads slipping through.
             </p>
           </motion.div>
         </div>

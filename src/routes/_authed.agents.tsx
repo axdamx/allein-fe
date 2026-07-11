@@ -20,6 +20,8 @@ import {
 } from '@/components/ui/dropdown-menu'
 import { Skeleton } from '@/components/ui/skeleton'
 import { useAgents, useAgentTypes, useUpdateAgentStatus } from '@/hooks/use-agents'
+import { usePlan } from '@/hooks/use-plan'
+import { UsageIndicator } from '@/components/billing/usage-indicator'
 import { getLucideIcon } from '@/lib/icons'
 
 const AgentsPage = () => {
@@ -27,6 +29,7 @@ const AgentsPage = () => {
   const { data: agents, isLoading } = useAgents()
   const { data: agentTypes } = useAgentTypes()
   const updateStatus = useUpdateAgentStatus()
+  const { canDo } = usePlan()
   const [newAgentOpen, setNewAgentOpen] = useState(false)
 
   const typeMap = new Map(agentTypes?.map((t) => [t.key, t]))
@@ -40,10 +43,12 @@ const AgentsPage = () => {
             Manage your AI agents and their configurations.
           </p>
         </div>
-        <Button onClick={() => setNewAgentOpen(true)}>
+        <Button onClick={() => setNewAgentOpen(true)} disabled={!canDo('agents')}>
           <Plus className="size-4" /> New Agent
         </Button>
       </div>
+
+      <UsageIndicator metric="agents" label="agents" />
 
       {isLoading ? (
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
@@ -158,7 +163,7 @@ const AgentsPage = () => {
                 Create your first AI agent to start automating.
               </p>
             </div>
-            <Button onClick={() => setNewAgentOpen(true)}>
+            <Button onClick={() => setNewAgentOpen(true)} disabled={!canDo('agents')}>
               <Plus className="size-4" /> Create your first agent
             </Button>
           </CardContent>

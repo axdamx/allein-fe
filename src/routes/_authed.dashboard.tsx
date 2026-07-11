@@ -24,6 +24,7 @@ import {
 import { Skeleton } from '@/components/ui/skeleton'
 import { useDashboardStats } from '@/hooks/use-dashboard'
 import { useAgents } from '@/hooks/use-agents'
+import { usePlan } from '@/hooks/use-plan'
 import { motion } from '@/lib/animations'
 import type { Stat } from '@/lib/types'
 
@@ -31,6 +32,7 @@ const DashboardPage = () => {
   const { user } = Route.useRouteContext()
   const { data: stats, isLoading: statsLoading } = useDashboardStats()
   const { data: agents, isLoading: agentsLoading } = useAgents()
+  const { canDo } = usePlan()
   const [newAgentOpen, setNewAgentOpen] = useState(false)
 
   const greeting = getGreeting()
@@ -90,7 +92,7 @@ const DashboardPage = () => {
             Here's what's happening across your agents.
           </p>
         </div>
-        <Button onClick={() => setNewAgentOpen(true)}>
+        <Button onClick={() => setNewAgentOpen(true)} disabled={!canDo('agents')}>
           <Plus className="size-4" /> New Agent
         </Button>
       </div>
@@ -185,7 +187,7 @@ const DashboardPage = () => {
                   ))}
                 </ul>
               ) : (
-                <EmptyAgents onCreate={() => setNewAgentOpen(true)} />
+                <EmptyAgents onCreate={() => setNewAgentOpen(true)} disabled={!canDo('agents')} />
               )}
             </CardContent>
           </Card>

@@ -1,6 +1,6 @@
 import { Agent } from '@mastra/core/agent'
 import { Memory } from '@mastra/memory'
-import { ModelRouterEmbeddingModel } from '@mastra/core/llm'
+import { localEmbedder } from '@/mastra/local-embedder'
 import { getDefaultModel } from '@/lib/ai-provider'
 import { storage, vectorStore } from '@/mastra/config'
 import {
@@ -34,7 +34,7 @@ You have access to messaging tools for reaching out to leads and contacts. Use t
   memory: new Memory({
     storage,
     vector: vectorStore,
-    embedder: new ModelRouterEmbeddingModel('openai/text-embedding-3-small'),
+    embedder: localEmbedder,
     options: {
       lastMessages: 20,
       workingMemory: {

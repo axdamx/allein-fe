@@ -33,6 +33,13 @@ export const createClient = createServerFn({ method: 'POST' })
     return createClientImpl(data)
   })
 
+export const bulkCreateClients = createServerFn({ method: 'POST' })
+  .validator((d: { clients: CreateClientInput[] }) => d)
+  .handler(async ({ data }) => {
+    const { bulkCreateClientsImpl } = await import('./clients.server')
+    return bulkCreateClientsImpl(data)
+  })
+
 export const updateClient = createServerFn({ method: 'POST' })
   .validator((d: UpdateClientInput) => d)
   .handler(async ({ data }) => {

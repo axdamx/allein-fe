@@ -20,18 +20,18 @@ export const Hero = () => {
         >
           <div className="inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/5 px-4 py-1.5 text-xs font-medium text-white/80 backdrop-blur-sm">
             <Sparkles className="size-3.5" />
-            For Agents, By Agents
+            Built for Malaysian agents
           </div>
 
           <h1 className="mt-6 text-5xl font-semibold leading-[1.05] tracking-tight text-white md:text-7xl">
             The AI operating system for{' '}
-            <span className="text-orange-200">agents</span>
+            <span className="text-orange-200">Malaysian agents</span>
           </h1>
           <p className="mt-6 max-w-xl text-base leading-relaxed text-white/80 md:text-lg">
-            One AI agent that talks to your clients on WhatsApp &amp; Telegram,
-            answers from your own documents, creates marketing, and runs your
-            CRM — built for Malaysia&apos;s property, insurance, travel &amp;
-            sales agents.
+            Capture leads, follow up automatically, and post marketing content
+            from one AI dashboard. Your agent replies on WhatsApp, reads your
+            own documents, and creates social posts — saving{' '}
+            <span className="font-semibold text-white">3–5 hours a day</span>.
           </p>
 
           <div className="mt-8 flex flex-wrap gap-4">
@@ -53,7 +53,7 @@ export const Hero = () => {
           {/* Trust row */}
           <div className="mt-10 flex flex-wrap items-center gap-x-8 gap-y-3 text-sm text-white/60">
             <span className="flex items-center gap-2">
-              <MessageCircle className="size-4" /> WhatsApp &amp; Telegram
+              <MessageCircle className="size-4" /> Saves 3–5 hrs/day
             </span>
             <span className="h-1 w-1 rounded-full bg-white/30" />
             <span>Speaks BM &amp; English</span>

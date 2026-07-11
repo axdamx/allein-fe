@@ -5,6 +5,7 @@ import {
   getClientsPaginated,
   getClient,
   createClient,
+  bulkCreateClients,
   updateClient,
   deleteClient,
   type ClientRow,
@@ -81,6 +82,30 @@ export const useDeleteClient = () => {
       toast.success('Client deleted')
       qc.invalidateQueries({ queryKey: ['crm', 'clients'] })
       qc.invalidateQueries({ queryKey: ['dashboard-stats'] })
+    },
+  })
+}
+
+export const useBulkCreateClients = () => {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (clients: CreateClientInput[]) =>
+      bulkCreateClients({ data: { clients } }),
+    onSuccess: (result) => {
+      const { inserted, skipped } = result
+      if (inserted === 0 && skipped > 0) {
+        toast.error(`No clients imported — ${skipped} skipped`)
+      } else if (skipped > 0) {
+        toast.success(`Imported ${inserted} clients (${skipped} skipped)`)
+      } else {
+        toast.success(`Imported ${inserted} client${inserted === 1 ? '' : 's'}`)
+      }
+      qc.invalidateQueries({ queryKey: ['crm', 'clients'] })
+      qc.invalidateQueries({ queryKey: ['dashboard-stats'] })
+    },
+    onError: (err: unknown) => {
+      const msg = err instanceof Error ? err.message : 'Import failed'
+      toast.error(msg)
     },
   })
 }

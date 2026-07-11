@@ -4,6 +4,7 @@
  * All DB access lives here (.server.ts) so it never reaches the client bundle.
  */
 import { getSupabaseServerClient } from '@/lib/supabase/server.server'
+import { sanitizeSupabaseMessage } from '@/server/_errors'
 import { DEFAULT_MODEL } from '@/lib/ai'
 import type { AgentTypeKey } from '@/lib/agent-types'
 
@@ -117,7 +118,7 @@ export async function createAgentImpl(
     .single()
 
   if (error) {
-    return { error: error.message }
+    return { error: sanitizeSupabaseMessage(error.message, 'Operation failed') }
   }
 
   // Increment the owner's agents_count usage counter
@@ -141,6 +142,6 @@ export async function updateAgentStatusImpl(
     .update({ status })
     .eq('id', agentId)
 
-  if (error) return { error: error.message }
+  if (error) return { error: sanitizeSupabaseMessage(error.message, 'Operation failed') }
   return null
 }

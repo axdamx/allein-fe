@@ -12,6 +12,8 @@ import { generateText } from 'ai'
 import { getSupabaseServerClient } from '@/lib/supabase/server.server'
 import { getDefaultModel } from '@/lib/ai-provider'
 import { extractJson } from '@/lib/json-extract'
+import { assertOwnership } from '@/server/_auth'
+import { safeError, sanitizeSupabaseMessage } from '@/server/_errors'
 
 // ---------------------------------------------------------------------------
 // Types
@@ -118,7 +120,7 @@ export async function createStoryboardImpl(input: {
     })
     .select('id')
     .single()
-  if (error) return { error: error.message }
+  if (error) return { error: sanitizeSupabaseMessage(error.message, 'Operation failed') }
   return { id: data.id }
 }
 
@@ -129,6 +131,7 @@ export async function updateStoryboardImpl(input: {
   aspectRatio?: string
 }): Promise<{ error: string } | null> {
   const supabase = getSupabaseServerClient()
+  const userId = await getCurrentUserId()
   const updates: Record<string, unknown> = {}
   if (input.title !== undefined) updates.title = input.title
   if (input.brief !== undefined) updates.brief = input.brief
@@ -138,18 +141,21 @@ export async function updateStoryboardImpl(input: {
     .from('studio_storyboards')
     .update(updates)
     .eq('id', input.id)
-  return error ? { error: error.message } : null
+    .eq('owner_id', userId)
+  return error ? { error: sanitizeSupabaseMessage(error.message, 'Operation failed') } : null
 }
 
 export async function deleteStoryboardImpl(
   storyboardId: string,
 ): Promise<{ error: string } | null> {
   const supabase = getSupabaseServerClient()
+  const userId = await getCurrentUserId()
   const { error } = await supabase
     .from('studio_storyboards')
     .delete()
     .eq('id', storyboardId)
-  return error ? { error: error.message } : null
+    .eq('owner_id', userId)
+  return error ? { error: sanitizeSupabaseMessage(error.message, 'Operation failed') } : null
 }
 
 // ---------------------------------------------------------------------------
@@ -170,6 +176,25 @@ export async function upsertSceneImpl(
   input: UpsertSceneInput,
 ): Promise<SceneRow | { error: string }> {
   const supabase = getSupabaseServerClient()
+  const userId = await getCurrentUserId()
+
+  // Verify the parent storyboard belongs to the caller. This guards both the
+  // insert path (attaching scenes to another user's storyboard) and the
+  // update path (mutating a scene whose storyboard is foreign).
+  if (!(await assertOwnership('studio_storyboards', input.storyboardId, userId))) {
+    return { error: 'Storyboard not found' }
+  }
+  // On update, additionally confirm the existing scene's storyboard matches
+  // the one supplied (prevents moving a scene to a foreign storyboard).
+  if (input.id) {
+    const { data: existing } = await supabase
+      .from('studio_scenes')
+      .select('storyboard_id')
+      .eq('id', input.id)
+      .eq('storyboard_id', input.storyboardId)
+      .maybeSingle()
+    if (!existing) return { error: 'Scene not found' }
+  }
 
   // For new scenes, append at the end (max position + 1).
   let position = 0
@@ -213,7 +238,7 @@ export async function upsertSceneImpl(
         .select('*')
         .single()
 
-  if (error) return { error: error.message }
+  if (error) return { error: sanitizeSupabaseMessage(error.message, 'Operation failed') }
   return data as unknown as SceneRow
 }
 
@@ -221,11 +246,20 @@ export async function deleteSceneImpl(
   sceneId: string,
 ): Promise<{ error: string } | null> {
   const supabase = getSupabaseServerClient()
-  const { error } = await supabase
+  const userId = await getCurrentUserId()
+  // Scope the delete by ownership via a sub-check: confirm the scene's
+  // storyboard belongs to the caller before deleting.
+  const { data: scene } = await supabase
     .from('studio_scenes')
-    .delete()
+    .select('storyboard_id')
     .eq('id', sceneId)
-  return error ? { error: error.message } : null
+    .maybeSingle()
+  if (!scene) return { error: 'Scene not found' }
+  if (!(await assertOwnership('studio_storyboards', scene.storyboard_id, userId))) {
+    return { error: 'Scene not found' }
+  }
+  const { error } = await supabase.from('studio_scenes').delete().eq('id', sceneId)
+  return error ? { error: sanitizeSupabaseMessage(error.message, 'Operation failed') } : null
 }
 
 /** Reorder all scenes in a storyboard by passing an ordered list of ids. */
@@ -234,11 +268,17 @@ export async function reorderScenesImpl(input: {
   sceneIds: string[]
 }): Promise<{ error: string } | null> {
   const supabase = getSupabaseServerClient()
+  const userId = await getCurrentUserId()
+  // Defense in depth: the RPC also checks ownership (migration 0023), but we
+  // verify here too so the request never reaches Postgres if unauthorized.
+  if (!(await assertOwnership('studio_storyboards', input.storyboardId, userId))) {
+    return { error: 'Storyboard not found' }
+  }
   const { error } = await supabase.rpc('reorder_studio_scenes', {
     p_storyboard_id: input.storyboardId,
     p_scene_ids: input.sceneIds,
   })
-  return error ? { error: error.message } : null
+  return error ? { error: sanitizeSupabaseMessage(error.message, 'Operation failed') } : null
 }
 
 // ---------------------------------------------------------------------------
@@ -312,7 +352,7 @@ Rules:
     }
   } catch (err) {
     return {
-      error: err instanceof Error ? err.message : 'Storyboard plan failed',
+      error: safeError(err, 'Storyboard plan failed'),
     }
   }
 }

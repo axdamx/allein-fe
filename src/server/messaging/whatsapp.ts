@@ -37,7 +37,9 @@ export const sendWhatsApp = async (
   }
 }
 
-export const formatInboundWhatsApp = (formData: FormData): {
+export const formatInboundWhatsApp = (
+  formData: URLSearchParams | FormData,
+): {
   from: string
   body: string
   messageSid: string

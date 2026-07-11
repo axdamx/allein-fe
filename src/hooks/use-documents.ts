@@ -45,13 +45,16 @@ export const useUploadDocument = () => {
       clientId?: string
     }) => uploadDocument({ data: input }),
     onSuccess: (result) => {
+      // The document row is inserted before the pipeline runs, so a row may
+      // exist in both success and failure cases — always refresh the list.
+      qc.invalidateQueries({ queryKey: ['documents'] })
+      qc.invalidateQueries({ queryKey: ['plan-state'] })
+
       if ('error' in result) {
         toast.error(result.error)
         return
       }
       toast.success('Document processed and ready for RAG')
-      qc.invalidateQueries({ queryKey: ['documents'] })
-      qc.invalidateQueries({ queryKey: ['plan-state'] })
 
       // Warn if nearing document limit (reads cached plan state — no extra fetch)
       const ps = qc.getQueryData<PlanState>(['plan-state'])

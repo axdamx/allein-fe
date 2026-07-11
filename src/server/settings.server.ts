@@ -1,5 +1,6 @@
 /** Server-only implementation for settings (profile + plan updates). */
 import { getSupabaseServerClient } from '@/lib/supabase/server.server'
+import { sanitizeSupabaseMessage } from '@/server/_errors'
 import type { PlanTier } from '@/lib/plans'
 import type { AgentTypeKey } from '@/lib/agent-types'
 
@@ -60,7 +61,7 @@ export async function updateProfileImpl(input: {
     .update(updates)
     .eq('id', user.id)
 
-  if (error) return { error: error.message }
+  if (error) return { error: sanitizeSupabaseMessage(error.message, 'Operation failed') }
   return null
 }
 
@@ -79,7 +80,7 @@ export async function updatePlanImpl(
     .update({ plan })
     .eq('id', user.id)
 
-  if (error) return { error: error.message }
+  if (error) return { error: sanitizeSupabaseMessage(error.message, 'Operation failed') }
   return null
 }
 
@@ -98,6 +99,6 @@ export async function updateUserAgentTypeImpl(
     .update({ agent_type: agentType })
     .eq('id', user.id)
 
-  if (error) return { error: error.message }
+  if (error) return { error: sanitizeSupabaseMessage(error.message, 'Operation failed') }
   return null
 }

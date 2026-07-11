@@ -1,4 +1,5 @@
 import { getSupabaseServerClient } from '@/lib/supabase/server.server'
+import { safeError, sanitizeSupabaseMessage } from '@/server/_errors'
 
 export type GoalStatus = 'active' | 'completed' | 'cancelled'
 export type GoalCategory = 'savings' | 'investment' | 'revenue' | 'debt_payoff' | 'custom'
@@ -71,10 +72,10 @@ export async function getGoalsImpl(): Promise<FinancialGoalRow[] | { error: stri
       .order('sort_order', { ascending: true })
       .order('created_at', { ascending: false })
 
-    if (error) return { error: error.message }
+    if (error) return { error: sanitizeSupabaseMessage(error.message, 'Operation failed') }
     return data as unknown as FinancialGoalRow[]
   } catch (err) {
-    return { error: err instanceof Error ? err.message : 'Failed to load goals' }
+    return { error: safeError(err, 'Failed to load goals') }
   }
 }
 
@@ -102,10 +103,10 @@ export async function createGoalImpl(
       .select('id')
       .single()
 
-    if (error) return { error: error.message }
+    if (error) return { error: sanitizeSupabaseMessage(error.message, 'Operation failed') }
     return { id: data.id }
   } catch (err) {
-    return { error: err instanceof Error ? err.message : 'Failed to create goal' }
+    return { error: safeError(err, 'Failed to create goal') }
   }
 }
 
@@ -134,10 +135,10 @@ export async function updateGoalImpl(
       .update(updates)
       .eq('id', input.goalId)
 
-    if (error) return { error: error.message }
+    if (error) return { error: sanitizeSupabaseMessage(error.message, 'Operation failed') }
     return null
   } catch (err) {
-    return { error: err instanceof Error ? err.message : 'Failed to update goal' }
+    return { error: safeError(err, 'Failed to update goal') }
   }
 }
 
@@ -150,9 +151,9 @@ export async function deleteGoalImpl(
       .from('financial_goals')
       .delete()
       .eq('id', goalId)
-    if (error) return { error: error.message }
+    if (error) return { error: sanitizeSupabaseMessage(error.message, 'Operation failed') }
     return null
   } catch (err) {
-    return { error: err instanceof Error ? err.message : 'Failed to delete goal' }
+    return { error: safeError(err, 'Failed to delete goal') }
   }
 }

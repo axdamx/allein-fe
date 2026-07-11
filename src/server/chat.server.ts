@@ -3,6 +3,7 @@ import { retrieveContext } from '@/server/documents.server'
 import { getAgentByType } from '@/mastra'
 import { consumeQuota } from '@/server/profile.server'
 import type { SupabaseClient } from '@supabase/supabase-js'
+import { sanitizeSupabaseMessage, safeError } from '@/server/_errors'
 
 export interface ConversationRow {
   id: string
@@ -124,7 +125,7 @@ export async function createConversationImpl(input: {
     .select('id')
     .single()
 
-  if (error) return { error: error.message }
+  if (error) return { error: sanitizeSupabaseMessage(error.message, 'Operation failed') }
 
   await supabase.rpc('increment_usage', {
     p_user_id: user.id,
@@ -147,11 +148,16 @@ export async function deleteConversationImpl(
   conversationId: string,
 ): Promise<{ error: string } | null> {
   const supabase = getSupabaseServerClient()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+  if (!user) return { error: 'Not authenticated' }
   const { error } = await supabase
     .from('conversations')
     .delete()
     .eq('id', conversationId)
-  if (error) return { error: error.message }
+    .eq('owner_id', user.id)
+  if (error) return { error: sanitizeSupabaseMessage(error.message, 'Operation failed') }
   return null
 }
 
@@ -159,6 +165,18 @@ export async function getMessagesImpl(
   conversationId: string,
 ): Promise<MessageRow[]> {
   const supabase = getSupabaseServerClient()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+  if (!user) return []
+  // Verify ownership of the parent conversation before returning messages.
+  const { data: convo } = await supabase
+    .from('conversations')
+    .select('id')
+    .eq('id', conversationId)
+    .eq('owner_id', user.id)
+    .maybeSingle()
+  if (!convo) return []
   const { data, error } = await supabase
     .from('messages')
     .select('*')
@@ -285,19 +303,28 @@ Rule: Call the tool first, explain later. Never ask "what details?" — use what
     return { error: `Agent type "${agent.type}" not found` }
   }
 
-  const result = await mastraAgent.generate(
-    [
-      { role: 'system' as const, content: dynamicPrompt },
-      { role: 'user' as const, content: input.content },
-    ],
-    {
-      memory: {
-        resource: user.id,
-        thread: input.conversationId,
+  // Generate inside a try — a provider hiccup (rate limit, timeout, network)
+  // would otherwise throw raw out of the server fn. The user message was
+  // already persisted above, so on failure we surface a clean error instead
+  // of a half-broken turn. No retry here (kept simple); the client can resend.
+  let result
+  try {
+    result = await mastraAgent.generate(
+      [
+        { role: 'system' as const, content: dynamicPrompt },
+        { role: 'user' as const, content: input.content },
+      ],
+      {
+        memory: {
+          resource: user.id,
+          thread: input.conversationId,
+        },
+        maxSteps: 3,
       },
-      maxSteps: 3,
-    },
-  )
+    )
+  } catch (err) {
+    return { error: safeError(err, 'The assistant is unavailable. Please try again.') }
+  }
 
   const replyText = result.text
 
@@ -456,19 +483,24 @@ Rule: Call the tool first, explain later. Never ask "what details?" — use what
     return { error: `Agent type "${agent.type}" not found` }
   }
 
-  const result = await mastraAgent.generate(
-    [
-      { role: 'system' as const, content: dynamicPrompt },
-      { role: 'user' as const, content: input.content },
-    ],
-    {
-      memory: {
-        resource: input.ownerId,
-        thread: input.conversationId,
+  let result
+  try {
+    result = await mastraAgent.generate(
+      [
+        { role: 'system' as const, content: dynamicPrompt },
+        { role: 'user' as const, content: input.content },
+      ],
+      {
+        memory: {
+          resource: input.ownerId,
+          thread: input.conversationId,
+        },
+        maxSteps: 3,
       },
-      maxSteps: 3,
-    },
-  )
+    )
+  } catch (err) {
+    return { error: safeError(err, 'The assistant is unavailable. Please try again.') }
+  }
 
   const replyText = result.text
 

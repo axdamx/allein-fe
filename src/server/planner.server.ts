@@ -1,5 +1,6 @@
 import { generateText } from 'ai'
 import { getSupabaseServerClient } from '@/lib/supabase/server.server'
+import { safeError, sanitizeSupabaseMessage } from '@/server/_errors'
 import { getDefaultModel } from '@/lib/ai-provider'
 
 export type TaskStatus = 'todo' | 'in_progress' | 'done'
@@ -57,10 +58,10 @@ export async function getTasksImpl(input: {
     }
 
     const { data, error } = await query
-    if (error) return { error: error.message }
+    if (error) return { error: sanitizeSupabaseMessage(error.message, 'Operation failed') }
     return data as unknown as TaskRow[]
   } catch (err) {
-    return { error: err instanceof Error ? err.message : 'Failed to load tasks' }
+    return { error: safeError(err, 'Failed to load tasks') }
   }
 }
 
@@ -97,10 +98,10 @@ export async function createTaskImpl(input: {
       .select('id')
       .single()
 
-    if (error) return { error: error.message }
+    if (error) return { error: sanitizeSupabaseMessage(error.message, 'Operation failed') }
     return { id: data.id }
   } catch (err) {
-    return { error: err instanceof Error ? err.message : 'Failed to create task' }
+    return { error: safeError(err, 'Failed to create task') }
   }
 }
 
@@ -139,10 +140,10 @@ export async function updateTaskImpl(input: {
       .update(updates)
       .eq('id', input.taskId)
 
-    if (error) return { error: error.message }
+    if (error) return { error: sanitizeSupabaseMessage(error.message, 'Operation failed') }
     return null
   } catch (err) {
-    return { error: err instanceof Error ? err.message : 'Failed to update task' }
+    return { error: safeError(err, 'Failed to update task') }
   }
 }
 
@@ -155,10 +156,10 @@ export async function deleteTaskImpl(
       .from('tasks')
       .delete()
       .eq('id', taskId)
-    if (error) return { error: error.message }
+    if (error) return { error: sanitizeSupabaseMessage(error.message, 'Operation failed') }
     return null
   } catch (err) {
-    return { error: err instanceof Error ? err.message : 'Failed to delete task' }
+    return { error: safeError(err, 'Failed to delete task') }
   }
 }
 
@@ -175,11 +176,11 @@ export async function reorderTasksImpl(
         .from('tasks')
         .update({ status: u.status, sort_order: u.sortOrder })
         .eq('id', u.taskId)
-      if (error) return { error: error.message }
+      if (error) return { error: sanitizeSupabaseMessage(error.message, 'Operation failed') }
     }
     return null
   } catch (err) {
-    return { error: err instanceof Error ? err.message : 'Failed to reorder tasks' }
+    return { error: safeError(err, 'Failed to reorder tasks') }
   }
 }
 
@@ -254,7 +255,7 @@ Rules:
 
     return { tasks }
   } catch (err) {
-    return { error: err instanceof Error ? err.message : 'Failed to generate plan' }
+    return { error: safeError(err, 'Failed to generate plan') }
   }
 }
 
@@ -396,11 +397,11 @@ export async function importCalendarEventsImpl(
     }))
 
     const { error } = await supabase.from('calendar_events').insert(rows)
-    if (error) return { error: error.message }
+    if (error) return { error: sanitizeSupabaseMessage(error.message, 'Operation failed') }
 
     return { count: parsed.length }
   } catch (err) {
-    return { error: err instanceof Error ? err.message : 'Failed to import calendar events' }
+    return { error: safeError(err, 'Failed to import calendar events') }
   }
 }
 
@@ -416,10 +417,10 @@ export async function getCalendarEventsImpl(): Promise<CalendarEventRow[] | { er
       .eq('owner_id', user.id)
       .order('start_date', { ascending: true })
 
-    if (error) return { error: error.message }
+    if (error) return { error: sanitizeSupabaseMessage(error.message, 'Operation failed') }
     return data as unknown as CalendarEventRow[]
   } catch (err) {
-    return { error: err instanceof Error ? err.message : 'Failed to load calendar events' }
+    return { error: safeError(err, 'Failed to load calendar events') }
   }
 }
 
@@ -432,9 +433,9 @@ export async function deleteCalendarEventImpl(
       .from('calendar_events')
       .delete()
       .eq('id', id)
-    if (error) return { error: error.message }
+    if (error) return { error: sanitizeSupabaseMessage(error.message, 'Operation failed') }
     return null
   } catch (err) {
-    return { error: err instanceof Error ? err.message : 'Failed to delete calendar event' }
+    return { error: safeError(err, 'Failed to delete calendar event') }
   }
 }

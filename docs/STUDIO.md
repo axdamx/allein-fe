@@ -130,6 +130,14 @@ Current tier access (from `src/lib/plans.ts`):
 
 **⚠️ KNOWN GAP — no metering.** See `docs/STUDIO_BILLING_ROADMAP.md`.
 
+**Key insight from billing analysis (2026-07-08):** metering must split into
+two layers — a *cheap layer* (chat, image gen at ~$0.01) that's metered
+generously so iteration feels free, and an *expensive layer* (Kling video
+at ~$0.70/clip) that's metered strictly with upfront UX warnings. Naive
+per-attempt metering on video would let a single iterating user burn $1.40+
+of your balance producing nothing they kept. Full analysis + revised quota
+table in the billing roadmap.
+
 ---
 
 ## Provider swap (when you decide to switch)

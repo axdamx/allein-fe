@@ -3,14 +3,32 @@ import {
   formatInboundWhatsApp,
   sendWhatsApp,
   twilioEmptyResponse,
+  verifyTwilioWebhook,
 } from '@/server/messaging'
 import { getSupabaseServiceClient } from '@/lib/supabase/service.server'
+import { rateLimit, getClientIp } from '@/server/_rate-limit'
 
 export const Route = createFileRoute('/api/messaging/whatsapp')({
   server: {
     handlers: {
       POST: async ({ request }) => {
-        const formData = await request.formData()
+        // Rate limit per IP to bound webhook abuse cost.
+        const ip = getClientIp(request)
+        const rl = rateLimit(`webhook:whatsapp:${ip}`, { windowMs: 60_000, max: 30 })
+        if (!rl.allowed) {
+          return new Response('Too Many Requests', { status: 429 })
+        }
+
+        // Twilio signature is computed over the RAW urlencoded body, so we must
+        // read it as text before parsing, then clone into FormData for the handler.
+        const rawBody = await request.text()
+
+        // Verify the Twilio HMAC signature before any processing. Fail closed.
+        if (!(await verifyTwilioWebhook(request, rawBody))) {
+          return new Response('Unauthorized', { status: 401 })
+        }
+
+        const formData = new URLSearchParams(rawBody)
         const { from, body } = formatInboundWhatsApp(formData)
 
         if (!body || !from) {
@@ -96,7 +114,7 @@ export const Route = createFileRoute('/api/messaging/whatsapp')({
 
           const replyText =
             'error' in response
-              ? `Sorry, something went wrong: ${response.error}`
+              ? `Sorry, something went wrong. Please try again later.`
               : response.reply
 
           // Send reply back via WhatsApp

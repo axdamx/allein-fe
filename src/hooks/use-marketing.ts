@@ -41,6 +41,29 @@ export const useCreatePost = () => {
   return useMutation({
     mutationFn: (input: CreatePostInput) => createPost({ data: input }),
     onSuccess: (result) => {
+      // Daily post limit hit — show a friendly message with reset time and
+      // refresh plan state so usage indicators update.
+      if (
+        'error' in result &&
+        typeof (result as { remaining?: unknown }).remaining === 'number'
+      ) {
+        const r = result as {
+          error: string
+          remaining: number
+          max: number | null
+          resetAt: string
+        }
+        const resetLabel = new Date(r.resetAt).toLocaleString([], {
+          hour: '2-digit',
+          minute: '2-digit',
+        })
+        toast.error(
+          `Daily post limit reached (${r.max ?? '—'}). Resets at ${resetLabel}.`,
+        )
+        qc.invalidateQueries({ queryKey: ['plan-state'] })
+        return
+      }
+
       if ('error' in result) {
         toast.error(result.error)
         return

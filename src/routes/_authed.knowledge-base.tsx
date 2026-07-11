@@ -8,12 +8,12 @@ import {
   CheckCircle2,
   XCircle,
   Clock,
+  Lock,
 } from 'lucide-react'
 import { formatDistanceToNow } from 'date-fns'
 import { createFileRoute } from '@tanstack/react-router'
 
 import { DashboardShell } from '@/components/layout/dashboard-shell'
-import { FeatureGate } from '@/components/billing/feature-gate'
 import { Button } from '@/components/ui/button'
 import {
   Card,
@@ -22,6 +22,8 @@ import {
 import { Progress } from '@/components/ui/progress'
 import { Skeleton } from '@/components/ui/skeleton'
 import { useDocuments, useUploadDocument, useDeleteDocument } from '@/hooks/use-documents'
+import { usePlan } from '@/hooks/use-plan'
+import { UsageIndicator } from '@/components/billing/usage-indicator'
 import { cn } from '@/lib/utils'
 import { motion } from '@/lib/animations'
 
@@ -30,8 +32,11 @@ const KnowledgeBasePage = () => {
   const { data: documents, isLoading } = useDocuments()
   const uploadDoc = useUploadDocument()
   const deleteDoc = useDeleteDocument()
+  const { canDo } = usePlan()
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [uploading, setUploading] = useState(false)
+
+  const atLimit = !canDo('documents')
 
   const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files
@@ -73,11 +78,10 @@ const KnowledgeBasePage = () => {
   const totalChunks = documents?.reduce((sum, d) => sum + d.chunk_count, 0) ?? 0
 
   return (
-    <FeatureGate feature="ragDocuments">
-      <DashboardShell
-        userEmail={user?.email}
-        userName={user?.email?.split('@')[0]}
-      >
+    <DashboardShell
+      userEmail={user?.email}
+      userName={user?.email?.split('@')[0]}
+    >
         <div className="mb-6 flex items-center justify-between gap-3">
           <div>
             <h1 className="text-2xl font-semibold tracking-tight">
@@ -87,7 +91,7 @@ const KnowledgeBasePage = () => {
               Upload documents so your agents can answer from your data (RAG).
             </p>
           </div>
-          <div>
+          <div className="flex items-center gap-3">
             <input
               ref={fileInputRef}
               type="file"
@@ -98,7 +102,8 @@ const KnowledgeBasePage = () => {
             />
             <Button
               onClick={() => fileInputRef.current?.click()}
-              disabled={uploading}
+              disabled={uploading || atLimit}
+              title={atLimit ? 'Document limit reached — upgrade to upload more' : undefined}
             >
               {uploading ? (
                 <motion.span
@@ -110,6 +115,11 @@ const KnowledgeBasePage = () => {
                   <Loader2 className="size-4 animate-spin" />
                   Uploading...
                 </motion.span>
+              ) : atLimit ? (
+                <span className="flex items-center gap-2">
+                  <Lock className="size-4" />
+                  Limit reached
+                </span>
               ) : (
                 <motion.span
                   key="idle"
@@ -124,6 +134,9 @@ const KnowledgeBasePage = () => {
             </Button>
           </div>
         </div>
+
+        {/* Usage indicator */}
+        <UsageIndicator metric="documents" label="documents" />
 
         {/* Stats */}
         <motion.div
@@ -312,7 +325,6 @@ const KnowledgeBasePage = () => {
           </motion.div>
         )}
       </DashboardShell>
-    </FeatureGate>
   )
 }
 

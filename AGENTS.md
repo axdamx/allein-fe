@@ -38,7 +38,7 @@
 
 ## Known deferred work
 
-1. **Studio metering** — see `docs/STUDIO_BILLING_ROADMAP.md`. Current code gates by feature flag only, no per-user monthly cap. This is the biggest open risk.
+1. **Studio metering** — see `docs/STUDIO_BILLING_ROADMAP.md`. Current code gates by feature flag only, no per-user monthly cap. This is the biggest open risk. **Critical nuance**: metering must use a two-layer model — generous caps for chat/images (cheap, ~$0.01), strict caps + UX warnings for video (expensive, ~$0.70/clip). Naive per-attempt video metering creates an "iteration tax" where users burn credits producing nothing they keep.
 2. **Video provider swap** — likely ZAI → Kling (via fal.ai) for quality. Abstraction in `src/lib/media/` makes this localized.
 3. **Storyboard → post export** (contact sheet / multi-asset post)
 
@@ -48,3 +48,4 @@
 - Don't enable Mastra `semanticRecall` on new agents without swapping the embedder (it defaults to OpenAI).
 - Don't parse LLM JSON with a raw greedy regex + `JSON.parse` — use `extractJson()`.
 - Don't ship a metered feature without wiring `consumeQuota()` — see billing roadmap.
+- Don't meter chat/image iteration at the same strictness as video — that punishes normal creative work and angers users.

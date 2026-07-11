@@ -12,12 +12,19 @@ import {
   Send,
 } from 'lucide-react'
 import { SectionLabel } from './section-label'
+import { cn } from '@/lib/utils'
 
 const MODULES = [
   {
+    icon: Clapperboard,
+    title: 'AI Marketing Studio',
+    body: 'Describe a listing, policy, or package — AI writes the post, generates the image, and publishes it in under 2 minutes.',
+    featured: true,
+  },
+  {
     icon: MessagesSquare,
     title: 'AI chat assistant',
-    body: 'Streaming AI chat with memory per conversation. Answers from your own documents.',
+    body: 'Streaming chat with memory per conversation. Answers from your own documents, not guesses.',
   },
   {
     icon: KanbanSquare,
@@ -25,19 +32,14 @@ const MODULES = [
     body: 'Kanban pipeline and deal tracking — stages configured per agent type.',
   },
   {
-    icon: Clapperboard,
-    title: 'Marketing studio',
-    body: 'AI generates images & video, writes captions, and schedules social posts.',
+    icon: FileText,
+    title: 'Document intelligence',
+    body: 'Upload PDFs — AI reads them and answers client questions from them instantly.',
   },
   {
     icon: Bell,
     title: 'Reminders & alerts',
     body: 'Renewal alerts, follow-ups, and milestone reminders sent automatically.',
-  },
-  {
-    icon: FileText,
-    title: 'Document intelligence',
-    body: 'Upload PDFs — AI reads them and answers questions from them instantly.',
   },
   {
     icon: BarChart3,
@@ -73,11 +75,11 @@ export const Product = () => {
           <h2 className="text-4xl font-semibold leading-tight tracking-tight text-black md:text-5xl">
             Seven modules. One dashboard.
             <br />
-            Every agent type.
+            One shared memory.
           </h2>
           <p className="mt-4 max-w-lg text-base leading-relaxed text-black/60">
-            No app-switching, no separate bots — everything shares memory. One
-            agent, all tools, full context.
+            Start with the Marketing Studio — our most-loved feature — or any
+            module. Everything shares one memory, so context never gets lost.
           </p>
         </motion.div>
 
@@ -85,25 +87,18 @@ export const Product = () => {
           {MODULES.map((m, i) => (
             <motion.div
               key={m.title}
-              className={
-                i === 6
-                  ? 'flex flex-col rounded-3xl bg-black p-7 text-white sm:col-span-2 lg:col-span-1'
-                  : 'flex flex-col rounded-3xl bg-[#F7F3EF] p-7'
-              }
+              className={cn(
+                'group flex flex-col rounded-3xl bg-[#F7F3EF] p-7 text-black transition-colors duration-300 hover:bg-black hover:text-white',
+                m.featured && 'sm:col-span-2 lg:col-span-1',
+              )}
               initial={{ opacity: 0, y: 24 }}
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true, margin: '-60px' }}
               transition={{ duration: 0.5, delay: (i % 4) * 0.08 }}
             >
-              <m.icon className={i === 6 ? 'size-6 text-orange-300' : 'size-6 text-[#E8804A]'} />
+              <m.icon className="size-6 text-[#E8804A] transition-colors duration-300 group-hover:text-orange-300" />
               <h3 className="mt-4 text-base font-semibold">{m.title}</h3>
-              <p
-                className={
-                  i === 6
-                    ? 'mt-2 text-sm leading-relaxed text-white/70'
-                    : 'mt-2 text-sm leading-relaxed text-black/55'
-                }
-              >
+              <p className="mt-2 text-sm leading-relaxed text-black/55 transition-colors duration-300 group-hover:text-white/70">
                 {m.body}
               </p>
             </motion.div>

@@ -20,6 +20,7 @@ import { generateCogViewImage, ZaiMediaError } from '@/lib/media/cogview'
 import { submitCogVideoXJob } from '@/lib/media/cogvideox'
 import { getDefaultModel } from '@/lib/ai-provider'
 import { generateText } from 'ai'
+import { assertSafeUrl } from '@/lib/url-guard'
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -188,6 +189,14 @@ export const generateVideoTool = createTool({
     }
 
     try {
+      // SSRF guard: validate any LLM-supplied source image URL before forwarding.
+      if (image_url) {
+        try {
+          assertSafeUrl(image_url)
+        } catch {
+          return { success: false, error: 'The provided image URL is not allowed.' }
+        }
+      }
       const submission = await submitCogVideoXJob({
         prompt,
         imageUrl: image_url,
@@ -235,6 +244,13 @@ export const analyzeImageTool = createTool({
   }),
   execute: async ({ image_url, question }) => {
     try {
+      // SSRF guard: validate the image URL before handing it to the model
+      // provider (prompt injection could otherwise target internal hosts).
+      try {
+        assertSafeUrl(image_url)
+      } catch {
+        return { success: false, error: 'The provided image URL is not allowed.' }
+      }
       const result = await generateText({
         model: getDefaultModel(),
         messages: [

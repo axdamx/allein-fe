@@ -2,6 +2,7 @@
  * Server-only implementation for the Clients module.
  */
 import { getSupabaseServerClient } from '@/lib/supabase/server.server'
+import { sanitizeSupabaseMessage, sanitizePostgrestFilter } from '@/server/_errors'
 
 // ---------------------------------------------------------------------------
 // Types
@@ -89,7 +90,7 @@ export async function getClientsPaginatedImpl({
   } = await supabase.auth.getUser()
   if (!user) return { data: [], total: 0 }
 
-  const term = search ? `%${search}%` : null
+  const term = search ? `%${sanitizePostgrestFilter(search)}%` : null
 
   // Count total matching
   let countQuery = supabase
@@ -129,10 +130,15 @@ export async function getClientByIdImpl(
   id: string,
 ): Promise<ClientRow | null> {
   const supabase = getSupabaseServerClient()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+  if (!user) return null
   const { data, error } = await supabase
     .from('clients')
     .select('*')
     .eq('id', id)
+    .eq('owner_id', user.id)
     .single()
   if (error || !data) return null
   return data as unknown as ClientRow
@@ -184,7 +190,7 @@ export async function createClientImpl(
     .select('id')
     .single()
 
-  if (error) return { error: error.message }
+  if (error) return { error: sanitizeSupabaseMessage(error.message, 'Operation failed') }
   return { id: data.id }
 }
 
@@ -192,6 +198,10 @@ export async function updateClientImpl(
   input: UpdateClientInput,
 ): Promise<{ error: string } | null> {
   const supabase = getSupabaseServerClient()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+  if (!user) return { error: 'Not authenticated' }
   const { id, ...updates } = input
 
   const cleanUpdates: Record<string, string | number | string[] | null> = {}
@@ -210,8 +220,9 @@ export async function updateClientImpl(
     .from('clients')
     .update(cleanUpdates)
     .eq('id', id)
+    .eq('owner_id', user.id)
 
-  if (error) return { error: error.message }
+  if (error) return { error: sanitizeSupabaseMessage(error.message, 'Operation failed') }
   return null
 }
 
@@ -219,7 +230,90 @@ export async function deleteClientImpl(
   clientId: string,
 ): Promise<{ error: string } | null> {
   const supabase = getSupabaseServerClient()
-  const { error } = await supabase.from('clients').delete().eq('id', clientId)
-  if (error) return { error: error.message }
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+  if (!user) return { error: 'Not authenticated' }
+  const { error } = await supabase
+    .from('clients')
+    .delete()
+    .eq('id', clientId)
+    .eq('owner_id', user.id)
+  if (error) return { error: sanitizeSupabaseMessage(error.message, 'Operation failed') }
   return null
+}
+
+/** Hard cap per import — protects against a single request blowing up Postgres. */
+const BULK_IMPORT_MAX_ROWS = 500
+
+const VALID_BULK_STATUSES: ClientStatus[] = ['active', 'inactive', 'churned']
+
+/**
+ * Bulk-insert clients (CSV import path). The client-side parser already
+ * normalizes headers and skips rows without a name; here we re-validate
+ * server-side (owner_id comes from the session, not the payload) and insert
+ * in a single batched `.insert([...])` call. RLS enforces ownership per row.
+ *
+ * Returns counts so the UI can toast "Imported N, skipped M".
+ */
+export async function bulkCreateClientsImpl(input: {
+  clients: CreateClientInput[]
+}): Promise<{ inserted: number; skipped: number; errors: string[] }> {
+  const supabase = getSupabaseServerClient()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+  if (!user) return { inserted: 0, skipped: 0, errors: ['Not authenticated'] }
+
+  const rows = input.clients.slice(0, BULK_IMPORT_MAX_ROWS)
+  const skipped = input.clients.length - rows.length
+
+  const toInsert: Record<string, unknown>[] = []
+  const errors: string[] = []
+
+  rows.forEach((input, i) => {
+    // name is required by the DB schema — skip silently, count as skipped.
+    if (!input.name || !input.name.trim()) {
+      errors.push(`Row ${i + 2}: missing name`)
+      return
+    }
+    // Re-coerce status defensively; the client normalizes, but never trust it.
+    let status: ClientStatus = 'active'
+    if (input.status && VALID_BULK_STATUSES.includes(input.status)) {
+      status = input.status
+    }
+    toInsert.push({
+      owner_id: user.id,
+      name: input.name.trim(),
+      email: input.email?.trim() || null,
+      phone: input.phone?.trim() || null,
+      company: input.company?.trim() || null,
+      website: input.website?.trim() || null,
+      industry: input.industry?.trim() || null,
+      status,
+      notes: input.notes?.trim() || null,
+      tags: Array.isArray(input.tags) ? input.tags : [],
+      date_of_birth: input.date_of_birth?.trim() || null,
+    })
+  })
+
+  if (toInsert.length === 0) {
+    return { inserted: 0, skipped: skipped + (rows.length - toInsert.length), errors }
+  }
+
+  const { error } = await supabase.from('clients').insert(toInsert)
+
+  if (error) {
+    return {
+      inserted: 0,
+      skipped: skipped + (rows.length - toInsert.length),
+      errors: [sanitizeSupabaseMessage(error.message, 'Bulk insert failed')],
+    }
+  }
+
+  return {
+    inserted: toInsert.length,
+    skipped: skipped + (rows.length - toInsert.length),
+    errors,
+  }
 }

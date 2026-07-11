@@ -7,6 +7,7 @@
 import { getSupabaseServerClient } from '@/lib/supabase/server.server'
 import { embed, embedBatch } from '@/lib/embeddings'
 import { extractText, chunkText } from '@/lib/chunking'
+import { safeError, sanitizePostgrestFilter, sanitizeSupabaseMessage } from '@/server/_errors'
 
 // ---------------------------------------------------------------------------
 // Types
@@ -77,7 +78,9 @@ export async function getDocumentsImpl(
     .order('created_at', { ascending: false })
 
   if (agentId) {
-    query = query.or(`agent_id.eq.${agentId},agent_id.is.null`)
+    // Sanitize agentId before interpolating into PostgREST filter syntax.
+    const safeAgent = sanitizePostgrestFilter(agentId)
+    query = query.or(`agent_id.eq.${safeAgent},agent_id.is.null`)
   }
 
   if (clientId) {
@@ -98,15 +101,18 @@ export async function deleteDocumentImpl(
   } = await supabase.auth.getUser()
   if (!user) return { error: 'Not authenticated' }
 
-  // Get the document to find its storage path
+  // Get the document to find its storage path (scoped by owner)
   const { data: doc } = await supabase
     .from('documents')
     .select('storage_path')
     .eq('id', documentId)
-    .single()
+    .eq('owner_id', user.id)
+    .maybeSingle()
+
+  if (!doc) return { error: 'Document not found' }
 
   // Delete from storage (best-effort)
-  if (doc?.storage_path) {
+  if (doc.storage_path) {
     await supabase.storage.from('documents').remove([doc.storage_path])
   }
 
@@ -115,8 +121,9 @@ export async function deleteDocumentImpl(
     .from('documents')
     .delete()
     .eq('id', documentId)
+    .eq('owner_id', user.id)
 
-  if (error) return { error: error.message }
+  if (error) return { error: sanitizeSupabaseMessage(error.message, 'Operation failed') }
 
   // Decrement usage counter
   await supabase.rpc('decrement_usage', {
@@ -271,7 +278,7 @@ export async function uploadDocumentImpl(
       .update({ status: 'failed' })
       .eq('id', doc.id)
     return {
-      error: err instanceof Error ? err.message : 'Document processing failed',
+      error: safeError(err, 'Document processing failed'),
     }
   }
 }

@@ -16,11 +16,13 @@ import {
   MoreHorizontal,
   Plus,
   Search,
+  Upload,
 } from 'lucide-react'
 import { formatDistanceToNow } from 'date-fns'
 import { createFileRoute, Link } from '@tanstack/react-router'
 
 import { ClientFormDialog } from '@/components/crm/client-form-dialog'
+import { ImportClientsDialog } from '@/components/crm/import-clients-dialog'
 import { StatusBadge } from '@/components/crm/client-status-badge'
 import { EmptyClients } from '@/components/crm/empty-clients'
 import { Button } from '@/components/ui/button'
@@ -71,6 +73,7 @@ const ClientsPage = () => {
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE))
 
   const [formOpen, setFormOpen] = useState(false)
+  const [importOpen, setImportOpen] = useState(false)
   const [editingClient, setEditingClient] = useState<ClientRow | null>(null)
   const [sorting, setSorting] = useState<SortingState>([])
 
@@ -195,9 +198,14 @@ const ClientsPage = () => {
             {total} client{total === 1 ? '' : 's'} in your database
           </p>
         </div>
-        <Button onClick={handleNewClient}>
-          <Plus className="size-4" /> New Client
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button variant="outline" onClick={() => setImportOpen(true)}>
+            <Upload className="size-4" /> Import CSV
+          </Button>
+          <Button onClick={handleNewClient}>
+            <Plus className="size-4" /> New Client
+          </Button>
+        </div>
       </div>
 
       <Card>
@@ -307,6 +315,8 @@ const ClientsPage = () => {
         onOpenChange={setFormOpen}
         client={editingClient}
       />
+
+      <ImportClientsDialog open={importOpen} onOpenChange={setImportOpen} />
     </>
   )
 }

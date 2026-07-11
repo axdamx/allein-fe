@@ -21,6 +21,13 @@ const RESOLVED_URL: string = SUPABASE_URL
 const RESOLVED_KEY: string = SUPABASE_ANON_KEY
 
 /**
+ * Whether cookies should carry the `Secure` attribute. In production over
+ * HTTPS this is always on; in local dev (http://localhost) it would block
+ * the session cookie, so we relax it there.
+ */
+const COOKIE_SECURE = process.env.NODE_ENV === 'production'
+
+/**
  * Supabase client scoped to a single server request.
  *
  * Reads + writes the auth session via TanStack Start's cookie APIs so
@@ -31,6 +38,12 @@ const RESOLVED_KEY: string = SUPABASE_ANON_KEY
  * dev runtime may be Node 20 (no native WebSocket). Server-side auth
  * flows never use realtime, but supabase-js eagerly constructs the
  * realtime client, which warns without a transport.
+ *
+ * SECURITY: `setAll` honors Supabase's cookie options AND hard-enforces
+ * `SameSite=Lax` (CSRF mitigation — prevents cross-site cookie submission
+ * of POST requests) plus `Secure` in production. Supabase's defaults pass
+ * these through but we force them so a future library change can't relax
+ * the policy.
  */
 export function getSupabaseServerClient() {
   return createServerClient(RESOLVED_URL, RESOLVED_KEY, {
@@ -41,9 +54,16 @@ export function getSupabaseServerClient() {
           value,
         }))
       },
-      setAll(cookies: { name: string; value: string }[]) {
+      setAll(
+        cookies: Array<{ name: string; value: string; options?: Record<string, unknown> }>,
+      ) {
         cookies.forEach((cookie) => {
-          setCookie(cookie.name, cookie.value)
+          setCookie(cookie.name, cookie.value, {
+            ...(cookie.options ?? {}),
+            sameSite: 'lax',
+            secure: COOKIE_SECURE,
+            httpOnly: true,
+          })
         })
       },
     },

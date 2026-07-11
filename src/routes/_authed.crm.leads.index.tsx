@@ -40,6 +40,8 @@ import {
   TableRow,
 } from '@/components/ui/table'
 import { useLeads } from '@/hooks/use-crm'
+import { usePlan } from '@/hooks/use-plan'
+import { UsageIndicator } from '@/components/billing/usage-indicator'
 import type { LeadRow } from '@/server/crm'
 import { cn } from '@/lib/utils'
 
@@ -47,6 +49,7 @@ export type FilterMode = 'all' | 'today'
 
 const LeadsPage = () => {
   const { data: leads, isLoading } = useLeads()
+  const { canDo } = usePlan()
   const [newLeadOpen, setNewLeadOpen] = useState(false)
   const [sorting, setSorting] = useState<SortingState>([])
   const [globalFilter, setGlobalFilter] = useState('')
@@ -203,10 +206,12 @@ const LeadsPage = () => {
             {leads?.length ?? 0} prospect{leads?.length === 1 ? '' : 's'} in your pipeline
           </p>
         </div>
-        <Button onClick={() => setNewLeadOpen(true)}>
+        <Button onClick={() => setNewLeadOpen(true)} disabled={!canDo('leads')}>
           <Plus className="size-4" /> New Lead
         </Button>
       </div>
+
+      <UsageIndicator metric="leads" label="leads" />
 
       <Card>
         <CardContent className="p-0">

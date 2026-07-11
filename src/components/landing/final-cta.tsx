@@ -18,9 +18,18 @@ export const FinalCta = () => {
           viewport={{ once: true }}
           transition={{ duration: 0.6 }}
         >
-          Let&apos;s build the AI operating system every Malaysian agent
-          deserves.
+          Save 3–5 hours a day. Close more leads. Post faster.
         </motion.h2>
+        <motion.p
+          className="mx-auto mt-5 max-w-xl text-base leading-relaxed text-white/70 md:text-lg"
+          initial={{ opacity: 0, y: 16 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+          transition={{ duration: 0.6, delay: 0.1 }}
+        >
+          Allein AI is the operating system every Malaysian agent deserves —
+          one dashboard for leads, follow-ups, and marketing.
+        </motion.p>
 
         <motion.div
           className="mt-10 flex flex-wrap justify-center gap-4"

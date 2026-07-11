@@ -6,6 +6,7 @@
  * applies — the is_admin() helper grants access to all rows.
  */
 import { getSupabaseServerClient } from '@/lib/supabase/server.server'
+import { safeError, sanitizeSupabaseMessage } from '@/server/_errors'
 import type { PlanTier } from '@/lib/plans'
 import type { AnalyticsTrends } from '@/server/analytics'
 
@@ -177,7 +178,7 @@ export async function getAdminStatsImpl(): Promise<AdminStats | { error: string 
     }
   } catch (err) {
     return {
-      error: err instanceof Error ? err.message : 'Failed to load stats',
+      error: safeError(err, 'Failed to load stats'),
     }
   }
 }
@@ -200,11 +201,11 @@ export async function getAdminUsersImpl(): Promise<
       )
       .order('created_at', { ascending: false })
 
-    if (error) return { error: error.message }
+    if (error) return { error: sanitizeSupabaseMessage(error.message, 'Operation failed') }
     return data as unknown as AdminUserRow[]
   } catch (err) {
     return {
-      error: err instanceof Error ? err.message : 'Failed to load users',
+      error: safeError(err, 'Failed to load users'),
     }
   }
 }
@@ -222,11 +223,11 @@ export async function updateUserRoleImpl(input: {
       .update({ role: input.role })
       .eq('id', input.userId)
 
-    if (error) return { error: error.message }
+    if (error) return { error: sanitizeSupabaseMessage(error.message, 'Operation failed') }
     return null
   } catch (err) {
     return {
-      error: err instanceof Error ? err.message : 'Failed to update role',
+      error: safeError(err, 'Failed to update role'),
     }
   }
 }
@@ -244,11 +245,11 @@ export async function updateUserPlanImpl(input: {
       .update({ plan: input.plan })
       .eq('id', input.userId)
 
-    if (error) return { error: error.message }
+    if (error) return { error: sanitizeSupabaseMessage(error.message, 'Operation failed') }
     return null
   } catch (err) {
     return {
-      error: err instanceof Error ? err.message : 'Failed to update plan',
+      error: safeError(err, 'Failed to update plan'),
     }
   }
 }
@@ -387,7 +388,7 @@ export async function getSystemHealthImpl(): Promise<
     }
   } catch (err) {
     return {
-      error: err instanceof Error ? err.message : 'Failed to load system health',
+      error: safeError(err, 'Failed to load system health'),
     }
   }
 }
@@ -458,7 +459,7 @@ export async function getAdminBillingImpl(): Promise<
     }
   } catch (err) {
     return {
-      error: err instanceof Error ? err.message : 'Failed to load billing data',
+      error: safeError(err, 'Failed to load billing data'),
     }
   }
 }
@@ -481,11 +482,11 @@ export async function getAgentTypeConfigsImpl(): Promise<
       )
       .order('sort_order')
 
-    if (error) return { error: error.message }
+    if (error) return { error: sanitizeSupabaseMessage(error.message, 'Operation failed') }
     return data as unknown as AdminAgentTypeRow[]
   } catch (err) {
     return {
-      error: err instanceof Error ? err.message : 'Failed to load configs',
+      error: safeError(err, 'Failed to load configs'),
     }
   }
 }
@@ -512,11 +513,11 @@ export async function updateAgentTypeConfigImpl(input: {
       .update(updates)
       .eq('key', input.key)
 
-    if (error) return { error: error.message }
+    if (error) return { error: sanitizeSupabaseMessage(error.message, 'Operation failed') }
     return null
   } catch (err) {
     return {
-      error: err instanceof Error ? err.message : 'Failed to update config',
+      error: safeError(err, 'Failed to update config'),
     }
   }
 }
@@ -602,7 +603,7 @@ export async function getAdminAnalyticsImpl(): Promise<
     }
   } catch (err) {
     return {
-      error: err instanceof Error ? err.message : 'Failed to load analytics',
+      error: safeError(err, 'Failed to load analytics'),
     }
   }
 }

@@ -53,7 +53,9 @@ export const AuthForm = () => {
         toast.error(data.message)
         return
       }
-      toast.success('Account created! Check your email to verify.')
+      // Use the server's message — it reflects whether email confirmation is
+      // required (Supabase setting) or a session was created immediately.
+      toast.success(data?.message ?? 'Account created.')
       await router.invalidate()
       queryClient.clear()
       router.navigate({ to: '/dashboard' })

@@ -33,7 +33,7 @@ export const createTaskTool = createTool({
       })
       .select('id')
       .single()
-    if (error) return { success: false, error: error.message }
+    if (error) return { success: false, error: 'Operation failed' }
     return { success: true, taskId: data.id, message: `Task "${title}" created` }
   },
 })
@@ -62,7 +62,7 @@ export const readTasksTool = createTool({
     query = query.limit(limit ?? 20)
 
     const { data, error } = await query
-    if (error) return { success: false, error: error.message, tasks: [] }
+    if (error) return { success: false, error: 'Operation failed', tasks: [] }
 
     return {
       success: true,

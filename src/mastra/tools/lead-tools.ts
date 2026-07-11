@@ -39,7 +39,7 @@ export const createLeadTool = createTool({
       .select('id')
       .single()
 
-    if (error) return { success: false, error: error.message }
+    if (error) return { success: false, error: 'Operation failed' }
     return {
       success: true,
       leadId: data.id,
@@ -90,7 +90,7 @@ export const createReminderTool = createTool({
       .select('id')
       .single()
 
-    if (error) return { success: false, error: error.message }
+    if (error) return { success: false, error: 'Operation failed' }
     return {
       success: true,
       reminderId: data.id,

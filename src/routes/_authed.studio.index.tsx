@@ -41,6 +41,8 @@ import {
   useCreatePost,
   useDeletePost,
 } from '@/hooks/use-marketing'
+import { usePlan } from '@/hooks/use-plan'
+import { UsageIndicator } from '@/components/billing/usage-indicator'
 import type { PostPlatform, GeneratedPost } from '@/hooks/use-marketing'
 import { cn } from '@/lib/utils'
 
@@ -69,6 +71,8 @@ const StudioCreatePage = () => {
   const { data: posts, isLoading } = usePosts()
   const generatePost = useGeneratePost()
   const createPost = useCreatePost()
+  const { canDo } = usePlan()
+  const atPostLimit = !canDo('posts')
 
   const [step, setStep] = useState<Step>('form')
   const [prompt, setPrompt] = useState('')
@@ -96,6 +100,8 @@ const StudioCreatePage = () => {
   }
 
   return (
+    <>
+    <UsageIndicator metric="posts" label="posts" windowSuffix="/day" />
     <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
       {/* Left: Generator / Preview */}
       <div>
@@ -163,7 +169,7 @@ const StudioCreatePage = () => {
                 <Button
                   type="submit"
                   className="w-full"
-                  disabled={!prompt.trim()}
+                  disabled={!prompt.trim() || atPostLimit}
                 >
                   <Sparkles className="size-4" />
                   Generate content
@@ -242,6 +248,7 @@ const StudioCreatePage = () => {
         </Card>
       </div>
     </div>
+    </>
   )
 }
 

@@ -10,6 +10,8 @@
  */
 import { generateText } from 'ai'
 import { getSupabaseServerClient } from '@/lib/supabase/server.server'
+import { safeError, sanitizeSupabaseMessage } from '@/server/_errors'
+import { consumeQuota } from '@/server/profile.server'
 import { getDefaultModel } from '@/lib/ai-provider'
 import { retrieveContext } from '@/server/documents.server'
 import { extractJson } from '@/lib/json-extract'
@@ -165,7 +167,7 @@ Rules:
     }
   } catch (err) {
     return {
-      error: err instanceof Error ? err.message : 'Content generation failed',
+      error: safeError(err, 'Content generation failed'),
     }
   }
 }
@@ -202,12 +204,31 @@ export interface CreatePostInput {
 
 export async function createPostImpl(
   input: CreatePostInput,
-): Promise<{ id: string } | { error: string }> {
+): Promise<
+  | { id: string }
+  | { error: string }
+  | { error: 'daily_post_limit_reached'; remaining: number; max: number | null; resetAt: string }
+> {
   const supabase = getSupabaseServerClient()
   const {
     data: { user },
   } = await supabase.auth.getUser()
   if (!user) return { error: 'Not authenticated' }
+
+  // ── Daily quota gate ────────────────────────────────────────────────
+  // Atomically consumes one post credit via the race-proof try_consume RPC.
+  // Bails out BEFORE the insert so a denied quota never persists a row.
+  // Note: AI generation (generatePostImpl) is intentionally NOT metered —
+  // users can iterate on content drafts freely; only saving a post counts.
+  const quota = await consumeQuota('posts')
+  if (!quota.allowed) {
+    return {
+      error: 'daily_post_limit_reached',
+      remaining: quota.remaining ?? 0,
+      max: quota.max,
+      resetAt: quota.resetAt,
+    }
+  }
 
   const { data, error } = await supabase
     .from('posts')
@@ -224,7 +245,7 @@ export async function createPostImpl(
     .select('id')
     .single()
 
-  if (error) return { error: error.message }
+  if (error) return { error: sanitizeSupabaseMessage(error.message, 'Operation failed') }
 
   // Increment usage counter
   await supabase.rpc('increment_usage', {
@@ -259,7 +280,7 @@ export async function updatePostImpl(input: {
     .update(updates)
     .eq('id', input.id)
 
-  if (error) return { error: error.message }
+  if (error) return { error: sanitizeSupabaseMessage(error.message, 'Operation failed') }
   return null
 }
 
@@ -268,7 +289,7 @@ export async function deletePostImpl(
 ): Promise<{ error: string } | null> {
   const supabase = getSupabaseServerClient()
   const { error } = await supabase.from('posts').delete().eq('id', postId)
-  if (error) return { error: error.message }
+  if (error) return { error: sanitizeSupabaseMessage(error.message, 'Operation failed') }
 
   // Decrement usage
   const {

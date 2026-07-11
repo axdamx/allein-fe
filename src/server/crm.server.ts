@@ -3,6 +3,7 @@
  * Handles leads, deals, and reminders — all DB access stays here.
  */
 import { getSupabaseServerClient } from '@/lib/supabase/server.server'
+import { sanitizeSupabaseMessage } from '@/server/_errors'
 
 // ---------------------------------------------------------------------------
 // Types — mirror the DB schema, safe for SSR serialization
@@ -146,7 +147,7 @@ export async function createLeadImpl(
     .select('id')
     .single()
 
-  if (error) return { error: error.message }
+  if (error) return { error: sanitizeSupabaseMessage(error.message, 'Operation failed') }
   return { id: data.id }
 }
 
@@ -168,6 +169,10 @@ export async function updateLeadImpl(
   input: UpdateLeadInput,
 ): Promise<{ error: string } | null> {
   const supabase = getSupabaseServerClient()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+  if (!user) return { error: 'Not authenticated' }
   const { id, ...updates } = input
 
   const cleanUpdates: Record<string, string | number | string[] | null> = {}
@@ -187,8 +192,9 @@ export async function updateLeadImpl(
     .from('leads')
     .update(cleanUpdates)
     .eq('id', id)
+    .eq('owner_id', user.id)
 
-  if (error) return { error: error.message }
+  if (error) return { error: sanitizeSupabaseMessage(error.message, 'Operation failed') }
   return null
 }
 
@@ -196,8 +202,16 @@ export async function deleteLeadImpl(
   leadId: string,
 ): Promise<{ error: string } | null> {
   const supabase = getSupabaseServerClient()
-  const { error } = await supabase.from('leads').delete().eq('id', leadId)
-  if (error) return { error: error.message }
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+  if (!user) return { error: 'Not authenticated' }
+  const { error } = await supabase
+    .from('leads')
+    .delete()
+    .eq('id', leadId)
+    .eq('owner_id', user.id)
+  if (error) return { error: sanitizeSupabaseMessage(error.message, 'Operation failed') }
   return null
 }
 
@@ -274,7 +288,7 @@ export async function createDealImpl(
     .select('id')
     .single()
 
-  if (error) return { error: error.message }
+  if (error) return { error: sanitizeSupabaseMessage(error.message, 'Operation failed') }
   return { id: data.id }
 }
 
@@ -283,6 +297,10 @@ export async function updateDealStageImpl(
   stage: DealStage,
 ): Promise<{ error: string } | null> {
   const supabase = getSupabaseServerClient()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+  if (!user) return { error: 'Not authenticated' }
 
   // Auto-set probability based on stage
   const stageProbability: Record<DealStage, number> = {
@@ -304,8 +322,9 @@ export async function updateDealStageImpl(
         : {}),
     })
     .eq('id', dealId)
+    .eq('owner_id', user.id)
 
-  if (error) return { error: error.message }
+  if (error) return { error: sanitizeSupabaseMessage(error.message, 'Operation failed') }
   return null
 }
 
@@ -360,7 +379,7 @@ export async function createReminderImpl(
     .select('id')
     .single()
 
-  if (error) return { error: error.message }
+  if (error) return { error: sanitizeSupabaseMessage(error.message, 'Operation failed') }
   return { id: data.id }
 }
 
@@ -369,11 +388,16 @@ export async function updateReminderStatusImpl(
   status: ReminderStatusType,
 ): Promise<{ error: string } | null> {
   const supabase = getSupabaseServerClient()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+  if (!user) return { error: 'Not authenticated' }
   const { error } = await supabase
     .from('reminders')
     .update({ status })
     .eq('id', reminderId)
-  if (error) return { error: error.message }
+    .eq('owner_id', user.id)
+  if (error) return { error: sanitizeSupabaseMessage(error.message, 'Operation failed') }
   return null
 }
 
@@ -398,6 +422,7 @@ export async function sendReminderToWhatsAppImpl(
     .from('reminders')
     .select('title, due_at')
     .eq('id', reminderId)
+    .eq('owner_id', user.id)
     .single()
 
   if (!reminder) return { success: false, error: 'Reminder not found' }
@@ -429,6 +454,7 @@ export async function sendReminderToTelegramImpl(
     .from('reminders')
     .select('title, due_at')
     .eq('id', reminderId)
+    .eq('owner_id', user.id)
     .single()
 
   if (!reminder) return { success: false, error: 'Reminder not found' }

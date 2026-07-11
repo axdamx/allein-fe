@@ -14,6 +14,8 @@ import {
   submitCogVideoXJob,
   pollCogVideoXJob,
 } from '@/lib/media/cogvideox'
+import { requireUserId } from '@/server/_auth'
+import { safeError, sanitizeSupabaseMessage } from '@/server/_errors'
 
 // ---------------------------------------------------------------------------
 // Types
@@ -87,7 +89,7 @@ async function mirrorToStorage(
       cacheControl: '3600',
       upsert: false,
     })
-  if (upErr) throw new Error(`Storage upload failed: ${upErr.message}`)
+  if (upErr) throw new Error('Storage upload failed')
 
   const { data: pub } = supabase.storage.from('media').getPublicUrl(storagePath)
   return { storagePath, publicUrl: pub.publicUrl }
@@ -123,7 +125,7 @@ export async function generateImageImpl(
       })
       .select('*')
       .single()
-    if (rowErr) return { error: rowErr.message }
+    if (rowErr) return { error: sanitizeSupabaseMessage(rowErr.message, 'Failed to start image generation') }
 
     let result
     try {
@@ -133,11 +135,13 @@ export async function generateImageImpl(
       })
     } catch (err) {
       const msg = err instanceof ZaiMediaError ? err.message : 'Image generation failed'
+      // Persist the detailed reason on the asset row (internal, not returned).
       await supabase
         .from('studio_assets')
         .update({ status: 'failed', error: msg })
         .eq('id', row.id)
-      return { error: msg }
+      // Return a generic message to the client; surface the detail via the asset row.
+      return { error: 'Image generation failed. Check the asset for details.' }
     }
 
     // Mirror to our bucket so the URL is durable.
@@ -164,12 +168,12 @@ export async function generateImageImpl(
       .eq('id', row.id)
       .select('*')
       .single()
-    if (updErr) return { error: updErr.message }
+    if (updErr) return { error: sanitizeSupabaseMessage(updErr.message, 'Failed to complete image generation') }
 
     return updated as unknown as StudioAssetRow
   } catch (err) {
     return {
-      error: err instanceof Error ? err.message : 'Image generation failed',
+      error: safeError(err, 'Image generation failed'),
     }
   }
 }
@@ -208,7 +212,7 @@ export async function submitVideoImpl(
       })
       .select('*')
       .single()
-    if (rowErr) return { error: rowErr.message }
+    if (rowErr) return { error: sanitizeSupabaseMessage(rowErr.message, 'Failed to start video generation') }
 
     let submission
     try {
@@ -225,7 +229,7 @@ export async function submitVideoImpl(
         .from('studio_assets')
         .update({ status: 'failed', error: msg })
         .eq('id', row.id)
-      return { error: msg }
+      return { error: 'Video submission failed. Check the asset for details.' }
     }
 
     const { data: updated, error: updErr } = await supabase
@@ -237,12 +241,12 @@ export async function submitVideoImpl(
       .eq('id', row.id)
       .select('*')
       .single()
-    if (updErr) return { error: updErr.message }
+    if (updErr) return { error: sanitizeSupabaseMessage(updErr.message, 'Failed to complete video submission') }
 
     return updated as unknown as StudioAssetRow
   } catch (err) {
     return {
-      error: err instanceof Error ? err.message : 'Video submit failed',
+      error: safeError(err, 'Video submission failed'),
     }
   }
 }
@@ -331,7 +335,7 @@ export async function pollVideoImpl(
 
     return (ready ?? row) as unknown as StudioAssetRow
   } catch (err) {
-    return { error: err instanceof Error ? err.message : 'Poll failed' }
+    return { error: safeError(err, 'Failed to check video status') }
   }
 }
 
@@ -364,10 +368,12 @@ export async function getAssetImpl(
   assetId: string,
 ): Promise<StudioAssetRow | null> {
   const supabase = getSupabaseServerClient()
+  const userId = await requireUserId()
   const { data, error } = await supabase
     .from('studio_assets')
     .select('*')
     .eq('id', assetId)
+    .eq('owner_id', userId)
     .single()
   if (error || !data) return null
   return data as unknown as StudioAssetRow
@@ -377,13 +383,18 @@ export async function deleteAssetImpl(
   assetId: string,
 ): Promise<{ error: string } | null> {
   const supabase = getSupabaseServerClient()
+  const userId = await requireUserId()
+  // Scope the lookup by owner_id so foreign assets are invisible.
   const { data: row } = await supabase
     .from('studio_assets')
     .select('storage_path')
     .eq('id', assetId)
-    .single()
+    .eq('owner_id', userId)
+    .maybeSingle()
 
-  if (row?.storage_path) {
+  if (!row) return { error: 'Asset not found' }
+
+  if (row.storage_path) {
     await supabase.storage.from('media').remove([row.storage_path])
   }
 
@@ -391,6 +402,7 @@ export async function deleteAssetImpl(
     .from('studio_assets')
     .delete()
     .eq('id', assetId)
-  if (error) return { error: error.message }
+    .eq('owner_id', userId)
+  if (error) return { error: 'Failed to delete asset' }
   return null
 }

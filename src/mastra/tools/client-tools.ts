@@ -1,6 +1,7 @@
 import { createTool } from '@mastra/core/tools'
 import { z } from 'zod'
 import { getSupabaseServiceClient } from '@/lib/supabase/service.server'
+import { sanitizePostgrestFilter } from '@/server/_errors'
 
 export const readClientsTool = createTool({
   id: 'read-clients',
@@ -23,8 +24,9 @@ export const readClientsTool = createTool({
       .order('name', { ascending: true })
 
     if (search) {
+      const safe = sanitizePostgrestFilter(search)
       query = query.or(
-        `name.ilike.%${search}%,email.ilike.%${search}%,company.ilike.%${search}%`,
+        `name.ilike.%${safe}%,email.ilike.%${safe}%,company.ilike.%${safe}%`,
       )
     }
     if (status) query = query.eq('status', status)
@@ -34,7 +36,7 @@ export const readClientsTool = createTool({
     query = query.limit(limit ?? 20)
 
     const { data, error } = await query
-    if (error) return { success: false, error: error.message, clients: [] }
+    if (error) return { success: false, error: 'Operation failed', clients: [] }
 
     return {
       success: true,
@@ -84,7 +86,7 @@ export const createClientTool = createTool({
       })
       .select('id')
       .single()
-    if (error) return { success: false, error: error.message }
+    if (error) return { success: false, error: 'Operation failed' }
     return { success: true, clientId: data.id, message: `Client "${input.name}" created successfully` }
   },
 })
@@ -124,7 +126,7 @@ export const updateClientTool = createTool({
       .update(cleanUpdates)
       .eq('id', clientId)
       .eq('owner_id', resourceId)
-    if (error) return { success: false, error: error.message }
+    if (error) return { success: false, error: 'Operation failed' }
     return { success: true, message: 'Client updated successfully' }
   },
 })
@@ -144,7 +146,7 @@ export const deleteClientTool = createTool({
       .delete()
       .eq('id', clientId)
       .eq('owner_id', resourceId)
-    if (error) return { success: false, error: error.message }
+    if (error) return { success: false, error: 'Operation failed' }
     return { success: true, message: 'Client deleted successfully' }
   },
 })

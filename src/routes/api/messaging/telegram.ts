@@ -1,11 +1,28 @@
 import { createFileRoute } from '@tanstack/react-router'
-import { parseTelegramUpdate, sendTelegram } from '@/server/messaging'
+import {
+  parseTelegramUpdate,
+  sendTelegram,
+  verifyTelegramWebhook,
+} from '@/server/messaging'
 import { getSupabaseServiceClient } from '@/lib/supabase/service.server'
+import { rateLimit, getClientIp } from '@/server/_rate-limit'
 
 export const Route = createFileRoute('/api/messaging/telegram')({
   server: {
     handlers: {
       POST: async ({ request }) => {
+        // Rate limit per IP to bound webhook abuse cost.
+        const ip = getClientIp(request)
+        const rl = rateLimit(`webhook:telegram:${ip}`, { windowMs: 60_000, max: 30 })
+        if (!rl.allowed) {
+          return new Response('Too Many Requests', { status: 429 })
+        }
+
+        // Verify the Telegram secret-token before doing any work. Fail closed.
+        if (!verifyTelegramWebhook(request)) {
+          return new Response('Unauthorized', { status: 401 })
+        }
+
         const update = await request.json()
         const parsed = parseTelegramUpdate(update)
 
@@ -143,7 +160,7 @@ export const Route = createFileRoute('/api/messaging/telegram')({
 
           const replyText =
             'error' in response
-              ? `Sorry, something went wrong: ${response.error}`
+              ? `Sorry, something went wrong. Please try again later.`
               : response.reply
 
           // Send reply back to Telegram

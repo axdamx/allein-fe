@@ -16,10 +16,12 @@ export type {
 } from './media.server'
 
 import type { MediaKind } from './media.server'
+import { rateLimit } from './_rate-limit'
 
 /**
  * Check a plan feature flag and throw a typed error if the user's tier doesn't
  * include it. Mirrors the `enforceLimitImpl` pattern but for boolean features.
+ * Returns the resolved user profile so callers can reuse the id.
  */
 async function enforceFeature(feature: 'aiImageGen' | 'aiVideoGen') {
   const { getCurrentUserProfile } = await import('./profile.server')
@@ -30,6 +32,30 @@ async function enforceFeature(feature: 'aiImageGen' | 'aiVideoGen') {
   if (!allowed) {
     const err = new Error(`Feature ${feature} is not available on your plan`)
     err.name = 'PlanFeatureError'
+    throw err
+  }
+  return profile
+}
+
+/**
+ * Per-user rate limit on expensive AI generation. Stops a single user from
+ * hammering the paid image/video APIs. The daily quota gates chat messages;
+ * this is a tighter burst limit on generation itself.
+ *
+ * Throws a typed RateLimitError on exceed so the client can show a friendly
+ * "slow down" message instead of a generic 500.
+ */
+function enforceGenerationRate(
+  userId: string,
+  kind: 'image' | 'video',
+) {
+  const cfg = kind === 'image'
+    ? { windowMs: 60_000, max: 6 }   // 6 images / minute
+    : { windowMs: 60_000, max: 2 }   // 2 video submissions / minute
+  const rl = rateLimit(`gen:${kind}:${userId}`, cfg)
+  if (!rl.allowed) {
+    const err = new Error('Rate limit exceeded — please slow down and try again shortly.')
+    err.name = 'RateLimitError'
     throw err
   }
 }
@@ -46,7 +72,8 @@ export const generateImage = createServerFn({ method: 'POST' })
     }) => d,
   )
   .handler(async ({ data }) => {
-    await enforceFeature('aiImageGen')
+    const profile = await enforceFeature('aiImageGen')
+    enforceGenerationRate(profile.id, 'image')
     const { generateImageImpl } = await import('./media.server')
     return generateImageImpl(data)
   })
@@ -66,7 +93,8 @@ export const submitVideo = createServerFn({ method: 'POST' })
     }) => d,
   )
   .handler(async ({ data }) => {
-    await enforceFeature('aiVideoGen')
+    const profile = await enforceFeature('aiVideoGen')
+    enforceGenerationRate(profile.id, 'video')
     const { submitVideoImpl } = await import('./media.server')
     return submitVideoImpl(data)
   })

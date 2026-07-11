@@ -59,10 +59,10 @@ export const PricingSection = () => {
       <div className="mx-auto max-w-6xl text-center">
         <SectionLabel className="text-black/40">PRICING</SectionLabel>
         <h2 className="text-4xl font-semibold leading-tight tracking-tight text-black md:text-5xl">
-          Four tiers built for conversion.
+          Pricing that scales with your practice.
         </h2>
         <p className="mx-auto mt-4 max-w-md text-base text-black/55">
-          From free forever to white-label. Upgrade as your practice grows.
+          From free forever to white-label. Upgrade only when you&apos;re ready.
         </p>
 
         <div className="mt-16 grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">

@@ -2,7 +2,13 @@ import { Bot, Plus } from 'lucide-react'
 
 import { Button } from '@/components/ui/button'
 
-export const EmptyAgents = ({ onCreate }: { onCreate: () => void }) => {
+export const EmptyAgents = ({
+  onCreate,
+  disabled,
+}: {
+  onCreate: () => void
+  disabled?: boolean
+}) => {
   return (
     <div className="flex flex-col items-center justify-center gap-3 py-8 text-center">
       <div className="flex size-12 items-center justify-center rounded-full bg-muted">
@@ -14,7 +20,7 @@ export const EmptyAgents = ({ onCreate }: { onCreate: () => void }) => {
           Create your first AI agent to get started.
         </p>
       </div>
-      <Button size="sm" onClick={onCreate}>
+      <Button size="sm" onClick={onCreate} disabled={disabled}>
         <Plus className="size-4" /> Create agent
       </Button>
     </div>

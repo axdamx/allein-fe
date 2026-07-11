@@ -11,6 +11,7 @@
 import { getSupabaseServerClient } from '@/lib/supabase/server.server'
 import { getStudioAgent } from '@/mastra'
 import { consumeQuota } from '@/server/profile.server'
+import { sanitizeSupabaseMessage, safeError } from '@/server/_errors'
 
 // ---------------------------------------------------------------------------
 // Types
@@ -103,7 +104,7 @@ export async function createStudioChatImpl(input: {
     })
     .select('id')
     .single()
-  if (error) return { error: error.message }
+  if (error) return { error: sanitizeSupabaseMessage(error.message, 'Operation failed') }
   return { id: data.id }
 }
 
@@ -111,11 +112,16 @@ export async function deleteStudioChatImpl(
   chatId: string,
 ): Promise<{ error: string } | null> {
   const supabase = getSupabaseServerClient()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+  if (!user) return { error: 'Not authenticated' }
   const { error } = await supabase
     .from('studio_chats')
     .delete()
     .eq('id', chatId)
-  if (error) return { error: error.message }
+    .eq('owner_id', user.id)
+  if (error) return { error: sanitizeSupabaseMessage(error.message, 'Operation failed') }
   return null
 }
 
@@ -123,6 +129,18 @@ export async function getStudioMessagesImpl(
   chatId: string,
 ): Promise<StudioMessageRow[]> {
   const supabase = getSupabaseServerClient()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+  if (!user) return []
+  // Verify ownership of the parent chat before returning its messages.
+  const { data: chat } = await supabase
+    .from('studio_chats')
+    .select('id')
+    .eq('id', chatId)
+    .eq('owner_id', user.id)
+    .maybeSingle()
+  if (!chat) return []
   const { data, error } = await supabase
     .from('studio_messages')
     .select('*')
@@ -147,20 +165,25 @@ export async function uploadStudioAttachmentImpl(input: {
   } = await supabase.auth.getUser()
   if (!user) return { error: 'Not authenticated' }
 
-  const ext = input.fileName.includes('.')
-    ? input.fileName.split('.').pop()!
-    : 'png'
-  const path = `${user.id}/${crypto.randomUUID()}.${ext}`
-
+  // Validate content server-side: client-supplied MIME/filename are not trusted.
   const buffer = Buffer.from(input.base64, 'base64')
+  const { validateUpload, uploadRejectionMessage } = await import(
+    '@/lib/media/upload-validate'
+  )
+  const validated = validateUpload(buffer, input.fileName, input.mimeType)
+  if ('reason' in validated) {
+    return { error: uploadRejectionMessage(validated) }
+  }
+
+  const path = `${user.id}/${crypto.randomUUID()}.${validated.ext}`
   const { error: upErr } = await supabase.storage
     .from('media')
-    .upload(path, buffer, {
-      contentType: input.mimeType,
+    .upload(path, validated.buffer, {
+      contentType: validated.mime,
       cacheControl: '3600',
       upsert: false,
     })
-  if (upErr) return { error: upErr.message }
+  if (upErr) return { error: 'Upload failed. Please try again.' }
 
   const { data: pub } = supabase.storage.from('media').getPublicUrl(path)
   return { url: pub.publicUrl }
@@ -227,21 +250,26 @@ export async function sendStudioMessageImpl(input: {
   const agent = getStudioAgent()
   if (!agent) return { error: 'Studio agent unavailable' }
 
-  const result = await agent.generate(
-    [
+  let result
+  try {
+    result = await agent.generate(
+      [
+        {
+          role: 'user',
+          content: userContent,
+        } as never, // AI SDK accepts multimodal content; Mastra types are stricter
+      ],
       {
-        role: 'user',
-        content: userContent,
-      } as never, // AI SDK accepts multimodal content; Mastra types are stricter
-    ],
-    {
-      memory: {
-        resource: user.id, // resourceId → tools read this as owner id
-        thread: input.chatId,
+        memory: {
+          resource: user.id, // resourceId → tools read this as owner id
+          thread: input.chatId,
+        },
+        maxSteps: 4,
       },
-      maxSteps: 4,
-    },
-  )
+    )
+  } catch (err) {
+    return { error: safeError(err, 'The assistant is unavailable. Please try again.') }
+  }
 
   const replyText = result.text
 

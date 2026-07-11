@@ -29,10 +29,10 @@ const COMPETITORS = [
 ]
 
 const MOATS = [
-  'Speaks BM + English natively',
-  'Malaysian bank loan rates built in',
-  'MyKad & PropertyGuru integration',
-  'One agent, every channel',
+  'Local language — BM & English natively',
+  'Local workflows — WhatsApp & Telegram native',
+  'Document-grounded AI — reads your own files',
+  'Social publishing baked in — auto-post in one click',
 ]
 
 export const WhyWeWin = () => {
