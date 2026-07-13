@@ -1,5 +1,5 @@
 import { useState, useCallback } from "react";
-import { Check, Copy, Bot, User, Loader2 } from "lucide-react";
+import { Check, Copy, Bot, User, FileText } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import rehypeHighlight from "rehype-highlight";
@@ -7,6 +7,7 @@ import rehypeHighlight from "rehype-highlight";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { cn } from "@/lib/utils";
 import { formatTime } from "@/components/chat/chat-utils";
+import { TypingIndicator } from "@/components/chat/typing-indicator";
 import type { MessageRow } from "@/hooks/use-chat";
 
 export const MessageBubble = ({
@@ -43,12 +44,20 @@ export const MessageBubble = ({
       >
         <div
           className={cn(
-            "w-fit max-w-[85%] rounded-2xl px-4 py-2.5 text-sm leading-relaxed",
+            "max-w-[85%] min-w-0 overflow-hidden rounded-2xl px-4 py-2.5 text-sm leading-relaxed",
             isUser
               ? "bg-primary text-primary-foreground"
               : "bg-muted text-foreground",
           )}
         >
+          {/* Attachment preview (user messages with a file/image) */}
+          {isUser && message.attachment_url && (
+            <AttachmentView
+              url={message.attachment_url}
+              mime={message.attachment_mime}
+              name={message.attachment_name}
+            />
+          )}
           {isUser ? (
             <p className="whitespace-pre-wrap break-words">{message.content}</p>
           ) : (
@@ -62,6 +71,44 @@ export const MessageBubble = ({
     </div>
   );
 }
+
+/**
+ * Inline attachment renderer for user messages.
+ * Images are shown as a thumbnail; other files get a file chip.
+ */
+const AttachmentView = ({
+  url,
+  mime,
+  name,
+}: {
+  url: string;
+  mime: string | null;
+  name: string | null;
+}) => {
+  const isImage = mime?.startsWith("image/") ?? /\.(png|jpe?g|webp|gif)$/i.test(url);
+  if (isImage) {
+    return (
+      <img
+        src={url}
+        alt={name ?? "attachment"}
+        className="mb-2 max-h-60 w-full rounded-lg object-cover"
+      />
+    );
+  }
+  return (
+    <a
+      href={url}
+      target="_blank"
+      rel="noreferrer"
+      className="mb-2 flex max-w-full items-center gap-2 rounded-lg bg-background/20 px-2.5 py-1.5 text-xs transition-colors hover:bg-background/30"
+    >
+      <FileText className="size-4 shrink-0" />
+      <span className="min-w-0 flex-1 truncate font-medium">
+        {name ?? "Attachment"}
+      </span>
+    </a>
+  );
+};
 
 const MarkdownContent = ({ content }: { content: string }) => {
   return (
@@ -152,9 +199,7 @@ export const StreamingBubble = ({ text }: { text: string }) => {
               {text}
             </span>
           ) : (
-            <span className="inline-flex items-center gap-1">
-              <Loader2 className="size-4 animate-spin text-muted-foreground" />
-            </span>
+            <TypingIndicator className="text-muted-foreground" />
           )}
         </div>
       </div>

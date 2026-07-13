@@ -159,21 +159,35 @@ export async function uploadStudioAttachmentImpl(input: {
   mimeType: string
   base64: string
 }): Promise<{ url: string } | { error: string }> {
+  console.log('[chat-debug] SERVER uploadStudioAttachmentImpl', {
+    fileName: input.fileName,
+    mimeType: input.mimeType,
+    base64Length: input.base64.length,
+  })
   const supabase = getSupabaseServerClient()
   const {
     data: { user },
   } = await supabase.auth.getUser()
-  if (!user) return { error: 'Not authenticated' }
+  if (!user) {
+    console.log('[chat-debug] SERVER upload: not authenticated')
+    return { error: 'Not authenticated' }
+  }
 
   // Validate content server-side: client-supplied MIME/filename are not trusted.
   const buffer = Buffer.from(input.base64, 'base64')
+  console.log('[chat-debug] SERVER upload buffer bytes', buffer.byteLength)
   const { validateUpload, uploadRejectionMessage } = await import(
     '@/lib/media/upload-validate'
   )
   const validated = validateUpload(buffer, input.fileName, input.mimeType)
   if ('reason' in validated) {
+    console.log('[chat-debug] SERVER upload REJECTED', validated)
     return { error: uploadRejectionMessage(validated) }
   }
+  console.log('[chat-debug] SERVER upload validated OK', {
+    ext: validated.ext,
+    mime: validated.mime,
+  })
 
   const path = `${user.id}/${crypto.randomUUID()}.${validated.ext}`
   const { error: upErr } = await supabase.storage
@@ -183,9 +197,13 @@ export async function uploadStudioAttachmentImpl(input: {
       cacheControl: '3600',
       upsert: false,
     })
-  if (upErr) return { error: 'Upload failed. Please try again.' }
+  if (upErr) {
+    console.log('[chat-debug] SERVER storage upload error', upErr)
+    return { error: 'Upload failed. Please try again.' }
+  }
 
   const { data: pub } = supabase.storage.from('media').getPublicUrl(path)
+  console.log('[chat-debug] SERVER upload success', pub.publicUrl)
   return { url: pub.publicUrl }
 }
 
@@ -197,6 +215,10 @@ export async function sendStudioMessageImpl(input: {
   chatId: string
   content: string
   attachmentUrl?: string | null
+  /** MIME of the attachment (from validateUpload). Drives extraction routing. */
+  attachmentMime?: string | null
+  /** Original filename — used for scan/receipt heuristics + framing. */
+  attachmentFileName?: string | null
 }): Promise<SendStudioMessageResult | StudioLimitResult | { error: string }> {
   const supabase = getSupabaseServerClient()
   const {
@@ -238,13 +260,48 @@ export async function sendStudioMessageImpl(input: {
     attachment_url: input.attachmentUrl ?? null,
   })
 
-  // Build the user turn for the model — include the image inline if attached.
+  // Build the user turn for the model. Attachments are routed through the
+  // shared extraction layer:
+  //   - natural images → vision part (model sees the image)
+  //   - scanned images → OCR text (appended to the message)
+  //   - pdf/text files → extracted text (appended to the message)
+  // This lets the agent reason over document contents and act on them.
+  let userText = input.content
+  let userImage: URL | null = null
+
+  if (input.attachmentUrl && input.attachmentMime) {
+    const { extractAttachment, formatExtractedText } = await import(
+      '@/lib/document-processing/extract'
+    )
+    const extracted = await extractAttachment({
+      url: input.attachmentUrl,
+      mime: input.attachmentMime,
+      fileName: input.attachmentFileName ?? 'attachment',
+      messageText: input.content,
+    })
+
+    if (extracted.kind === 'image-url') {
+      userImage = new URL(input.attachmentUrl)
+    } else if (extracted.kind === 'text' || extracted.kind === 'ocr') {
+      userText += formatExtractedText(
+        input.attachmentFileName ?? 'attachment',
+        extracted,
+      )
+    } else if (extracted.kind === 'error') {
+      // Surface the extraction failure to the model so it can tell the user
+      // rather than silently ignoring the attachment.
+      userText += `\n\n[Attachment "${input.attachmentFileName}" could not be read: ${extracted.message}]`
+    }
+  }
+
+  // Assemble the multimodal content array — include the image part only when
+  // the extraction layer routed to vision.
   const userContent: Array<
     | { type: 'text'; text: string }
     | { type: 'image'; image: URL }
-  > = [{ type: 'text', text: input.content }]
-  if (input.attachmentUrl) {
-    userContent.push({ type: 'image', image: new URL(input.attachmentUrl) })
+  > = [{ type: 'text', text: userText }]
+  if (userImage) {
+    userContent.push({ type: 'image', image: userImage })
   }
 
   const agent = getStudioAgent()

@@ -187,6 +187,22 @@
   51%, 100% { opacity: 0; }
 }
 
+/* Typing indicator — three bouncing dots used while the agent is thinking. */
+@keyframes typing-bounce {
+  0%, 60%, 100% {
+    transform: translateY(0);
+    opacity: 0.4;
+  }
+  30% {
+    transform: translateY(-4px);
+    opacity: 1;
+  }
+}
+
+.typing-dot {
+  animation: typing-bounce 1.2s ease-in-out infinite;
+}
+
 /* Smooth scroll for chat thread */
 .chat-scroll {
   scroll-behavior: smooth;

@@ -21,6 +21,9 @@ export interface MessageRow {
   conversation_id: string
   role: 'user' | 'assistant' | 'system' | 'tool'
   content: string
+  attachment_url: string | null
+  attachment_mime: string | null
+  attachment_name: string | null
   tokens_in: number | null
   tokens_out: number | null
   model: string | null
@@ -190,6 +193,9 @@ export async function getMessagesImpl(
 export async function sendMessageImpl(input: {
   conversationId: string
   content: string
+  attachmentUrl?: string | null
+  attachmentMime?: string | null
+  attachmentFileName?: string | null
 }): Promise<SendMessageResult | SendMessageLimitResult | { error: string }> {
   const supabase = getSupabaseServerClient()
   const {
@@ -250,6 +256,9 @@ export async function sendMessageImpl(input: {
     conversation_id: input.conversationId,
     role: 'user',
     content: input.content,
+    attachment_url: input.attachmentUrl ?? null,
+    attachment_mime: input.attachmentMime ?? null,
+    attachment_name: input.attachmentFileName ?? null,
   })
 
   // NOTE: the daily quota was already incremented atomically by consumeQuota
@@ -303,6 +312,49 @@ Rule: Call the tool first, explain later. Never ask "what details?" — use what
     return { error: `Agent type "${agent.type}" not found` }
   }
 
+  // Build the user turn. Attachments route through the shared extraction layer
+  // so the agent can read documents/OCR text and act on them (create leads,
+  // clients, reminders from an uploaded business card / invoice / contract).
+  //   - natural images → vision part (agent sees the image)
+  //   - scanned images → OCR text (appended to the message)
+  //   - pdf/text files → extracted text (appended to the message)
+  let userText = input.content
+  let userImage: URL | null = null
+
+  if (input.attachmentUrl && input.attachmentMime) {
+    const { extractAttachment, formatExtractedText } = await import(
+      '@/lib/document-processing/extract'
+    )
+    const extracted = await extractAttachment({
+      url: input.attachmentUrl,
+      mime: input.attachmentMime,
+      fileName: input.attachmentFileName ?? 'attachment',
+      messageText: input.content,
+    })
+    if (extracted.kind === 'image-url') {
+      userImage = new URL(input.attachmentUrl)
+    } else if (extracted.kind === 'text' || extracted.kind === 'ocr') {
+      userText += formatExtractedText(
+        input.attachmentFileName ?? 'attachment',
+        extracted,
+      )
+    } else if (extracted.kind === 'error') {
+      userText += `\n\n[Attachment "${input.attachmentFileName}" could not be read: ${extracted.message}]`
+    }
+  }
+
+  // Multimodal content array only when the agent should see an image; otherwise
+  // a plain string keeps the payload small.
+  const userMessage = userImage
+    ? ({
+        role: 'user',
+        content: [
+          { type: 'text', text: userText },
+          { type: 'image', image: userImage },
+        ],
+      } as const)
+    : ({ role: 'user' as const, content: userText })
+
   // Generate inside a try — a provider hiccup (rate limit, timeout, network)
   // would otherwise throw raw out of the server fn. The user message was
   // already persisted above, so on failure we surface a clean error instead
@@ -312,7 +364,7 @@ Rule: Call the tool first, explain later. Never ask "what details?" — use what
     result = await mastraAgent.generate(
       [
         { role: 'system' as const, content: dynamicPrompt },
-        { role: 'user' as const, content: input.content },
+        userMessage as never, // AI SDK accepts multimodal; Mastra types are stricter
       ],
       {
         memory: {

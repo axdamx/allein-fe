@@ -19,11 +19,14 @@ export const MAX_UPLOAD_BYTES = 10 * 1024 * 1024
 /**
  * Allowed (extension, mime, sniff-bytes) tuples. Order matters only for the
  * exported allowlist; sniffing is exact-match against the magic bytes.
+ *
+ * `sniff: []` means "no reliable magic bytes" (e.g. plain text) — these types
+ * are accepted by extension + declared-MIME match alone, validated below.
  */
 const ALLOWED: Array<{
   ext: string
   mime: string
-  /** Offset then expected leading bytes. */
+  /** Offset then expected leading bytes. Empty = sniff skipped (text-like). */
   sniff: Array<[number, number[]]>
 }> = [
   {
@@ -66,6 +69,33 @@ const ALLOWED: Array<{
     mime: 'video/webm',
     sniff: [[0, [0x1a, 0x45, 0xdf, 0xa3]]],
   },
+  {
+    ext: 'pdf',
+    mime: 'application/pdf',
+    // "%PDF-" header
+    sniff: [[0, [0x25, 0x50, 0x44, 0x46]]],
+  },
+  {
+    ext: 'txt',
+    mime: 'text/plain',
+    // No reliable magic bytes — accepted by extension + MIME match only.
+    sniff: [],
+  },
+  {
+    ext: 'csv',
+    mime: 'text/csv',
+    sniff: [],
+  },
+  {
+    ext: 'md',
+    mime: 'text/markdown',
+    sniff: [],
+  },
+  {
+    ext: 'json',
+    mime: 'application/json',
+    sniff: [],
+  },
 ]
 
 export const ALLOWED_EXTENSIONS = ALLOWED.map((a) => a.ext)
@@ -90,7 +120,14 @@ export function validateUpload(
   fileName: string,
   declaredMime: string,
 ): ValidatedUpload | UploadRejection {
+  console.log('[chat-debug] validateUpload', {
+    fileName,
+    declaredMime,
+    bytes: buffer.byteLength,
+    first8: Array.from(buffer.slice(0, 8)).map((b) => b.toString(16).padStart(2, '0')),
+  })
   if (buffer.byteLength > MAX_UPLOAD_BYTES) {
+    console.log('[chat-debug] validateUpload REJECTED: too_large')
     return { reason: 'too_large', maxBytes: MAX_UPLOAD_BYTES }
   }
 
@@ -98,23 +135,40 @@ export function validateUpload(
   const ext = (fileName.includes('.') ? fileName.split('.').pop() : '')?.toLowerCase() ?? ''
   const candidate = ALLOWED.find((a) => a.ext === ext)
   if (!candidate) {
+    console.log('[chat-debug] validateUpload REJECTED: bad_extension', { ext, allowed: ALLOWED_EXTENSIONS })
     return { reason: 'bad_extension', allowed: ALLOWED_EXTENSIONS }
   }
 
   // 2. Magic-byte sniff — every (offset, bytes) pair must match.
-  const bytesOk = candidate.sniff.every(([offset, bytes]) => {
-    for (let i = 0; i < bytes.length; i++) {
-      if (buffer[offset + i] !== bytes[i]) return false
+  //    Types with no reliable magic bytes (text/* family) skip this step.
+  if (candidate.sniff.length > 0) {
+    const bytesOk = candidate.sniff.every(([offset, bytes]) => {
+      for (let i = 0; i < bytes.length; i++) {
+        if (buffer[offset + i] !== bytes[i]) return false
+      }
+      return true
+    })
+    if (!bytesOk) {
+      console.log('[chat-debug] validateUpload REJECTED: bad_content (magic-byte mismatch)', { ext, expected: candidate.sniff })
+      return { reason: 'bad_content' }
     }
-    return true
-  })
-  if (!bytesOk) {
-    return { reason: 'bad_content' }
   }
 
-  // 3. Declared MIME must match the sniffed type (defense in depth).
-  if (declaredMime && declaredMime.toLowerCase() !== candidate.mime) {
-    return { reason: 'bad_content' }
+  // 3. Declared MIME must be compatible with the sniffed type (defense in
+  //    depth). Text-like types are a family — browsers report text/plain for
+  //    .csv/.md/.json, so accept any text/* or application/json as compatible.
+  if (declaredMime) {
+    const dm = declaredMime.toLowerCase()
+    const cm = candidate.mime
+    const isTextFamily =
+      cm.startsWith('text/') || cm === 'application/json'
+    const declaredCompatible =
+      dm === cm ||
+      (isTextFamily && (dm.startsWith('text/') || dm === 'application/json'))
+    if (!declaredCompatible) {
+      console.log('[chat-debug] validateUpload REJECTED: bad_content (MIME mismatch)', { declared: dm, expected: cm })
+      return { reason: 'bad_content' }
+    }
   }
 
   return { ext: candidate.ext, mime: candidate.mime, buffer }

@@ -4,6 +4,7 @@ import { motion, useInView } from 'framer-motion'
 import { useRef } from 'react'
 import { Check, X } from 'lucide-react'
 import { SectionLabel } from './section-label'
+import { staggerContainer, staggerItem } from '@/lib/animations'
 
 const COMPETITORS = [
   {
@@ -43,15 +44,14 @@ export const WhyWeWin = () => {
     <section
       id="why"
       ref={sectionRef}
-      data-nav-theme="light"
-      className="bg-[#F7F3EF] px-6 py-24 md:py-32"
+      className="scroll-mt-24 bg-[#F7F3EF] px-6 py-24 md:py-32"
     >
       <div className="mx-auto max-w-5xl">
         <motion.div
           className="text-center"
           initial={{ opacity: 0, y: 24 }}
           animate={isInView ? { opacity: 1, y: 0 } : {}}
-          transition={{ duration: 0.6 }}
+          transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
         >
           <SectionLabel className="text-black/40">WHY ALLEIN</SectionLabel>
           <h2 className="text-4xl font-semibold leading-tight tracking-tight text-black md:text-5xl">
@@ -60,12 +60,12 @@ export const WhyWeWin = () => {
         </motion.div>
 
         <div className="mt-14 grid grid-cols-1 gap-10 lg:grid-cols-2">
-          {/* Comparison table */}
+          {/* Comparison table — rows stagger in from the left */}
           <motion.div
             initial={{ opacity: 0, x: -24 }}
             whileInView={{ opacity: 1, x: 0 }}
             viewport={{ once: true, margin: '-80px' }}
-            transition={{ duration: 0.6 }}
+            transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
             className="overflow-hidden rounded-3xl border border-black/5 bg-white"
           >
             <div className="grid grid-cols-[1.4fr_1fr_1.6fr] gap-2 border-b border-black/10 bg-black px-5 py-3 text-[11px] font-semibold uppercase tracking-widest text-white/70">
@@ -73,9 +73,17 @@ export const WhyWeWin = () => {
               <span>Category</span>
               <span>The gap</span>
             </div>
-            {COMPETITORS.map((c) => (
-              <div
+            {COMPETITORS.map((c, i) => (
+              <motion.div
                 key={c.alt}
+                initial={{ opacity: 0, x: -20 }}
+                whileInView={{ opacity: 1, x: 0 }}
+                viewport={{ once: true, margin: '-40px' }}
+                transition={{
+                  duration: 0.4,
+                  delay: i * 0.1,
+                  ease: [0.16, 1, 0.3, 1],
+                }}
                 className="grid grid-cols-[1.4fr_1fr_1.6fr] gap-2 border-b border-black/5 px-5 py-4 text-sm last:border-0"
               >
                 <span className="font-medium text-black">{c.alt}</span>
@@ -84,31 +92,47 @@ export const WhyWeWin = () => {
                   <X className="mt-0.5 size-4 shrink-0 text-red-400" />
                   {c.gap}
                 </span>
-              </div>
+              </motion.div>
             ))}
           </motion.div>
 
-          {/* Our moat */}
+          {/* Our moat — checkmarks pop in sequentially */}
           <motion.div
             initial={{ opacity: 0, x: 24 }}
             whileInView={{ opacity: 1, x: 0 }}
             viewport={{ once: true, margin: '-80px' }}
-            transition={{ duration: 0.6 }}
+            transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
             className="flex flex-col justify-center rounded-3xl bg-black p-8 text-white"
           >
             <div className="text-sm font-semibold uppercase tracking-widest text-orange-300">
               Our moat
             </div>
-            <ul className="mt-5 space-y-4">
+            <motion.ul
+              variants={staggerContainer}
+              initial="hidden"
+              whileInView="visible"
+              viewport={{ once: true, margin: '-60px' }}
+              className="mt-5 space-y-4"
+            >
               {MOATS.map((m) => (
-                <li key={m} className="flex items-center gap-3 text-base">
-                  <span className="flex size-6 shrink-0 items-center justify-center rounded-full bg-orange-400/20">
+                <motion.li
+                  key={m}
+                  variants={staggerItem}
+                  className="flex items-center gap-3 text-base"
+                >
+                  <motion.span
+                    initial={{ scale: 0, rotate: -45 }}
+                    whileInView={{ scale: 1, rotate: 0 }}
+                    viewport={{ once: true }}
+                    transition={{ type: 'spring', stiffness: 300, damping: 15 }}
+                    className="flex size-6 shrink-0 items-center justify-center rounded-full bg-orange-400/20"
+                  >
                     <Check className="size-3.5 text-orange-300" />
-                  </span>
+                  </motion.span>
                   {m}
-                </li>
+                </motion.li>
               ))}
-            </ul>
+            </motion.ul>
           </motion.div>
         </div>
       </div>

@@ -1,6 +1,26 @@
+'use client'
+
 import { ArrowRight } from 'lucide-react'
 import { Link } from '@tanstack/react-router'
-import { motion } from 'framer-motion'
+import {
+  motion,
+  wordContainer,
+  wordItem,
+  staggerContainer,
+  staggerItem,
+  scrollToSection,
+} from '@/lib/animations'
+import { MagneticButton } from './motion-components'
+
+const FOOTER_LINKS = [
+  { label: 'Problem', href: '#problem' },
+  { label: 'Product', href: '#product' },
+  { label: 'Why Allein', href: '#why' },
+  { label: 'Pricing', href: '#pricing' },
+]
+
+const headline = 'Save 3–5 hours a day. Close more leads. Post faster.'
+const headlineWords = headline.split(' ')
 
 export const FinalCta = () => {
   return (
@@ -11,46 +31,62 @@ export const FinalCta = () => {
       </div>
 
       <div className="relative z-10 mx-auto max-w-3xl text-center">
+        {/* Headline — word-by-word reveal */}
         <motion.h2
-          className="text-4xl font-semibold leading-tight tracking-tight text-white md:text-6xl"
-          initial={{ opacity: 0, y: 24 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true }}
-          transition={{ duration: 0.6 }}
+          variants={wordContainer}
+          initial="hidden"
+          whileInView="visible"
+          viewport={{ once: true, margin: '-80px' }}
+          className="flex flex-wrap justify-center gap-x-[0.25em] text-4xl font-semibold leading-tight tracking-tight text-white md:text-6xl"
         >
-          Save 3–5 hours a day. Close more leads. Post faster.
+          {headlineWords.map((word, i) => (
+            <motion.span key={i} variants={wordItem}>
+              {word}
+            </motion.span>
+          ))}
         </motion.h2>
+
         <motion.p
-          className="mx-auto mt-5 max-w-xl text-base leading-relaxed text-white/70 md:text-lg"
           initial={{ opacity: 0, y: 16 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
-          transition={{ duration: 0.6, delay: 0.1 }}
+          transition={{ duration: 0.6, delay: 0.3, ease: [0.16, 1, 0.3, 1] }}
+          className="mx-auto mt-5 max-w-xl text-base leading-relaxed text-white/70 md:text-lg"
         >
           Allein AI is the operating system every Malaysian agent deserves —
           one dashboard for leads, follow-ups, and marketing.
         </motion.p>
 
         <motion.div
-          className="mt-10 flex flex-wrap justify-center gap-4"
           initial={{ opacity: 0, y: 16 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
-          transition={{ duration: 0.6, delay: 0.2 }}
+          transition={{ duration: 0.6, delay: 0.45, ease: [0.16, 1, 0.3, 1] }}
+          className="mt-10 flex flex-wrap justify-center gap-4"
         >
-          <Link to="/login">
-            <button className="inline-flex items-center gap-2 rounded-full bg-white px-6 py-3 text-sm font-medium text-black transition-transform hover:scale-[1.02]">
-              Start free
-              <span className="flex size-5 items-center justify-center rounded-full bg-black">
-                <ArrowRight className="size-3 text-white" />
-              </span>
-            </button>
-          </Link>
-          <a href="#pricing">
-            <button className="inline-flex items-center gap-2 rounded-full border border-white/30 px-6 py-3 text-sm font-medium text-white/80 transition-colors hover:border-white/60 hover:text-white">
-              View pricing
-            </button>
-          </a>
+          <MagneticButton>
+            <Link to="/login">
+              <button className="inline-flex items-center gap-2 rounded-full bg-white px-6 py-3 text-sm font-medium text-black transition-transform hover:scale-[1.02]">
+                Start free
+                <span className="flex size-5 items-center justify-center rounded-full bg-black">
+                  <ArrowRight className="size-3 text-white" />
+                </span>
+              </button>
+            </Link>
+          </MagneticButton>
+          <MagneticButton strength={0.15}>
+            <a
+              href="#pricing"
+              onClick={(e) => {
+                e.preventDefault()
+                scrollToSection('#pricing')
+              }}
+            >
+              <button className="inline-flex items-center gap-2 rounded-full border border-white/30 px-6 py-3 text-sm font-medium text-white/80 transition-colors hover:border-white/60 hover:text-white">
+                View pricing
+              </button>
+            </a>
+          </MagneticButton>
         </motion.div>
       </div>
 
@@ -77,29 +113,36 @@ export const FinalCta = () => {
           </a>
         </div>
 
-        <div className="flex gap-12">
+        {/* Footer links — staggered fade-in */}
+        <motion.div
+          variants={staggerContainer}
+          initial="hidden"
+          whileInView="visible"
+          viewport={{ once: true }}
+          className="flex gap-12"
+        >
           <div>
             <div className="mb-3 text-[11px] font-semibold uppercase tracking-[3px] text-white/40">
               Menu
             </div>
-            <div className="flex flex-col gap-2">
-              {[
-                { label: 'Problem', href: '#problem' },
-                { label: 'Product', href: '#product' },
-                { label: 'Why Allein', href: '#why' },
-                { label: 'Pricing', href: '#pricing' },
-              ].map((item) => (
-                <a
+            <motion.div variants={staggerContainer} className="flex flex-col gap-2">
+              {FOOTER_LINKS.map((item) => (
+                <motion.a
                   key={item.href}
+                  variants={staggerItem}
                   href={item.href}
+                  onClick={(e) => {
+                    e.preventDefault()
+                    scrollToSection(item.href)
+                  }}
                   className="text-sm text-white/60 transition-colors hover:text-white"
                 >
                   {item.label}
-                </a>
+                </motion.a>
               ))}
-            </div>
+            </motion.div>
           </div>
-        </div>
+        </motion.div>
       </footer>
     </section>
   )

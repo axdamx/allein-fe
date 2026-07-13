@@ -10,7 +10,7 @@ import { DashboardShell } from '@/components/layout/dashboard-shell'
 import { MessageBubble, StreamingBubble } from '@/components/chat/message-bubble'
 import { UsageLimitBanner } from '@/components/billing/usage-limit-banner'
 
-import { ChatInput } from '@/components/chat/chat-input'
+import { ChatComposer, type PendingAttachment } from '@/components/chat/chat-composer'
 import { Button } from '@/components/ui/button'
 import {
   Card,
@@ -24,6 +24,7 @@ import {
   useMessages,
   useChatStream,
 } from '@/hooks/use-chat'
+import { useUploadStudioAttachment } from '@/hooks/use-studio-chat'
 import { cn } from '@/lib/utils'
 import { motion, staggerContainer, staggerItem } from '@/lib/animations'
 
@@ -40,10 +41,13 @@ function ChatPage() {
 
   const [activeConvoId, setActiveConvoId] = useState<string | null>(null)
   const [input, setInput] = useState('')
+  const [pendingAttachment, setPendingAttachment] =
+    useState<PendingAttachment | null>(null)
 
   const { data: messages, isLoading: messagesLoading } = useMessages(activeConvoId)
   const { send, isStreaming, streamingText, stop } =
     useChatStream(activeConvoId)
+  const uploadAttachment = useUploadStudioAttachment()
 
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const scrollRef = useRef<HTMLDivElement>(null)
@@ -78,7 +82,16 @@ function ChatPage() {
 
   async function handleSend(e: React.FormEvent) {
     e.preventDefault()
-    if (!input.trim() || isStreaming) return
+    console.log('[chat-debug] CRM handleSend called', {
+      hasInput: !!input.trim(),
+      hasAttachment: !!pendingAttachment,
+      attachmentName: pendingAttachment?.fileName,
+      isStreaming,
+    })
+    if ((!input.trim() && !pendingAttachment) || isStreaming) {
+      console.log('[chat-debug] ✋ CRM handleSend early-return (guard)')
+      return
+    }
 
     let convoId = activeConvoId
     if (!convoId && defaultAgentId) {
@@ -90,10 +103,54 @@ function ChatPage() {
       setActiveConvoId(convoId)
     }
 
-    if (!convoId) return
+    if (!convoId) {
+      console.log('[chat-debug] ✋ CRM handleSend: no convoId')
+      return
+    }
+
+    // Upload the attachment first (validate + store), then send with the URL.
+    let attachmentUrl: string | null = null
+    if (pendingAttachment) {
+      console.log('[chat-debug] CRM uploading attachment', {
+        fileName: pendingAttachment.fileName,
+        mimeType: pendingAttachment.mimeType,
+        base64Length: pendingAttachment.base64.length,
+      })
+      const up = await uploadAttachment.mutateAsync({
+        fileName: pendingAttachment.fileName,
+        mimeType: pendingAttachment.mimeType,
+        base64: pendingAttachment.base64,
+      })
+      console.log('[chat-debug] CRM upload result', up)
+      if (up && 'url' in up) {
+        attachmentUrl = up.url
+        URL.revokeObjectURL(pendingAttachment.previewUrl)
+      } else {
+        console.log('[chat-debug] ✋ CRM upload failed — aborting send')
+        // Upload failed — abort send.
+        return
+      }
+    }
+
     const content = input
+    // Capture attachment metadata before clearing state — the send options
+    // below read these values, so they must be snapshotted first.
+    const attachMime = pendingAttachment?.mimeType ?? null
+    const attachName = pendingAttachment?.fileName ?? null
     setInput('')
-    await send(content, convoId)
+    setPendingAttachment(null)
+    console.log('[chat-debug] CRM calling send()', {
+      contentLength: content.length,
+      attachmentUrl,
+      attachMime,
+      attachName,
+    })
+    await send(content, {
+      overrideConvoId: convoId,
+      attachmentUrl,
+      attachmentMime: attachMime,
+      attachmentFileName: attachName,
+    })
   }
 
   const headerTitle = activeConvo?.title ?? 'New conversation'
@@ -230,14 +287,15 @@ function ChatPage() {
               </div>
 
               {/* Input */}
-              <ChatInput
+              <ChatComposer
                 input={input}
                 onInputChange={setInput}
                 onSubmit={handleSend}
                 isStreaming={isStreaming}
                 onStop={stop}
-                isCreatingConversation={createConversation.isPending}
-                disabled={messagesLoading}
+                disabled={createConversation.isPending || messagesLoading}
+                pendingAttachment={pendingAttachment}
+                onAttachmentChange={setPendingAttachment}
               />
             </>
           ) : (

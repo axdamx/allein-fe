@@ -8,15 +8,12 @@ import { Product } from './product'
 import { WhyWeWin } from './why-we-win'
 import { PricingSection } from './pricing-section'
 import { FinalCta } from './final-cta'
-import { useIsWhiteSection } from './use-white-section'
+import { ScrollProgress } from './motion-components'
 
 export const LandingPage = () => {
-  // Tracks whether a white-background section sits at viewport center; used by
-  // the Navbar to flip text contrast.
-  useIsWhiteSection()
-
   return (
     <div className="relative">
+      <ScrollProgress />
       <Navbar />
 
       {/* Warm gradient: hero → problem → solution */}

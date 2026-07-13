@@ -86,9 +86,18 @@ export const useStudioMessages = (chatId: string | null) => {
 
 export const useUploadStudioAttachment = () => {
   return useMutation({
-    mutationFn: (input: { fileName: string; mimeType: string; base64: string }) =>
-      uploadStudioAttachment({ data: input }),
+    mutationFn: async (input: { fileName: string; mimeType: string; base64: string }) => {
+      console.log('[chat-debug] upload RPC call', {
+        fileName: input.fileName,
+        mimeType: input.mimeType,
+        base64Length: input.base64.length,
+      })
+      const res = await uploadStudioAttachment({ data: input })
+      console.log('[chat-debug] upload RPC response', res)
+      return res
+    },
     onError: (err: unknown) => {
+      console.log('[chat-debug] upload RPC onError', err)
       toast.error(err instanceof Error ? err.message : 'Upload failed')
     },
   })
@@ -123,13 +132,23 @@ export const useStudioChatStream = (chatId: string | null) => {
       content: string,
       options?: {
         attachmentUrl?: string | null
+        attachmentMime?: string | null
+        attachmentFileName?: string | null
         pendingAttachmentMsg?: StudioMessageRow
         overrideChatId?: string
       },
     ) => {
       const id = options?.overrideChatId ?? chatId
-      if (!id || !content.trim()) return
-      if (state.isStreaming) return
+      const hasAttachment = !!options?.attachmentUrl
+      console.log('[chat-debug] Studio send() entered', { id, hasContent: !!content.trim(), hasAttachment })
+      if (!id || (!content.trim() && !hasAttachment)) {
+        console.log('[chat-debug] ✋ Studio send() early-return (guard)')
+        return
+      }
+      if (state.isStreaming) {
+        console.log('[chat-debug] ✋ Studio send() early-return (streaming)')
+        return
+      }
 
       // Optimistic: show user message immediately (with attachment preview if any).
       const optimistic: StudioMessageRow =
@@ -165,6 +184,8 @@ export const useStudioChatStream = (chatId: string | null) => {
             chatId: id,
             content,
             attachmentUrl: options?.attachmentUrl ?? null,
+            attachmentMime: options?.attachmentMime ?? null,
+            attachmentFileName: options?.attachmentFileName ?? null,
           },
         })) as
           | SendStudioMessageResult

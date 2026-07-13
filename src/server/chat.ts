@@ -20,6 +20,9 @@ export interface MessageRow {
   conversation_id: string
   role: 'user' | 'assistant' | 'system' | 'tool'
   content: string
+  attachment_url: string | null
+  attachment_mime: string | null
+  attachment_name: string | null
   tokens_in: number | null
   tokens_out: number | null
   model: string | null
@@ -79,7 +82,15 @@ export const getMessages = createServerFn({ method: 'GET' })
   })
 
 export const sendMessage = createServerFn({ method: 'POST' })
-  .validator((d: { conversationId: string; content: string }) => d)
+  .validator(
+    (d: {
+      conversationId: string
+      content: string
+      attachmentUrl?: string | null
+      attachmentMime?: string | null
+      attachmentFileName?: string | null
+    }) => d,
+  )
   .handler(async ({ data }) => {
     // Daily quota is enforced atomically inside sendMessageImpl via the
     // try_consume RPC (race-proof). The previous lifetime enforceLimit

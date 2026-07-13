@@ -102,10 +102,33 @@ export const useChatStream = (conversationId: string | null) => {
   const abortRef = useRef(false)
 
   const send = useCallback(
-    async (content: string, overrideConvoId?: string) => {
-      const id = overrideConvoId ?? conversationId
-      if (!id || !content.trim()) return
-      if (state.isStreaming) return
+    async (
+      content: string,
+      optionsOrId?: string | {
+        overrideConvoId?: string
+        attachmentUrl?: string | null
+        attachmentMime?: string | null
+        attachmentFileName?: string | null
+      },
+    ) => {
+      // Backwards-compatible: the second arg used to be a bare conversation id.
+      const opts =
+        typeof optionsOrId === 'string'
+          ? { overrideConvoId: optionsOrId }
+          : (optionsOrId ?? {})
+      const id = opts.overrideConvoId ?? conversationId
+      const attachmentUrl = opts.attachmentUrl ?? null
+      const attachmentMime = opts.attachmentMime ?? null
+      const attachmentFileName = opts.attachmentFileName ?? null
+      console.log('[chat-debug] CRM send() entered', { id, hasContent: !!content.trim(), hasAttachment: !!attachmentUrl })
+      if (!id || (!content.trim() && !attachmentUrl)) {
+        console.log('[chat-debug] ✋ CRM send() early-return (guard)')
+        return
+      }
+      if (state.isStreaming) {
+        console.log('[chat-debug] ✋ CRM send() early-return (streaming)')
+        return
+      }
 
       // Optimistic: show user message immediately
       const optimisticMessage: MessageRow = {
@@ -113,6 +136,9 @@ export const useChatStream = (conversationId: string | null) => {
         conversation_id: id,
         role: 'user',
         content,
+        attachment_url: attachmentUrl,
+        attachment_mime: attachmentMime,
+        attachment_name: attachmentFileName,
         tokens_in: null,
         tokens_out: null,
         model: null,
@@ -134,7 +160,13 @@ export const useChatStream = (conversationId: string | null) => {
 
       try {
         const result = (await sendMessage({
-          data: { conversationId: id, content },
+          data: {
+            conversationId: id,
+            content,
+            attachmentUrl,
+            attachmentMime,
+            attachmentFileName,
+          },
         })) as
           | SendMessageResult
           | { error: 'daily_message_limit_reached'; remaining: number; max: number | null; resetAt: string }

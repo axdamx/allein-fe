@@ -13,6 +13,7 @@ import {
 } from 'lucide-react'
 import { SectionLabel } from './section-label'
 import { cn } from '@/lib/utils'
+import { staggerContainer, springStaggerItem } from '@/lib/animations'
 
 const MODULES = [
   {
@@ -61,15 +62,14 @@ export const Product = () => {
     <section
       id="product"
       ref={sectionRef}
-      data-nav-theme="light"
-      className="bg-white px-6 py-24 md:py-32"
+      className="scroll-mt-24 bg-white px-6 py-24 md:py-32"
     >
       <div className="mx-auto max-w-7xl">
         <motion.div
           className="max-w-2xl"
           initial={{ opacity: 0, y: 24 }}
           animate={isInView ? { opacity: 1, y: 0 } : {}}
-          transition={{ duration: 0.6 }}
+          transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
         >
           <SectionLabel className="text-black/40">PRODUCT</SectionLabel>
           <h2 className="text-4xl font-semibold leading-tight tracking-tight text-black md:text-5xl">
@@ -83,27 +83,39 @@ export const Product = () => {
           </p>
         </motion.div>
 
-        <div className="mt-14 grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
-          {MODULES.map((m, i) => (
+        <motion.div
+          variants={staggerContainer}
+          initial="hidden"
+          whileInView="visible"
+          viewport={{ once: true, margin: '-60px' }}
+          className="mt-14 grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4"
+        >
+          {MODULES.map((m) => (
             <motion.div
               key={m.title}
+              variants={springStaggerItem}
+              whileHover={{
+                y: -6,
+                transition: { type: 'spring', stiffness: 300, damping: 20 },
+              }}
               className={cn(
                 'group flex flex-col rounded-3xl bg-[#F7F3EF] p-7 text-black transition-colors duration-300 hover:bg-black hover:text-white',
                 m.featured && 'sm:col-span-2 lg:col-span-1',
               )}
-              initial={{ opacity: 0, y: 24 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true, margin: '-60px' }}
-              transition={{ duration: 0.5, delay: (i % 4) * 0.08 }}
             >
-              <m.icon className="size-6 text-[#E8804A] transition-colors duration-300 group-hover:text-orange-300" />
+              <motion.div
+                whileHover={{ scale: 1.15, rotate: -5 }}
+                transition={{ type: 'spring', stiffness: 300 }}
+              >
+                <m.icon className="size-6 text-[#E8804A] transition-colors duration-300 group-hover:text-orange-300" />
+              </motion.div>
               <h3 className="mt-4 text-base font-semibold">{m.title}</h3>
               <p className="mt-2 text-sm leading-relaxed text-black/55 transition-colors duration-300 group-hover:text-white/70">
                 {m.body}
               </p>
             </motion.div>
           ))}
-        </div>
+        </motion.div>
       </div>
     </section>
   )

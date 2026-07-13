@@ -7,13 +7,14 @@
  *    when the agent called generate_image / generate_video
  * Markdown rendering is reused via the same libraries.
  */
-import { Check, Copy, Bot, User, Loader2 } from 'lucide-react'
+import { Check, Copy, Bot, User } from 'lucide-react'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { cn } from '@/lib/utils'
 import { formatTime } from '@/components/chat/chat-utils'
+import { TypingIndicator } from '@/components/chat/typing-indicator'
 import type { StudioMessageRow } from '@/hooks/use-studio-chat'
 
 const isVideoUrl = (url: string) => /\.(mp4|webm|mov)(\?|$)/i.test(url)
@@ -65,7 +66,7 @@ export const StudioMessageBubble = ({ message }: { message: StudioMessageRow }) 
         {(message.content || !mediaUrl) && (
           <div
             className={cn(
-              'w-fit max-w-[85%] rounded-2xl px-4 py-2.5 text-sm leading-relaxed',
+              'max-w-[85%] min-w-0 overflow-hidden rounded-2xl px-4 py-2.5 text-sm leading-relaxed',
               isUser
                 ? 'bg-primary text-primary-foreground'
                 : 'bg-muted text-foreground',
@@ -106,9 +107,7 @@ export const StudioStreamingBubble = ({ text }: { text: string }) => {
               {text}
             </span>
           ) : (
-            <span className="inline-flex items-center gap-1">
-              <Loader2 className="size-4 animate-spin text-muted-foreground" />
-            </span>
+            <TypingIndicator className="text-muted-foreground" />
           )}
         </div>
       </div>

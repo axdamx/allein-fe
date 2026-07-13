@@ -55,6 +55,8 @@ export const sendStudioMessage = createServerFn({ method: 'POST' })
       chatId: string
       content: string
       attachmentUrl?: string | null
+      attachmentMime?: string | null
+      attachmentFileName?: string | null
     }) => d,
   )
   .handler(async ({ data }) => {

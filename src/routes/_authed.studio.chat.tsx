@@ -7,9 +7,9 @@ import {
   StudioStreamingBubble,
 } from '@/components/studio/studio-message-bubble'
 import {
-  StudioChatInput,
+  ChatComposer,
   type PendingAttachment,
-} from '@/components/studio/studio-chat-input'
+} from '@/components/chat/chat-composer'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -94,21 +94,43 @@ const StudioChatPage = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    if ((!input.trim() && !pendingAttachment) || isStreaming) return
-    if (!activeChatId) return
+    console.log('[chat-debug] Studio handleSubmit called', {
+      hasInput: !!input.trim(),
+      hasAttachment: !!pendingAttachment,
+      attachmentName: pendingAttachment?.fileName,
+      isStreaming,
+    })
+    if ((!input.trim() && !pendingAttachment) || isStreaming) {
+      console.log('[chat-debug] ✋ Studio handleSubmit early-return (guard)')
+      return
+    }
+    if (!activeChatId) {
+      console.log('[chat-debug] ✋ Studio handleSubmit: no activeChatId')
+      return
+    }
 
     let attachmentUrl: string | null = null
+    // Snapshot before upload so we still have mime/name after clearing state.
+    const attachMime = pendingAttachment?.mimeType ?? null
+    const attachName = pendingAttachment?.fileName ?? null
     if (pendingAttachment) {
+      console.log('[chat-debug] Studio uploading attachment', {
+        fileName: pendingAttachment.fileName,
+        mimeType: pendingAttachment.mimeType,
+        base64Length: pendingAttachment.base64.length,
+      })
       const up = await uploadAttachment.mutateAsync({
         fileName: pendingAttachment.fileName,
         mimeType: pendingAttachment.mimeType,
         base64: pendingAttachment.base64,
       })
+      console.log('[chat-debug] Studio upload result', up)
       if (up && 'url' in up) {
         attachmentUrl = up.url
         // Replace the local preview URL with the persisted one for the optimistic row.
         URL.revokeObjectURL(pendingAttachment.previewUrl)
       } else {
+        console.log('[chat-debug] ✋ Studio upload failed — aborting send')
         // Upload failed — abort send.
         return
       }
@@ -117,9 +139,17 @@ const StudioChatPage = () => {
     const content = input
     setInput('')
 
+    console.log('[chat-debug] Studio calling send()', {
+      contentLength: content.length,
+      attachmentUrl,
+      attachMime,
+      attachName,
+    })
     // Optimistic user message including attachment preview (persisted URL).
     await send(content, {
       attachmentUrl,
+      attachmentMime: attachMime,
+      attachmentFileName: attachName,
       pendingAttachmentMsg: {
         id: `studio-temp-${Date.now()}`,
         chat_id: activeChatId,
@@ -237,7 +267,7 @@ const StudioChatPage = () => {
               )}
               <div ref={messagesEndRef} />
             </div>
-            <StudioChatInput
+            <ChatComposer
               input={input}
               onInputChange={setInput}
               onSubmit={handleSubmit}
@@ -246,6 +276,7 @@ const StudioChatPage = () => {
               disabled={messagesLoading || !activeChatId}
               pendingAttachment={pendingAttachment}
               onAttachmentChange={setPendingAttachment}
+              placeholder="Describe an image or video, or attach a file…"
             />
           </>
         ) : (
