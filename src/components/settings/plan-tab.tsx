@@ -1,7 +1,10 @@
+import { useState } from 'react'
 import { useQueryClient, useMutation } from '@tanstack/react-query'
 import { toast } from 'sonner'
 
 import { PlanBadge } from '@/components/billing/plan-badge'
+import { CancelSubscriptionDialog } from '@/components/billing/cancel-subscription-dialog'
+import { SubscriptionStatusBanner } from '@/components/billing/subscription-status-banner'
 import { Button } from '@/components/ui/button'
 import {
   Card,
@@ -19,9 +22,16 @@ import {
 } from '@/lib/plans'
 import { cn } from '@/lib/utils'
 import { updatePlan } from '@/server/settings'
+import { useSubscriptionState } from '@/hooks/use-subscriptions'
 
 export const PlanTab = ({ currentPlan }: { currentPlan: PlanTier }) => {
   const qc = useQueryClient()
+  const [cancelOpen, setCancelOpen] = useState(false)
+  const subState = useSubscriptionState()
+  const subscription = subState.data?.subscription
+  const showCancel =
+    currentPlan !== 'free' && !subState.data?.isCanceledPending
+  const showBanner = !!subscription && subState.data?.isCanceledPending === true
 
   const changePlan = useMutation({
     mutationFn: (plan: PlanTier) => updatePlan({ data: { plan } }),
@@ -83,6 +93,30 @@ export const PlanTab = ({ currentPlan }: { currentPlan: PlanTier }) => {
             </div>
           )
         })}
+
+        {showBanner && subscription && (
+          <SubscriptionStatusBanner subscription={subscription} />
+        )}
+
+        {showCancel && (
+          <div className="flex justify-end pt-2">
+            <Button
+              variant="link"
+              size="sm"
+              className="text-muted-foreground hover:text-destructive"
+              onClick={() => setCancelOpen(true)}
+            >
+              Cancel subscription
+            </Button>
+          </div>
+        )}
+
+        <CancelSubscriptionDialog
+          open={cancelOpen}
+          onOpenChange={setCancelOpen}
+          currentPlan={currentPlan}
+          currentPeriodEnd={subscription?.current_period_end ?? null}
+        />
       </CardContent>
     </Card>
   )

@@ -16,13 +16,21 @@ import {
   TrendingUp,
   Users,
   XCircle,
+  MoreVertical,
 } from 'lucide-react'
 import { formatDistanceToNow } from 'date-fns'
 import { createFileRoute } from '@tanstack/react-router'
 
 import { DashboardShell } from '@/components/layout/dashboard-shell'
 import { PlanBadge } from '@/components/billing/plan-badge'
+import { AdminCancelDialog } from '@/components/billing/admin-cancel-dialog'
 import { Badge } from '@/components/ui/badge'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
 import { Button } from '@/components/ui/button'
 import {
   Card,
@@ -261,6 +269,12 @@ const UsersTab = () => {
   const { data: users, isLoading } = useAdminUsers()
   const updateRole = useUpdateUserRole()
   const updatePlan = useUpdateUserPlan()
+  const [cancelTarget, setCancelTarget] = useState<{
+    id: string
+    email: string
+    plan: PlanTier
+    currentPeriodEnd: string | null
+  } | null>(null)
 
   if (isLoading) {
     return (
@@ -363,10 +377,50 @@ const UsersTab = () => {
                   ))}
                 </SelectContent>
               </Select>
+
+              {/* Actions */}
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="size-8 shrink-0"
+                    disabled={u.plan === 'free'}
+                    aria-label="User actions"
+                  >
+                    <MoreVertical className="size-4" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem
+                    disabled={u.plan === 'free'}
+                    onSelect={() =>
+                      setCancelTarget({
+                        id: u.id,
+                        email: u.email,
+                        plan: u.plan as PlanTier,
+                        currentPeriodEnd: null,
+                      })
+                    }
+                  >
+                    Cancel subscription
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
             </div>
           ))}
         </div>
       </CardContent>
+
+      {cancelTarget && (
+        <AdminCancelDialog
+          open
+          onOpenChange={(o) => !o && setCancelTarget(null)}
+          user={{ id: cancelTarget.id, email: cancelTarget.email }}
+          currentPlan={cancelTarget.plan}
+          currentPeriodEnd={cancelTarget.currentPeriodEnd}
+        />
+      )}
     </Card>
   )
 }
