@@ -1,172 +1,127 @@
 'use client'
 
-import { Check } from 'lucide-react'
-import { motion, useInView } from 'framer-motion'
-import { useRef } from 'react'
+import { motion } from 'framer-motion'
+import { ArrowRight, Check, Sparkles } from 'lucide-react'
 import { Link } from '@tanstack/react-router'
-import { SectionLabel } from './section-label'
+import { PLAN_CONFIGS, PLAN_ORDER, formatPrice, type PlanConfig } from '@/lib/plans'
 import { cn } from '@/lib/utils'
-import { staggerContainer, springStaggerItem } from '@/lib/animations'
+import { SectionLabel } from './section-label'
 
-const PLANS = [
-  {
-    name: 'Free',
-    desc: 'Try the full experience, forever.',
-    price: 'RM0',
-    period: 'forever',
-    features: ['10 AI messages / day', '10 leads', '3 marketing posts'],
-    featured: false,
-    cta: 'Start free',
-  },
-  {
-    name: 'Lite',
-    desc: 'For solo agents getting started.',
-    price: 'RM99',
-    period: '/month',
-    features: ['30 messages / day', '100 leads', 'WhatsApp reminders'],
-    featured: false,
-    cta: 'Choose Lite',
-  },
-  {
-    name: 'Pro',
-    desc: 'For agents running a real practice.',
-    price: 'RM249',
-    period: '/month',
-    features: [
-      'Unlimited AI chat',
-      'Social auto-posting',
-      '5 AI videos / month',
-    ],
-    featured: true,
-    cta: 'Choose Pro',
-  },
-  {
-    name: 'Custom',
-    desc: 'For agencies & teams.',
-    price: 'RM799',
-    period: '+/month',
-    features: ['5–50+ agent seats', 'White-label branding', 'Admin dashboard'],
-    featured: false,
-    cta: 'Contact us',
-  },
-]
+const planFeatures = (plan: PlanConfig) => {
+  const agents = plan.limits.agents.max
+  const messages = plan.limits.messages.max
+  const leads = plan.limits.leads.max
 
-export const PricingSection = () => {
-  const sectionRef = useRef<HTMLElement>(null)
-  const isInView = useInView(sectionRef, { once: true, margin: '-80px' })
+  return [
+    agents === null ? 'Unlimited AI agents' : `${agents} AI agent${agents === 1 ? '' : 's'}`,
+    messages === null ? 'Unlimited AI messages' : `${messages} AI messages / day`,
+    leads === null ? 'Unlimited leads' : `${leads} active leads`,
+    plan.features.aiVideoGen
+      ? 'AI image + video generation'
+      : plan.features.aiImageGen
+        ? 'AI image generation'
+        : plan.features.scheduledPosts
+          ? 'Scheduled marketing posts'
+          : 'Marketing Studio access',
+  ]
+}
 
-  return (
-    <section
-      id="pricing"
-      ref={sectionRef}
-      className="scroll-mt-24 bg-white px-6 py-24 md:py-32"
-    >
-      <div className="mx-auto max-w-6xl text-center">
-        <motion.div
-          initial={{ opacity: 0, y: 24 }}
-          animate={isInView ? { opacity: 1, y: 0 } : {}}
-          transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
-        >
-          <SectionLabel className="text-black/40">PRICING</SectionLabel>
-          <h2 className="text-4xl font-semibold leading-tight tracking-tight text-black md:text-5xl">
-            Pricing that scales with your practice.
+export const PricingSection = () => (
+  <section id="pricing" className="scroll-mt-28 px-5 py-24 sm:px-8 sm:py-32">
+    <div className="mx-auto max-w-7xl">
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        whileInView={{ opacity: 1, y: 0 }}
+        viewport={{ once: true, margin: '-80px' }}
+        transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
+        className="flex flex-col gap-6 text-center"
+      >
+        <div>
+          <SectionLabel>PRICING</SectionLabel>
+          <h2 className="mx-auto max-w-3xl text-4xl font-semibold leading-[1.02] tracking-[-0.045em] sm:text-5xl lg:text-6xl">
+            Start small. Grow without rebuilding.
           </h2>
-          <p className="mx-auto mt-4 max-w-md text-base text-black/55">
-            From free forever to white-label. Upgrade only when you&apos;re ready.
-          </p>
-        </motion.div>
+        </div>
+        <p className="mx-auto max-w-xl text-base leading-7 text-[#171713]/52">
+          Every plan starts with the same connected foundation. Upgrade when
+          you need more volume, automation, or people in the workspace.
+        </p>
+      </motion.div>
 
-        <motion.div
-          variants={staggerContainer}
-          initial="hidden"
-          whileInView="visible"
-          viewport={{ once: true, margin: '-60px' }}
-          className="mt-16 grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4"
-        >
-          {PLANS.map((plan) => (
-            <motion.div
-              key={plan.name}
-              variants={springStaggerItem}
+      <div className="mt-14 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        {PLAN_ORDER.map((tier, index) => {
+          const plan = PLAN_CONFIGS[tier]
+          const featured = Boolean(plan.featured)
+
+          return (
+            <motion.article
+              key={tier}
+              initial={{ opacity: 0, y: 22 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true, margin: '-60px' }}
+              transition={{ duration: 0.5, delay: index * 0.06, ease: [0.16, 1, 0.3, 1] }}
               whileHover={{ y: -4 }}
               className={cn(
-                'relative flex flex-col rounded-3xl p-7 text-left',
-                plan.featured
-                  ? 'bg-black text-white shadow-2xl lg:-translate-y-3'
-                  : 'bg-[#F7F3EF] text-black',
+                'relative flex min-h-[430px] flex-col rounded-[26px] border p-6',
+                featured
+                  ? 'border-[#171713] bg-[#171713] text-white shadow-[0_24px_65px_rgba(25,22,17,0.18)]'
+                  : 'border-[#171713]/9 bg-white/50 text-[#171713]',
               )}
             >
-              {plan.featured && (
-                <motion.span
-                  initial={{ scale: 0, opacity: 0 }}
-                  whileInView={{ scale: 1, opacity: 1 }}
-                  viewport={{ once: true }}
-                  transition={{ type: 'spring', stiffness: 300, damping: 15, delay: 0.4 }}
-                  className="absolute -top-3 left-1/2 -translate-x-1/2 rounded-full bg-orange-400 px-3 py-1 text-[10px] font-semibold uppercase tracking-widest text-black"
-                >
-                  Most popular
-                </motion.span>
-              )}
-              <h3 className="text-lg font-semibold">{plan.name}</h3>
-              <p
-                className={cn(
-                  'mt-1.5 text-sm leading-relaxed',
-                  plan.featured ? 'text-white/65' : 'text-black/55',
-                )}
-              >
-                {plan.desc}
+              {featured ? (
+                <span className="absolute right-5 top-5 inline-flex items-center gap-1.5 rounded-full bg-[#F1663C] px-2.5 py-1.5 text-[9px] font-bold uppercase tracking-[0.14em] text-white">
+                  <Sparkles className="size-3" /> Most popular
+                </span>
+              ) : null}
+
+              <div className={cn('text-sm font-semibold', featured ? 'text-[#F49A70]' : 'text-[#F1663C]')}>
+                {plan.label}
+              </div>
+              <p className={cn('mt-2 min-h-10 text-xs leading-5', featured ? 'text-white/45' : 'text-[#171713]/42')}>
+                {plan.tagline}
               </p>
 
-              <div className="mt-5 flex items-baseline gap-1.5">
-                <span className="text-4xl font-bold tracking-tight">
-                  {plan.price}
-                </span>
-                <span
-                  className={cn(
-                    'text-sm',
-                    plan.featured ? 'text-white/55' : 'text-black/45',
-                  )}
-                >
-                  {plan.period}
-                </span>
+              <div className="mt-7 flex items-end gap-1.5">
+                <span className="text-4xl font-semibold tracking-[-0.05em]">{formatPrice(plan)}</span>
+                {plan.price !== null && plan.price > 0 ? (
+                  <span className={cn('pb-1 text-xs', featured ? 'text-white/35' : 'text-[#171713]/35')}>
+                    {plan.period}
+                  </span>
+                ) : null}
               </div>
 
-              <div
-                className={cn(
-                  'my-6 border-t',
-                  plan.featured ? 'border-white/10' : 'border-black/10',
-                )}
-              />
+              <div className={cn('my-7 h-px', featured ? 'bg-white/10' : 'bg-[#171713]/10')} />
 
-              <ul className="flex flex-1 flex-col gap-3">
-                {plan.features.map((f) => (
-                  <li key={f} className="flex items-center gap-2.5 text-sm">
-                    <Check
-                      className={cn(
-                        'size-4 shrink-0',
-                        plan.featured ? 'text-orange-300' : 'text-[#E8804A]',
-                      )}
-                    />
-                    {f}
+              <ul className="flex-1 space-y-3.5">
+                {planFeatures(plan).map((feature) => (
+                  <li key={feature} className={cn('flex gap-2.5 text-xs leading-5', featured ? 'text-white/68' : 'text-[#171713]/58')}>
+                    <Check className={cn('mt-0.5 size-3.5 shrink-0', featured ? 'text-[#F49A70]' : 'text-[#F1663C]')} />
+                    {feature}
                   </li>
                 ))}
               </ul>
 
-              <Link to="/login" className="mt-7 block">
-                <button
-                  className={cn(
-                    'w-full rounded-full py-3 text-sm font-medium transition-transform hover:scale-[1.02]',
-                    plan.featured
-                      ? 'bg-white text-black'
-                      : 'bg-black text-white',
-                  )}
-                >
-                  {plan.cta}
-                </button>
+              <Link
+                to="/login"
+                className={cn(
+                  'group mt-8 inline-flex h-11 items-center justify-center gap-2 rounded-full text-sm font-semibold transition-transform hover:-translate-y-0.5',
+                  featured ? 'bg-[#F1663C] text-white' : 'bg-[#171713] text-white',
+                )}
+              >
+                {plan.cta}
+                <ArrowRight className="size-4 transition-transform group-hover:translate-x-0.5" />
               </Link>
-            </motion.div>
-          ))}
-        </motion.div>
+            </motion.article>
+          )
+        })}
       </div>
-    </section>
-  )
-}
+
+      <p className="mt-8 text-center text-xs text-[#171713]/40">
+        Need the full breakdown?{' '}
+        <Link to="/pricing" className="font-semibold text-[#171713] underline decoration-[#F1663C] underline-offset-4">
+          Compare every feature
+        </Link>
+      </p>
+    </div>
+  </section>
+)

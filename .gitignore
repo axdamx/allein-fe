@@ -36,3 +36,6 @@ mastra.db-wal
 src/mastra/public/mastra.db
 src/mastra/public/mastra.db-shm
 src/mastra/public/mastra.db-wal
+
+# Local project documentation
+/docs/

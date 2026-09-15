@@ -1,37 +1,30 @@
 'use client'
 
-import { Navbar } from './navbar'
-import { Hero } from './hero'
-import { Problem } from './problem'
-import { Solution } from './solution'
-import { Product } from './product'
-import { WhyWeWin } from './why-we-win'
-import { PricingSection } from './pricing-section'
 import { FinalCta } from './final-cta'
+import { Hero } from './hero'
+import { Navbar } from './navbar'
+import { PricingSection } from './pricing-section'
+import { Problem } from './problem'
+import { Product } from './product'
+import { Solution } from './solution'
+import { WhyWeWin } from './why-we-win'
 import { ScrollProgress } from './motion-components'
 
 export const LandingPage = () => {
   return (
-    <div className="relative">
+    <div className="landing-page relative min-h-svh overflow-x-clip bg-[#F6F1E9] text-[#171713]">
       <ScrollProgress />
       <Navbar />
 
-      {/* Warm gradient: hero → problem → solution */}
-      <div className="bg-gradient-to-b from-[#E8804A] to-[#2A1408]">
+      <main>
         <Hero />
         <Problem />
         <Solution />
-      </div>
-
-      {/* Light: product modules, comparison, pricing */}
-      <Product />
-      <WhyWeWin />
-      <PricingSection />
-
-      {/* Warm gradient: final CTA + footer */}
-      <div className="bg-gradient-to-b from-[#E8804A] to-[#2A1408]">
+        <Product />
+        <WhyWeWin />
+        <PricingSection />
         <FinalCta />
-      </div>
+      </main>
     </div>
   )
 }

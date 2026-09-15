@@ -1,149 +1,85 @@
 'use client'
 
-import { ArrowRight } from 'lucide-react'
+import { motion } from 'framer-motion'
+import { ArrowRight, Mail } from 'lucide-react'
 import { Link } from '@tanstack/react-router'
-import {
-  motion,
-  wordContainer,
-  wordItem,
-  staggerContainer,
-  staggerItem,
-  scrollToSection,
-} from '@/lib/animations'
-import { MagneticButton } from './motion-components'
+import { LandingLogo } from './navbar'
+import { scrollToSection } from '@/lib/animations'
 
 const FOOTER_LINKS = [
-  { label: 'Problem', href: '#problem' },
-  { label: 'Product', href: '#product' },
-  { label: 'Why Allein', href: '#why' },
+  { label: 'How it works', href: '#workflow' },
+  { label: 'Platform', href: '#product' },
+  { label: 'Built for', href: '#built-for' },
   { label: 'Pricing', href: '#pricing' },
 ]
 
-const headline = 'Save 3–5 hours a day. Close more leads. Post faster.'
-const headlineWords = headline.split(' ')
+export const FinalCta = () => (
+  <section className="px-3 pb-3 sm:px-5 sm:pb-5">
+    <div className="relative overflow-hidden rounded-[28px] bg-[#F1663C] px-5 pb-8 pt-20 text-white sm:rounded-[34px] sm:px-8 sm:pb-10 sm:pt-28 lg:px-12">
+      <div className="pointer-events-none absolute -right-36 -top-44 size-[32rem] rounded-full border-[90px] border-white/10" />
+      <div className="pointer-events-none absolute -bottom-52 -left-40 size-[30rem] rounded-full border-[80px] border-[#171713]/8" />
 
-export const FinalCta = () => {
-  return (
-    <section className="relative overflow-hidden px-6 py-24 md:py-40">
-      <div className="pointer-events-none absolute inset-0 select-none">
-        <div className="absolute left-1/4 top-10 size-80 animate-float-slow rounded-full bg-white/10 blur-3xl" />
-        <div className="absolute bottom-0 right-1/4 size-96 animate-float rounded-full bg-orange-300/10 blur-3xl" />
-      </div>
-
-      <div className="relative z-10 mx-auto max-w-3xl text-center">
-        {/* Headline — word-by-word reveal */}
-        <motion.h2
-          variants={wordContainer}
-          initial="hidden"
-          whileInView="visible"
-          viewport={{ once: true, margin: '-80px' }}
-          className="flex flex-wrap justify-center gap-x-[0.25em] text-4xl font-semibold leading-tight tracking-tight text-white md:text-6xl"
-        >
-          {headlineWords.map((word, i) => (
-            <motion.span key={i} variants={wordItem}>
-              {word}
-            </motion.span>
-          ))}
-        </motion.h2>
-
-        <motion.p
-          initial={{ opacity: 0, y: 16 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true }}
-          transition={{ duration: 0.6, delay: 0.3, ease: [0.16, 1, 0.3, 1] }}
-          className="mx-auto mt-5 max-w-xl text-base leading-relaxed text-white/70 md:text-lg"
-        >
-          Allein AI is the operating system every Malaysian agent deserves —
-          one dashboard for leads, follow-ups, and marketing.
-        </motion.p>
-
-        <motion.div
-          initial={{ opacity: 0, y: 16 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true }}
-          transition={{ duration: 0.6, delay: 0.45, ease: [0.16, 1, 0.3, 1] }}
-          className="mt-10 flex flex-wrap justify-center gap-4"
-        >
-          <MagneticButton>
-            <Link to="/login">
-              <button className="inline-flex items-center gap-2 rounded-full bg-white px-6 py-3 text-sm font-medium text-black transition-transform hover:scale-[1.02]">
-                Start free
-                <span className="flex size-5 items-center justify-center rounded-full bg-black">
-                  <ArrowRight className="size-3 text-white" />
-                </span>
-              </button>
-            </Link>
-          </MagneticButton>
-          <MagneticButton strength={0.15}>
-            <a
-              href="#pricing"
-              onClick={(e) => {
-                e.preventDefault()
-                scrollToSection('#pricing')
-              }}
-            >
-              <button className="inline-flex items-center gap-2 rounded-full border border-white/30 px-6 py-3 text-sm font-medium text-white/80 transition-colors hover:border-white/60 hover:text-white">
-                View pricing
-              </button>
-            </a>
-          </MagneticButton>
-        </motion.div>
-      </div>
-
-      <footer className="relative z-10 mx-auto mt-32 flex max-w-7xl flex-col items-start justify-between gap-8 border-t border-white/10 pt-12 md:flex-row md:items-end">
-        <div>
-          <div className="flex items-center gap-2 text-lg font-semibold text-white">
-            <span className="flex size-8 items-center justify-center rounded-lg bg-white text-black">
-              A
-            </span>
-            Allein AI
-          </div>
-          <div className="mt-1 text-sm text-white/50">For Agents, By Agents</div>
+      <motion.div
+        initial={{ opacity: 0, y: 24 }}
+        whileInView={{ opacity: 1, y: 0 }}
+        viewport={{ once: true, margin: '-80px' }}
+        transition={{ duration: 0.65, ease: [0.16, 1, 0.3, 1] }}
+        className="relative mx-auto max-w-5xl text-center"
+      >
+        <span className="text-[10px] font-bold uppercase tracking-[0.24em] text-white/60">READY WHEN YOU ARE</span>
+        <h2 className="mt-6 text-[clamp(3rem,8vw,7.25rem)] font-semibold leading-[0.9] tracking-[-0.065em]">
+          Make space for
+          <span className="block text-[#171713]">your best work.</span>
+        </h2>
+        <p className="mx-auto mt-7 max-w-xl text-base leading-7 text-white/72 sm:text-lg">
+          Bring your leads, knowledge, and marketing into one calmer workspace.
+          Start free and shape Allein around the practice you want to run.
+        </p>
+        <div className="mt-9 flex flex-col items-center justify-center gap-3 sm:flex-row">
+          <Link
+            to="/login"
+            className="group inline-flex h-13 w-full items-center justify-center gap-2 rounded-full bg-[#171713] px-7 text-sm font-semibold text-white transition-transform hover:-translate-y-0.5 sm:w-auto"
+          >
+            Start for free
+            <ArrowRight className="size-4 transition-transform group-hover:translate-x-1" />
+          </Link>
           <a
             href="mailto:hello@alleinai.com"
-            className="mt-3 block text-sm text-white/60 transition-colors hover:text-white"
+            className="inline-flex h-13 w-full items-center justify-center gap-2 rounded-full border border-white/30 px-7 text-sm font-semibold text-white transition-colors hover:bg-white/10 sm:w-auto"
           >
-            hello@alleinai.com
-          </a>
-          <a
-            href="https://alleinai.com"
-            className="block text-sm text-white/60 transition-colors hover:text-white"
-          >
-            alleinai.com
+            <Mail className="size-4" /> Talk to us
           </a>
         </div>
+      </motion.div>
 
-        {/* Footer links — staggered fade-in */}
-        <motion.div
-          variants={staggerContainer}
-          initial="hidden"
-          whileInView="visible"
-          viewport={{ once: true }}
-          className="flex gap-12"
-        >
-          <div>
-            <div className="mb-3 text-[11px] font-semibold uppercase tracking-[3px] text-white/40">
-              Menu
-            </div>
-            <motion.div variants={staggerContainer} className="flex flex-col gap-2">
-              {FOOTER_LINKS.map((item) => (
-                <motion.a
-                  key={item.href}
-                  variants={staggerItem}
-                  href={item.href}
-                  onClick={(e) => {
-                    e.preventDefault()
-                    scrollToSection(item.href)
-                  }}
-                  className="text-sm text-white/60 transition-colors hover:text-white"
-                >
-                  {item.label}
-                </motion.a>
-              ))}
-            </motion.div>
-          </div>
-        </motion.div>
+      <footer className="relative mx-auto mt-24 grid max-w-7xl gap-10 border-t border-white/20 pt-8 md:grid-cols-[1fr_auto] md:items-end">
+        <div>
+          <LandingLogo inverse />
+          <p className="mt-4 max-w-xs text-xs leading-5 text-white/55">
+            An AI operating system for modern, relationship-driven agents.
+          </p>
+        </div>
+        <div className="flex flex-wrap gap-x-6 gap-y-3">
+          {FOOTER_LINKS.map((link) => (
+            <a
+              key={link.href}
+              href={link.href}
+              onClick={(event) => {
+                event.preventDefault()
+                scrollToSection(link.href)
+              }}
+              className="text-xs font-medium text-white/60 transition-colors hover:text-white"
+            >
+              {link.label}
+            </a>
+          ))}
+        </div>
       </footer>
-    </section>
-  )
-}
+
+      <div className="relative mx-auto mt-8 flex max-w-7xl flex-col gap-2 border-t border-white/15 pt-5 text-[10px] text-white/38 sm:flex-row sm:items-center sm:justify-between">
+        <span>© 2026 Allein AI. Built in Malaysia.</span>
+        <a href="mailto:hello@alleinai.com" className="hover:text-white">hello@alleinai.com</a>
+      </div>
+    </div>
+  </section>
+)

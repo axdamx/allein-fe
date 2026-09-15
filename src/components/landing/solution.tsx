@@ -1,96 +1,89 @@
 'use client'
 
-import { motion, useInView, useScroll, useTransform } from 'framer-motion'
-import { useRef } from 'react'
-import { MessageCircle, BookOpen, Wand2, KanbanSquare } from 'lucide-react'
+import { motion } from 'framer-motion'
+import { ArrowRight, BrainCircuit, MessageSquareText, Zap } from 'lucide-react'
 import { SectionLabel } from './section-label'
-import { staggerContainer, springStaggerItem } from '@/lib/animations'
 
-const PILLARS = [
+const STEPS = [
   {
-    icon: MessageCircle,
-    title: 'Talks to clients',
-    body: 'Answers on WhatsApp & Telegram instantly, day or night — in Bahasa Malaysia and English.',
+    icon: MessageSquareText,
+    kicker: 'Capture',
+    title: 'Start with what you already have',
+    body: 'Bring in a client message, a lead, or a document. Allein puts the context in one place.',
+    chip: 'New enquiry received',
   },
   {
-    icon: BookOpen,
-    title: 'Knows the business',
-    body: 'Reads your own listings, policies & documents — answers from them, not from guesses.',
+    icon: BrainCircuit,
+    kicker: 'Understand',
+    title: 'Your AI connects the dots',
+    body: 'It reads the history, understands the next action, and grounds answers in your own knowledge.',
+    chip: 'Intent + context matched',
   },
   {
-    icon: Wand2,
-    title: 'Creates marketing',
-    body: 'Generates images, video & captions, then posts to your social channels automatically.',
-  },
-  {
-    icon: KanbanSquare,
-    title: 'Runs the CRM',
-    body: 'Tracks leads, fires reminders, never lets a follow-up slip through the cracks.',
+    icon: Zap,
+    kicker: 'Act',
+    title: 'Move the work forward',
+    body: 'Draft the reply, update the pipeline, schedule the follow-up, or turn the brief into a campaign.',
+    chip: '4 actions completed',
   },
 ]
 
-export const Solution = () => {
-  const sectionRef = useRef<HTMLElement>(null)
-  const isInView = useInView(sectionRef, { once: true, margin: '-100px' })
-  const { scrollYProgress } = useScroll({
-    target: sectionRef,
-    offset: ['start end', 'end start'],
-  })
-  // Left column fades slightly as you scroll past — subtle depth cue.
-  const leftOpacity = useTransform(scrollYProgress, [0, 0.4, 0.8, 1], [1, 1, 0.5, 0.3])
-
-  return (
-    <section ref={sectionRef} className="relative px-6 py-24 md:py-32">
-      <div className="mx-auto max-w-7xl md:grid md:grid-cols-2 md:gap-16">
-        {/* Left sticky column — scroll-linked fade */}
-        <motion.div style={{ opacity: leftOpacity }} className="md:sticky md:top-32 md:h-fit">
-          <motion.div
-            initial={{ opacity: 0, y: 24 }}
-            animate={isInView ? { opacity: 1, y: 0 } : {}}
-            transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
-          >
-            <SectionLabel className="text-white/60">THE SOLUTION</SectionLabel>
-            <h2 className="text-4xl font-semibold leading-tight tracking-tight text-white md:text-5xl">
-              One dashboard replaces{' '}
-              <span className="text-orange-200">3–4 tools</span>.
-            </h2>
-            <p className="mt-4 max-w-md text-base leading-relaxed text-white/80">
-              CRM, AI chat, marketing studio, reminders, and social posting —
-              all in one place, sharing one memory. No app-switching, no
-              copy-paste, no leads slipping through.
-            </p>
-          </motion.div>
-        </motion.div>
-
-        {/* Right pillar grid — spring-staggered */}
+export const Solution = () => (
+  <section id="workflow" className="scroll-mt-28 px-3 py-3 sm:px-5 sm:py-5">
+    <div className="relative overflow-hidden rounded-[28px] bg-[#E9DCCB] px-5 py-20 sm:rounded-[34px] sm:px-8 sm:py-28 lg:px-12">
+      <div className="pointer-events-none absolute right-[-10rem] top-[-14rem] size-[30rem] rounded-full border-[80px] border-white/20" />
+      <div className="relative mx-auto max-w-7xl">
         <motion.div
-          variants={staggerContainer}
-          initial="hidden"
-          whileInView="visible"
+          initial={{ opacity: 0, y: 20 }}
+          whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true, margin: '-80px' }}
-          className="mt-12 grid grid-cols-1 gap-6 sm:grid-cols-2 md:mt-0"
+          transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
+          className="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between"
         >
-          {PILLARS.map((p) => (
-            <motion.div
-              key={p.title}
-              variants={springStaggerItem}
-              whileHover={{ y: -4, transition: { type: 'spring', stiffness: 300, damping: 20 } }}
-              className="rounded-3xl border border-white/10 p-7 transition-colors duration-300 hover:border-white/20"
-              style={{ background: 'rgba(40,20,10,0.35)', backdropFilter: 'blur(12px)' }}
-            >
-              <motion.div
-                whileHover={{ scale: 1.1, rotate: -5 }}
-                transition={{ type: 'spring', stiffness: 300 }}
-                className="flex size-11 items-center justify-center rounded-xl bg-white/10"
-              >
-                <p.icon className="size-5 text-orange-200" />
-              </motion.div>
-              <h3 className="mt-5 text-xl font-semibold text-white">{p.title}</h3>
-              <p className="mt-2 text-sm leading-relaxed text-white/70">{p.body}</p>
-            </motion.div>
-          ))}
+          <div>
+            <SectionLabel>HOW ALLEIN WORKS</SectionLabel>
+            <h2 className="max-w-3xl text-4xl font-semibold leading-[1.02] tracking-[-0.045em] sm:text-5xl lg:text-6xl">
+              One thought in.
+              <span className="block text-[#F1663C]">Momentum out.</span>
+            </h2>
+          </div>
+          <p className="max-w-md text-base leading-7 text-[#171713]/55">
+            Allein does more than generate text. It carries context from one
+            task to the next, so every action compounds.
+          </p>
         </motion.div>
+
+        <div className="relative mt-16 grid gap-4 lg:grid-cols-3">
+          <div className="absolute left-[16.6%] right-[16.6%] top-9 hidden h-px bg-[#171713]/15 lg:block" />
+          {STEPS.map((step, index) => (
+            <motion.article
+              key={step.kicker}
+              initial={{ opacity: 0, y: 24 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true, margin: '-70px' }}
+              transition={{ duration: 0.55, delay: index * 0.1, ease: [0.16, 1, 0.3, 1] }}
+              className="relative rounded-[24px] border border-[#171713]/8 bg-[#F8F3EB]/75 p-6 shadow-[0_16px_40px_rgba(75,55,35,0.07)] backdrop-blur sm:p-7"
+            >
+              <div className="relative z-10 flex items-center justify-between">
+                <span className="flex size-12 items-center justify-center rounded-2xl bg-[#171713] text-white">
+                  <step.icon className="size-5" />
+                </span>
+                <span className="text-xs font-semibold text-[#171713]/25">0{index + 1}</span>
+              </div>
+              <div className="mt-10 text-[10px] font-bold uppercase tracking-[0.2em] text-[#F1663C]">
+                {step.kicker}
+              </div>
+              <h3 className="mt-2 text-xl font-semibold leading-7 tracking-[-0.025em]">{step.title}</h3>
+              <p className="mt-3 text-sm leading-6 text-[#171713]/50">{step.body}</p>
+              <div className="mt-8 flex items-center gap-2 rounded-xl border border-[#171713]/8 bg-white/55 px-3 py-2.5 text-[11px] font-medium text-[#171713]/60">
+                <span className="size-1.5 rounded-full bg-[#61A44B]" />
+                {step.chip}
+                {index < STEPS.length - 1 ? <ArrowRight className="ml-auto size-3.5 text-[#171713]/25" /> : null}
+              </div>
+            </motion.article>
+          ))}
+        </div>
       </div>
-    </section>
-  )
-}
+    </div>
+  </section>
+)

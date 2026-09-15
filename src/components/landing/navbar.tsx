@@ -1,24 +1,40 @@
 'use client'
 
-import { useState, useCallback } from 'react'
+import { useCallback, useState } from 'react'
+import { AnimatePresence, motion } from 'framer-motion'
+import { ArrowUpRight, Menu, X } from 'lucide-react'
 import { Link } from '@tanstack/react-router'
-import { ArrowRight } from 'lucide-react'
-import { Button } from '@/components/ui/button'
 import { scrollToSection } from '@/lib/animations'
 
 const NAV_LINKS = [
-  { label: 'Problem', href: '#problem' },
-  { label: 'Product', href: '#product' },
-  { label: 'Why Allein', href: '#why' },
+  { label: 'How it works', href: '#workflow' },
+  { label: 'Platform', href: '#product' },
+  { label: 'Built for', href: '#built-for' },
   { label: 'Pricing', href: '#pricing' },
 ]
+
+export const LandingLogo = ({ inverse = false }: { inverse?: boolean }) => (
+  <span className="flex items-center gap-2.5">
+    <span
+      className={`relative flex size-9 items-center justify-center overflow-hidden rounded-xl text-sm font-black ${
+        inverse ? 'bg-white text-[#171713]' : 'bg-[#171713] text-white'
+      }`}
+    >
+      <span className="relative z-10">A</span>
+      <span className="absolute -right-2 -top-2 size-5 rounded-full bg-[#F1663C]" />
+    </span>
+    <span className="text-[17px] font-semibold tracking-[-0.03em]">
+      Allein<span className="text-[#F1663C]">.</span>
+    </span>
+  </span>
+)
 
 export const Navbar = () => {
   const [mobileOpen, setMobileOpen] = useState(false)
 
   const handleNavClick = useCallback(
-    (e: React.MouseEvent, href: string) => {
-      e.preventDefault()
+    (event: React.MouseEvent, href: string) => {
+      event.preventDefault()
       scrollToSection(href)
       setMobileOpen(false)
     },
@@ -26,69 +42,87 @@ export const Navbar = () => {
   )
 
   return (
-    <nav className="fixed top-0 left-0 right-0 z-50 bg-black/20 text-white backdrop-blur-md">
-      <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-4">
-        <Link to="/" className="flex items-center gap-2 text-lg font-semibold tracking-tight">
-          <span className="flex size-8 items-center justify-center rounded-lg bg-white text-black">
-            A
-          </span>
-          Allein AI
-        </Link>
-
-        <div className="hidden items-center gap-8 md:flex">
-          {NAV_LINKS.map((link) => (
-            <a
-              key={link.href}
-              href={link.href}
-              onClick={(e) => handleNavClick(e, link.href)}
-              className="text-sm transition-opacity hover:opacity-70"
-            >
-              {link.label}
-            </a>
-          ))}
-          <Link to="/login">
-            <Button className="rounded-full bg-white text-black hover:bg-white/90">
-              Start Free
-              <span className="ml-1 flex size-5 items-center justify-center rounded-full bg-black">
-                <ArrowRight className="size-3 text-white" />
-              </span>
-            </Button>
+    <header className="fixed inset-x-0 top-0 z-50 px-3 pt-3 sm:px-5 sm:pt-5">
+      <nav className="mx-auto max-w-7xl rounded-2xl border border-black/[0.07] bg-[#F9F6F0]/90 px-4 shadow-[0_12px_50px_rgba(30,24,18,0.09)] backdrop-blur-xl sm:px-5">
+        <div className="flex h-16 items-center justify-between">
+          <Link to="/" aria-label="Allein home" className="shrink-0">
+            <LandingLogo />
           </Link>
+
+          <div className="hidden items-center gap-7 lg:flex">
+            {NAV_LINKS.map((link) => (
+              <a
+                key={link.href}
+                href={link.href}
+                onClick={(event) => handleNavClick(event, link.href)}
+                className="text-[13px] font-medium text-[#171713]/60 transition-colors hover:text-[#171713]"
+              >
+                {link.label}
+              </a>
+            ))}
+          </div>
+
+          <div className="hidden items-center gap-2 sm:flex">
+            <Link
+              to="/login"
+              className="rounded-full px-4 py-2.5 text-sm font-medium text-[#171713]/65 transition-colors hover:text-[#171713]"
+            >
+              Sign in
+            </Link>
+            <Link
+              to="/login"
+              className="group inline-flex items-center gap-2 rounded-full bg-[#171713] px-4 py-2.5 text-sm font-medium text-white transition-transform hover:-translate-y-0.5"
+            >
+              Start free
+              <ArrowUpRight className="size-4 transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
+            </Link>
+          </div>
+
+          <button
+            type="button"
+            className="flex size-10 items-center justify-center rounded-full border border-black/10 sm:hidden"
+            onClick={() => setMobileOpen((open) => !open)}
+            aria-expanded={mobileOpen}
+            aria-controls="mobile-navigation"
+            aria-label={mobileOpen ? 'Close navigation' : 'Open navigation'}
+          >
+            {mobileOpen ? <X className="size-5" /> : <Menu className="size-5" />}
+          </button>
         </div>
 
-        <button
-          className="flex flex-col gap-1.5 md:hidden"
-          onClick={() => setMobileOpen(!mobileOpen)}
-          aria-label="Toggle menu"
-        >
-          <span className="block h-0.5 w-6 bg-white" />
-          <span className="block h-0.5 w-6 bg-white" />
-          <span className="block h-0.5 w-6 bg-white" />
-        </button>
-      </div>
-
-      {mobileOpen && (
-        <div className="absolute top-full left-0 right-0 flex flex-col gap-4 bg-[#2A1408] px-6 pb-6 md:hidden">
-          {NAV_LINKS.map((link) => (
-            <a
-              key={link.href}
-              href={link.href}
-              onClick={(e) => handleNavClick(e, link.href)}
-              className="text-sm text-white transition-opacity hover:opacity-70"
+        <AnimatePresence initial={false}>
+          {mobileOpen ? (
+            <motion.div
+              id="mobile-navigation"
+              initial={{ height: 0, opacity: 0 }}
+              animate={{ height: 'auto', opacity: 1 }}
+              exit={{ height: 0, opacity: 0 }}
+              transition={{ duration: 0.25, ease: [0.16, 1, 0.3, 1] }}
+              className="overflow-hidden sm:hidden"
             >
-              {link.label}
-            </a>
-          ))}
-          <Link to="/login" onClick={() => setMobileOpen(false)}>
-            <Button className="w-full rounded-full bg-white text-black hover:bg-white/90">
-              Start Free
-              <span className="ml-1 flex size-5 items-center justify-center rounded-full bg-black">
-                <ArrowRight className="size-3 text-white" />
-              </span>
-            </Button>
-          </Link>
-        </div>
-      )}
-    </nav>
+              <div className="border-t border-black/[0.07] py-3">
+                {NAV_LINKS.map((link) => (
+                  <a
+                    key={link.href}
+                    href={link.href}
+                    onClick={(event) => handleNavClick(event, link.href)}
+                    className="block rounded-xl px-2 py-3 text-sm font-medium text-[#171713]/70 hover:bg-black/[0.04] hover:text-[#171713]"
+                  >
+                    {link.label}
+                  </a>
+                ))}
+                <Link
+                  to="/login"
+                  onClick={() => setMobileOpen(false)}
+                  className="mt-2 flex items-center justify-center gap-2 rounded-xl bg-[#171713] px-4 py-3 text-sm font-medium text-white"
+                >
+                  Start free <ArrowUpRight className="size-4" />
+                </Link>
+              </div>
+            </motion.div>
+          ) : null}
+        </AnimatePresence>
+      </nav>
+    </header>
   )
 }
