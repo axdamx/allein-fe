@@ -28,7 +28,7 @@ export const TaskCard = ({
         onDragStart={onDragStart}
         onClick={() => setShowDetail(true)}
         className={cn(
-          'cursor-grab rounded-lg border bg-card p-3 text-sm shadow-sm transition-all hover:shadow-md active:cursor-grabbing',
+          'cursor-grab rounded-[18px] border border-black/[0.06] bg-[#FFFDFA]/90 p-3 text-sm shadow-sm transition-all hover:-translate-y-0.5 hover:border-[#F1663C]/25 hover:shadow-lg active:cursor-grabbing dark:border-white/10 dark:bg-[#25231F]',
           isDragging && 'opacity-50 ring-2 ring-primary',
         )}
       >

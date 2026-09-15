@@ -17,6 +17,7 @@ import { EditableNotesCard } from '@/components/crm/lead-editable-notes-card'
 import { CardSlot } from '@/components/crm/lead-card-slot'
 import { RemindersCard } from '@/components/crm/lead-reminders-card'
 import { LeadStatusDropdown } from '@/components/crm/lead-status-dropdown'
+import { formatCurrency } from '@/components/dashboard/dashboard-utils'
 
 const LeadDetailPage = () => {
   const { leadId } = Route.useParams()
@@ -56,7 +57,7 @@ const LeadDetailPage = () => {
 
   return (
     <div>
-      <div className="mb-6">
+      <div className="mb-6 rounded-[24px] border border-black/[0.05] bg-white/45 p-4 dark:border-white/10 dark:bg-white/[0.025] sm:p-5">
         <Button asChild variant="ghost" size="sm" className="mb-2">
           <Link to="/crm/leads">
             <ArrowLeft className="size-4" /> Back to leads
@@ -65,9 +66,9 @@ const LeadDetailPage = () => {
         <div className="flex items-center justify-between gap-3">
           <div className="min-w-0 flex-1">
             <div className="flex items-center gap-3">
-              <h1 className="truncate text-2xl font-semibold tracking-tight">
+              <h2 className="truncate text-2xl font-semibold tracking-[-0.035em]">
                 {lead.name}
-              </h1>
+              </h2>
               <LeadStatusBadge status={lead.status} />
             </div>
             <p className="text-sm text-muted-foreground">
@@ -111,7 +112,7 @@ const LeadDetailPage = () => {
                         </p>
                       </div>
                       <span className="text-sm font-semibold">
-                        ${Number(deal.value).toLocaleString()}
+                        {formatCurrency(Number(deal.value))}
                       </span>
                     </div>
                   ))}

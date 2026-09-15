@@ -102,18 +102,20 @@ const StudioCreatePage = () => {
   return (
     <>
     <UsageIndicator metric="posts" label="posts" windowSuffix="/day" />
-    <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+    <div className="grid grid-cols-1 gap-5 lg:grid-cols-[1.05fr_0.95fr]">
       {/* Left: Generator / Preview */}
       <div>
         {step === 'form' && (
-          <Card>
+          <Card className="app-accent-card overflow-hidden">
             <CardHeader>
               <CardTitle className="flex items-center gap-2 text-base">
-                <Wand2 className="size-4 text-primary" />
-                Content Generator
+                <span className="flex size-9 items-center justify-center rounded-2xl bg-[#171713] text-[#FFF9F1] dark:bg-[#F1663C] dark:text-[#171713]">
+                  <Wand2 className="size-4" />
+                </span>
+                Create a campaign post
               </CardTitle>
-              <CardDescription>
-                Describe what you want to post about.
+              <CardDescription className="leading-5">
+                Start with the idea. Your agent will shape the hook, caption, hashtags, and optional media.
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -125,7 +127,7 @@ const StudioCreatePage = () => {
                     value={prompt}
                     onChange={(e) => setPrompt(e.target.value)}
                     placeholder="e.g. Announce our new AI-powered CRM feature with a special launch discount"
-                    rows={3}
+                    rows={5}
                     autoFocus
                   />
                 </div>
@@ -216,7 +218,7 @@ const StudioCreatePage = () => {
 
       {/* Right: Recent posts */}
       <div>
-        <Card>
+        <Card className="min-h-[340px]">
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-base">
               <Calendar className="size-4" />
@@ -241,7 +243,7 @@ const StudioCreatePage = () => {
               </div>
             ) : (
               <div className="py-8 text-center text-sm text-muted-foreground">
-                No posts yet. Generate your first piece of content!
+                Your content queue is empty. Generate a first draft to begin.
               </div>
             )}
           </CardContent>
@@ -286,7 +288,7 @@ const PostPreview = ({
   }
 
   return (
-    <Card className="border-primary/20">
+    <Card className="app-accent-card">
       <CardHeader>
         <div className="flex items-center justify-between">
           <CardTitle className="flex items-center gap-2 text-base">
@@ -299,7 +301,7 @@ const PostPreview = ({
         </div>
       </CardHeader>
       <CardContent className="space-y-4">
-        <div className="space-y-3 rounded-lg border p-4">
+        <div className="space-y-3 rounded-2xl border border-black/[0.06] bg-white/45 p-4 dark:border-white/10 dark:bg-black/10">
           <div>
             <p className="text-xs font-medium text-muted-foreground">Title</p>
             <p className="font-semibold">{generated.title}</p>
@@ -417,7 +419,7 @@ const PostCard = ({ post }: { post: import('@/server/marketing').PostRow }) => {
   }
 
   return (
-    <div className="rounded-lg border p-3">
+    <div className="rounded-2xl border border-black/[0.06] bg-white/45 p-3 transition-colors hover:border-[#F1663C]/25 hover:bg-white/75 dark:border-white/10 dark:bg-white/[0.025] dark:hover:bg-white/5">
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2">

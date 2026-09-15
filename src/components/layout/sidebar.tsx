@@ -1,128 +1,139 @@
-import type { ComponentType } from "react";
+import type { ComponentType } from 'react'
 import {
   BarChart3,
   Bot,
+  Brain,
   Calendar,
+  ChevronRight,
   LayoutDashboard,
   LifeBuoy,
-  Settings,
-  Users,
   MessageSquare,
-  Brain,
-  Sparkles,
+  Settings,
   Shield,
+  Sparkles,
   Target,
-} from "lucide-react";
-import { Link, useRouterState } from "@tanstack/react-router";
+  Users,
+} from 'lucide-react'
+import { Link, useRouterState } from '@tanstack/react-router'
 
-import { Brand } from "@/components/brand";
-import { PlanBadge } from "@/components/billing/plan-badge";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { Separator } from "@/components/ui/separator";
-import { cn } from "@/lib/utils";
-import { getLucideIcon } from "@/lib/icons";
-import type { PlanTier } from "@/lib/plans";
+import { Brand } from '@/components/brand'
+import { PlanBadge } from '@/components/billing/plan-badge'
+import { Avatar, AvatarFallback } from '@/components/ui/avatar'
+import { cn } from '@/lib/utils'
+import { getLucideIcon } from '@/lib/icons'
+import type { PlanTier } from '@/lib/plans'
 
 interface NavItem {
-  label: string;
-  icon: ComponentType<{ className?: string }>;
-  to: string;
+  label: string
+  icon: ComponentType<{ className?: string }>
+  to: string
 }
 
 interface NavGroup {
-  label: string;
-  items: NavItem[];
+  label: string
+  items: NavItem[]
 }
 
-/** Semantic groups — mirrors how the pitch deck describes the product. */
 const navGroups: NavGroup[] = [
   {
-    label: "Overview",
-    items: [{ label: "Dashboard", icon: LayoutDashboard, to: "/dashboard" }],
-  },
-  {
-    label: "Communicate",
+    label: 'Workspace',
     items: [
-      { label: "Chat", icon: MessageSquare, to: "/chat" },
-      { label: "Agents", icon: Bot, to: "/agents" },
+      { label: 'Dashboard', icon: LayoutDashboard, to: '/dashboard' },
+      { label: 'Chat', icon: MessageSquare, to: '/chat' },
+      { label: 'Agents', icon: Bot, to: '/agents' },
     ],
   },
   {
-    label: "Sell",
+    label: 'Grow',
     items: [
-      { label: "CRM", icon: Users, to: "/crm/leads" },
-      { label: "Planner", icon: Calendar, to: "/planner" },
-      { label: "Goals", icon: Target, to: "/goals" },
+      { label: 'CRM', icon: Users, to: '/crm/leads' },
+      { label: 'Planner', icon: Calendar, to: '/planner' },
+      { label: 'Goals', icon: Target, to: '/goals' },
     ],
   },
   {
-    label: "Create",
+    label: 'Create',
     items: [
-      { label: "Studio", icon: Sparkles, to: "/studio" },
-      { label: "Knowledge Base", icon: Brain, to: "/knowledge-base" },
+      { label: 'Studio', icon: Sparkles, to: '/studio' },
+      { label: 'Knowledge', icon: Brain, to: '/knowledge-base' },
+      { label: 'Analytics', icon: BarChart3, to: '/analytics' },
     ],
   },
-  {
-    label: "Insights",
-    items: [{ label: "Analytics", icon: BarChart3, to: "/analytics" }],
-  },
-];
+]
 
 const footerNav: NavItem[] = [
-  { label: "Settings", icon: Settings, to: "/settings" },
-  { label: "Support", icon: LifeBuoy, to: "/support" },
-];
+  { label: 'Settings', icon: Settings, to: '/settings' },
+  { label: 'Support', icon: LifeBuoy, to: '/support' },
+]
 
-/** Determine if a nav item matches the current path. */
 const isActive = (currentPath: string, to: string): boolean =>
   currentPath === to || currentPath.startsWith(`${to}/`)
 
 interface ShellUser {
-  userEmail?: string | null;
-  userName?: string | null;
-  userPlan?: PlanTier;
-  isAdmin?: boolean;
+  userEmail?: string | null
+  userName?: string | null
+  userPlan?: PlanTier
+  isAdmin?: boolean
   agentType?: {
-    key: string;
-    label: string;
-    icon: string | null;
-    accent_color: string;
-  } | null;
+    key: string
+    label: string
+    icon: string | null
+    accent_color: string
+  } | null
 }
 
-const NavLink = ({ item, active }: { item: NavItem; active?: boolean }) => {
-  const Icon = item.icon;
+const NavLink = ({
+  item,
+  active,
+  darkSurface = false,
+}: {
+  item: NavItem
+  active?: boolean
+  darkSurface?: boolean
+}) => {
+  const Icon = item.icon
+
   return (
     <Link
       to={item.to}
-      aria-current={active ? "page" : undefined}
+      aria-current={active ? 'page' : undefined}
       className={cn(
-        "flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors",
-        active
-          ? "bg-sidebar-accent text-sidebar-accent-foreground"
-          : "text-muted-foreground hover:bg-sidebar-accent/60 hover:text-sidebar-accent-foreground",
+        'group flex items-center gap-3 rounded-xl px-3 py-2.5 text-[13px] font-medium transition-all',
+        darkSurface
+          ? active
+            ? 'bg-[#F1663C] text-white shadow-[0_10px_24px_rgba(241,102,60,0.2)]'
+            : 'text-white/48 hover:bg-white/[0.06] hover:text-white'
+          : active
+            ? 'bg-[#171713] text-white dark:bg-[#F1663C]'
+            : 'text-muted-foreground hover:bg-muted hover:text-foreground',
       )}
     >
-      <Icon className="size-4" />
-      {item.label}
+      <Icon className={cn('size-4 shrink-0', darkSurface && !active && 'text-white/38 group-hover:text-[#F49A70]')} />
+      <span className="flex-1">{item.label}</span>
+      {active ? <ChevronRight className="size-3.5 opacity-55" /> : null}
     </Link>
-  );
+  )
 }
 
-/**
- * Shared nav content — rendered identically in the desktop sidebar and the
- * mobile drawer so the two never drift. Does NOT include the user card;
- * callers render that themselves (desktop: bottom of aside, mobile: top of
- * sheet) to suit each layout.
- */
-export const NavContent = ({ isAdmin = false }: { isAdmin?: boolean }) => {
-  const currentPath = useRouterState({ select: (s) => s.location.pathname });
+export const NavContent = ({
+  isAdmin = false,
+  darkSurface = false,
+}: {
+  isAdmin?: boolean
+  darkSurface?: boolean
+}) => {
+  const currentPath = useRouterState({ select: (state) => state.location.pathname })
 
   return (
-    <nav className="flex flex-1 flex-col gap-4 p-4">
+    <nav className="flex flex-1 flex-col gap-6 overflow-y-auto px-3 py-5">
       {navGroups.map((group) => (
         <div key={group.label} className="flex flex-col gap-1">
-          <p className="px-3 pb-1 text-xs font-medium text-muted-foreground">
+          <p
+            className={cn(
+              'px-3 pb-1.5 text-[9px] font-bold uppercase tracking-[0.2em]',
+              darkSurface ? 'text-white/22' : 'text-muted-foreground',
+            )}
+          >
             {group.label}
           </p>
           {group.items.map((item) => (
@@ -130,102 +141,100 @@ export const NavContent = ({ isAdmin = false }: { isAdmin?: boolean }) => {
               key={item.label}
               item={item}
               active={isActive(currentPath, item.to)}
+              darkSurface={darkSurface}
             />
           ))}
         </div>
       ))}
 
-      <Separator />
-      <div className="flex flex-col gap-1">
+      <div className={cn('mt-auto border-t pt-4', darkSurface ? 'border-white/[0.07]' : 'border-border')}>
         {footerNav.map((item) => (
           <NavLink
             key={item.label}
             item={item}
             active={isActive(currentPath, item.to)}
+            darkSurface={darkSurface}
           />
         ))}
-        {isAdmin && (
+        {isAdmin ? (
           <NavLink
-            item={{ label: "Admin", icon: Shield, to: "/admin" }}
-            active={isActive(currentPath, "/admin")}
+            item={{ label: 'Admin', icon: Shield, to: '/admin' }}
+            active={isActive(currentPath, '/admin')}
+            darkSurface={darkSurface}
           />
-        )}
+        ) : null}
       </div>
     </nav>
-  );
+  )
 }
 
-/** User card — shared between desktop and mobile. */
 export const UserCard = ({
   userEmail,
   userName,
-  userPlan = "free",
+  userPlan = 'free',
   agentType,
-}: Omit<ShellUser, "isAdmin">) => {
-  const displayName =
-    userName ?? (userEmail ? userEmail.split("@")[0] : "Guest");
-  const initials = displayName.slice(0, 2).toUpperCase();
-  const AgentIcon = agentType ? getLucideIcon(agentType.icon) : null;
+  darkSurface = false,
+}: Omit<ShellUser, 'isAdmin'> & { darkSurface?: boolean }) => {
+  const displayName = userName ?? (userEmail ? userEmail.split('@')[0] : 'Guest')
+  const initials = displayName.slice(0, 2).toUpperCase()
+  const AgentIcon = agentType ? getLucideIcon(agentType.icon) : null
 
   return (
-    <div className="flex items-center gap-3 p-4">
-      <Avatar className="size-9">
-        <AvatarFallback>{initials}</AvatarFallback>
+    <div
+      className={cn(
+        'm-3 flex items-center gap-3 rounded-2xl border p-3',
+        darkSurface
+          ? 'border-white/[0.07] bg-white/[0.035] text-white'
+          : 'border-border bg-muted/40',
+      )}
+    >
+      <Avatar className="size-9 border border-white/10">
+        <AvatarFallback className={cn(darkSurface && 'bg-[#F1663C] text-white')}>
+          {initials}
+        </AvatarFallback>
       </Avatar>
       <div className="min-w-0 flex-1">
-        <p className="truncate text-sm font-medium capitalize">
-          {displayName}
-        </p>
+        <p className="truncate text-xs font-semibold capitalize">{displayName}</p>
         {agentType ? (
-          <div className="flex items-center gap-1.5">
-            {AgentIcon && (
-              <AgentIcon
-                className="size-3"
-                style={{ color: agentType.accent_color }}
-              />
-            )}
-            <p
-              className="truncate text-xs text-muted-foreground"
-              style={{ color: agentType.accent_color }}
-            >
+          <div className="mt-0.5 flex items-center gap-1.5">
+            {AgentIcon ? <AgentIcon className="size-3" style={{ color: agentType.accent_color }} /> : null}
+            <p className={cn('truncate text-[10px]', darkSurface ? 'text-white/38' : 'text-muted-foreground')}>
               {agentType.label}
             </p>
           </div>
         ) : (
-          <p className="truncate text-xs text-muted-foreground">
-            {userEmail ?? "Not signed in"}
+          <p className={cn('truncate text-[10px]', darkSurface ? 'text-white/38' : 'text-muted-foreground')}>
+            {userEmail ?? 'Not signed in'}
           </p>
         )}
       </div>
       <PlanBadge tier={userPlan} className="shrink-0" />
     </div>
-  );
-};
+  )
+}
 
 export const Sidebar = ({
   userEmail,
   userName,
-  userPlan = "free",
+  userPlan = 'free',
   isAdmin = false,
   agentType,
-}: ShellUser) => {
-  return (
-    <aside
-      data-tour="sidebar"
-      className="hidden w-70 shrink-0 flex-col border-r bg-sidebar lg:flex"
-    >
-      <div className="flex h-16 items-center px-6">
-        <Brand />
-      </div>
-      <Separator />
-      <NavContent isAdmin={isAdmin} />
-      <Separator />
-      <UserCard
-        userEmail={userEmail}
-        userName={userName}
-        userPlan={userPlan}
-        agentType={agentType}
-      />
-    </aside>
-  );
-}
+}: ShellUser) => (
+  <aside
+    data-tour="sidebar"
+    className="sticky top-0 hidden h-svh w-[264px] shrink-0 flex-col bg-[#171713] text-white lg:flex"
+  >
+    <div className="flex h-20 items-center px-6">
+      <Brand inverse />
+    </div>
+    <div className="mx-5 h-px bg-white/[0.07]" />
+    <NavContent isAdmin={isAdmin} darkSurface />
+    <UserCard
+      userEmail={userEmail}
+      userName={userName}
+      userPlan={userPlan}
+      agentType={agentType}
+      darkSurface
+    />
+  </aside>
+)

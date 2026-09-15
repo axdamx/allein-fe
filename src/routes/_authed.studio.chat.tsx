@@ -59,8 +59,12 @@ const StudioChatPage = () => {
   const uploadAttachment = useUploadStudioAttachment()
 
   const messagesEndRef = useRef<HTMLDivElement>(null)
+  const scrollRef = useRef<HTMLDivElement>(null)
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
+    scrollRef.current?.scrollTo({
+      top: scrollRef.current.scrollHeight,
+      behavior: 'smooth',
+    })
   }, [messages, streamingText])
 
   // Auto-select first chat once loaded.
@@ -177,7 +181,7 @@ const StudioChatPage = () => {
   return (
     <div className="grid h-[calc(100vh-14rem)] grid-cols-1 gap-4 lg:grid-cols-[240px_1fr_320px]">
       {/* Conversation list */}
-      <Card className="hidden flex-col overflow-hidden lg:flex">
+      <Card className="hidden flex-col overflow-hidden bg-[#E9E1D6]/65 dark:bg-[#1A1916] lg:flex">
         <div className="border-b p-3">
           <Button
             className="w-full"
@@ -202,10 +206,10 @@ const StudioChatPage = () => {
                   <button
                     onClick={() => setActiveChatId(c.id)}
                     className={cn(
-                      'group flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-sm transition-colors',
+                      'group flex w-full items-center gap-2 rounded-xl px-3 py-2.5 text-left text-sm transition-colors',
                       activeChatId === c.id
-                        ? 'bg-primary/10 text-primary'
-                        : 'hover:bg-muted',
+                        ? 'bg-[#171713] text-[#FFF9F1] shadow-sm dark:bg-[#F1663C] dark:text-[#171713]'
+                        : 'hover:bg-white/70 dark:hover:bg-white/5',
                     )}
                   >
                     <Sparkles className="size-3.5 shrink-0 text-muted-foreground" />
@@ -240,7 +244,7 @@ const StudioChatPage = () => {
       <Card className="flex flex-col overflow-hidden">
         {activeChatId ? (
           <>
-            <div className="chat-scroll flex-1 space-y-1 overflow-y-auto">
+            <div ref={scrollRef} className="chat-scroll flex-1 space-y-1 overflow-y-auto">
               {messagesLoading ? (
                 <div className="space-y-4 p-5">
                   {Array.from({ length: 3 }).map((_, i) => (
@@ -281,8 +285,8 @@ const StudioChatPage = () => {
           </>
         ) : (
           <div className="flex flex-1 flex-col items-center justify-center gap-5 p-8 text-center">
-            <div className="flex size-16 items-center justify-center rounded-full bg-muted">
-              <Sparkles className="size-8 text-muted-foreground" />
+            <div className="flex size-16 items-center justify-center rounded-[22px] bg-[#F1663C]/12 text-[#E95F36]">
+              <Sparkles className="size-8" />
             </div>
             <div>
               <p className="font-medium">Conversational Studio</p>
@@ -300,7 +304,7 @@ const StudioChatPage = () => {
                   key={prompt}
                   onClick={() => handleStartWithPrompt(prompt)}
                   disabled={createChat.isPending}
-                  className="group flex items-center gap-2 rounded-lg border bg-background px-3 py-2 text-left text-xs transition-colors hover:border-primary/40 hover:bg-muted/30"
+                  className="group flex items-center gap-2 rounded-2xl border border-black/[0.06] bg-white/50 px-3 py-2.5 text-left text-xs transition-all hover:-translate-y-0.5 hover:border-[#F1663C]/30 hover:bg-white dark:border-white/10 dark:bg-white/[0.025] dark:hover:bg-white/5"
                 >
                   <Sparkles className="size-3 shrink-0 text-muted-foreground group-hover:text-primary" />
                   <span className="flex-1">{prompt}</span>
@@ -320,7 +324,7 @@ const StudioChatPage = () => {
       </Card>
 
       {/* Canvas — latest generated asset */}
-      <Card className="hidden flex-col overflow-hidden lg:flex">
+      <Card className="app-ink-card hidden flex-col overflow-hidden lg:flex">
         <div className="border-b px-4 py-3">
           <p className="flex items-center gap-1.5 text-sm font-medium">
             <ImageIcon className="size-4" />

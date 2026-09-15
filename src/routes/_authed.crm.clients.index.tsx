@@ -191,10 +191,11 @@ const ClientsPage = () => {
 
   return (
     <>
-      <div className="mb-6 flex items-center justify-between gap-3">
+      <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight">Clients</h1>
-          <p className="text-sm text-muted-foreground">
+          <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-[#E95F36]">Client portfolio</p>
+          <h2 className="mt-1 text-xl font-semibold tracking-[-0.03em]">Clients</h2>
+          <p className="mt-1 text-sm text-muted-foreground">
             {total} client{total === 1 ? '' : 's'} in your database
           </p>
         </div>
@@ -210,7 +211,7 @@ const ClientsPage = () => {
 
       <Card>
         <CardContent className="p-0">
-          <div className="flex items-center gap-2 border-b p-3">
+          <div className="flex items-center gap-2 border-b border-black/5 p-3 dark:border-white/10">
             <div className="relative max-w-xs flex-1">
               <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
               <Input

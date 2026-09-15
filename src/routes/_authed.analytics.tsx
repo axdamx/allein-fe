@@ -12,7 +12,9 @@ import { formatDistanceToNow } from 'date-fns'
 import { createFileRoute } from '@tanstack/react-router'
 
 import { DashboardShell } from '@/components/layout/dashboard-shell'
+import { PageHeader } from '@/components/layout/page-header'
 import { StatCard } from '@/components/dashboard/stat-card'
+import { formatCurrency } from '@/components/dashboard/dashboard-utils'
 import {
   Card,
   CardContent,
@@ -33,15 +35,12 @@ const AnalyticsPage = () => {
 
   return (
     <DashboardShell userEmail={user?.email} userName={user?.email?.split('@')[0]}>
-      <div className="mb-6">
-        <div className="flex items-center gap-2">
-          <BarChart3 className="size-6 text-primary" />
-          <h1 className="text-2xl font-semibold tracking-tight">Analytics</h1>
-        </div>
-        <p className="text-sm text-muted-foreground">
-          Overview of your platform performance and growth.
-        </p>
-      </div>
+      <PageHeader
+        eyebrow="Business intelligence"
+        icon={BarChart3}
+        title="Analytics"
+        description="Read the signals across your agents, conversations, relationships, and revenue pipeline."
+      />
 
       {isLoading ? (
         <div className="space-y-4">
@@ -140,18 +139,19 @@ const GrowthCard = ({ trends }: { trends: AnalyticsTrends }) => {
     growth: number
     icon: typeof Bot
     color: string
+    bar: string
   }[] = [
-    { label: 'Agents', value: trends.totalAgents, growth: trends.growth.agents, icon: Bot, color: 'text-violet-500' },
-    { label: 'Conversations', value: trends.totalConversations, growth: trends.growth.conversations, icon: MessageSquare, color: 'text-amber-500' },
-    { label: 'Messages', value: trends.totalMessages, growth: trends.growth.messages, icon: MessageSquare, color: 'text-pink-500' },
-    { label: 'Leads', value: trends.totalLeads, growth: trends.growth.leads, icon: Users, color: 'text-cyan-500' },
-    { label: 'Documents', value: trends.totalDocuments, growth: 0, icon: FileText, color: 'text-teal-500' },
+    { label: 'Agents', value: trends.totalAgents, growth: trends.growth.agents, icon: Bot, color: 'text-[#A54528]', bar: 'bg-[#C66B4B]' },
+    { label: 'Conversations', value: trends.totalConversations, growth: trends.growth.conversations, icon: MessageSquare, color: 'text-[#8A6A15]', bar: 'bg-[#D3AD46]' },
+    { label: 'Messages', value: trends.totalMessages, growth: trends.growth.messages, icon: MessageSquare, color: 'text-[#734F8D]', bar: 'bg-[#9B78B4]' },
+    { label: 'Leads', value: trends.totalLeads, growth: trends.growth.leads, icon: Users, color: 'text-[#447534]', bar: 'bg-[#75A562]' },
+    { label: 'Documents', value: trends.totalDocuments, growth: 0, icon: FileText, color: 'text-[#42677B]', bar: 'bg-[#6F99AE]' },
   ]
 
   const maxValue = Math.max(...metrics.map((m) => m.value), 1)
 
   return (
-    <Card>
+    <Card className="app-accent-card">
       <CardHeader>
         <CardTitle className="text-sm">Growth Overview</CardTitle>
         <CardDescription>Week-over-week comparison</CardDescription>
@@ -174,7 +174,7 @@ const GrowthCard = ({ trends }: { trends: AnalyticsTrends }) => {
               </div>
               <div className="h-2 overflow-hidden rounded-full bg-muted">
                 <div
-                  className={cn('h-full rounded-full transition-all', m.color.replace('text-', 'bg-'))}
+                  className={cn('h-full rounded-full transition-all', m.bar)}
                   style={{ width: `${pct}%` }}
                 />
               </div>
@@ -190,7 +190,7 @@ const ActivityCard = () => {
   const { data: activities, isLoading } = useRecentActivity()
 
   return (
-    <Card>
+    <Card className="app-ink-card">
       <CardHeader>
         <CardTitle className="text-sm">Recent Activity</CardTitle>
         <CardDescription>Latest actions across your workspace</CardDescription>
@@ -241,7 +241,7 @@ const ActivityIcon = ({ type }: { type: string }) => {
     post: 'bg-emerald-500/10 text-emerald-500',
   }
   return (
-    <div className={cn('flex size-8 items-center justify-center rounded-md', colors[type] ?? 'bg-muted text-muted-foreground')}>
+    <div className={cn('flex size-8 items-center justify-center rounded-xl', colors[type] ?? 'bg-muted text-muted-foreground')}>
       <Icon className="size-4" />
     </div>
   )
@@ -265,7 +265,7 @@ const SummaryCard = ({ trends }: { trends: AnalyticsTrends }) => {
       <CardContent>
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5">
           {rows.map((r) => (
-            <div key={r.label} className="rounded-lg border p-3">
+            <div key={r.label} className="rounded-2xl border border-black/[0.06] bg-white/45 p-3 dark:border-white/10 dark:bg-white/[0.025]">
               <p className="text-xs text-muted-foreground">{r.label}</p>
               <p className="mt-0.5 text-xl font-semibold">{r.value}</p>
               <p className="text-xs text-muted-foreground">{r.sub}</p>
@@ -300,11 +300,4 @@ const formatNumber = (n: number): string => {
   if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`
   if (n >= 1_000) return `${(n / 1_000).toFixed(1)}K`
   return String(n)
-}
-
-const formatCurrency = (n: number): string => {
-  if (n === 0) return '$0'
-  if (n >= 1_000_000) return `$${(n / 1_000_000).toFixed(1)}M`
-  if (n >= 1_000) return `$${(n / 1_000).toFixed(1)}K`
-  return `$${n}`
 }

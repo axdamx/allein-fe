@@ -174,7 +174,7 @@ export const GoalModal = ({ open, onOpenChange, editGoal }: GoalModalProps) => {
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1">
-                <Label htmlFor="target">Target amount ($)</Label>
+                <Label htmlFor="target">Target amount (RM)</Label>
                 <Input
                   id="target"
                   type="number"
@@ -186,7 +186,7 @@ export const GoalModal = ({ open, onOpenChange, editGoal }: GoalModalProps) => {
                 />
               </div>
               <div className="space-y-1">
-                <Label htmlFor="current">Current amount ($)</Label>
+                <Label htmlFor="current">Current amount (RM)</Label>
                 <Input
                   id="current"
                   type="number"

@@ -12,9 +12,9 @@ import { AddTaskDialog } from './add-task-dialog'
 import { TaskCard } from './task-card'
 
 const COLUMNS: { status: TaskStatus; label: string; color: string }[] = [
-  { status: 'todo', label: 'To Do', color: 'border-t-slate-400' },
-  { status: 'in_progress', label: 'In Progress', color: 'border-t-blue-500' },
-  { status: 'done', label: 'Done', color: 'border-t-emerald-500' },
+  { status: 'todo', label: 'To do', color: 'border-t-[#A79D91]' },
+  { status: 'in_progress', label: 'In progress', color: 'border-t-[#F1663C]' },
+  { status: 'done', label: 'Done', color: 'border-t-[#68A57B]' },
 ]
 
 export const KanbanBoard = () => {
@@ -86,10 +86,10 @@ export const KanbanBoard = () => {
   // First-run empty state: all columns empty → guide the user to their first task.
   if (tasks.length === 0) {
     return (
-      <Card className="border-dashed">
+      <Card className="border-dashed bg-white/35 dark:bg-white/[0.025]">
         <CardContent className="flex flex-col items-center justify-center gap-3 py-20 text-center">
-          <div className="flex size-12 items-center justify-center rounded-full bg-muted">
-            <CalendarDays className="size-6 text-muted-foreground" />
+          <div className="flex size-12 items-center justify-center rounded-2xl bg-[#F1663C]/10 text-[#E95F36]">
+            <CalendarDays className="size-6" />
           </div>
           <div>
             <p className="font-medium">No tasks yet</p>
@@ -115,7 +115,7 @@ export const KanbanBoard = () => {
           <div
             key={col.status}
             className={cn(
-              'flex flex-col rounded-lg border bg-muted/30',
+              'flex min-h-[320px] flex-col rounded-[24px] border border-t-4 border-black/[0.06] bg-white/35 p-1 shadow-sm dark:border-white/10 dark:bg-white/[0.025]',
               col.color,
               isOver && 'ring-2 ring-primary/50',
             )}
@@ -123,13 +123,13 @@ export const KanbanBoard = () => {
             onDragLeave={handleDragLeave}
             onDrop={(e) => handleDrop(e, col.status)}
           >
-            <div className="flex items-center justify-between px-3 py-2.5">
+            <div className="flex items-center justify-between px-3 py-3">
               <h3 className="text-sm font-semibold">{col.label}</h3>
               <Badge variant="secondary" className="text-xs">
                 {items.length}
               </Badge>
             </div>
-            <div className="flex flex-col gap-2 p-2">
+            <div className="flex flex-col gap-2 px-1 pb-1">
               {items.length === 0 && (
                 <div className="py-8 text-center text-xs text-muted-foreground">
                   {dragId ? 'Drop here' : 'No tasks'}

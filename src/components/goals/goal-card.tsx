@@ -14,6 +14,7 @@ import { motion, staggerItem } from '@/lib/animations'
 import { cn } from '@/lib/utils'
 import { getTimeframeLabel } from '@/server/financial-goals'
 import { CATEGORY_CONFIG } from './goals-utils'
+import { formatCurrency } from '@/components/dashboard/dashboard-utils'
 import type { FinancialGoalRow } from '@/server/financial-goals.server'
 
 interface GoalCardProps {
@@ -30,7 +31,7 @@ export const GoalCard = ({ goal, onEdit, onDelete, onComplete }: GoalCardProps) 
 
   return (
     <motion.div variants={staggerItem}>
-      <Card className={cn(isCompleted && 'opacity-70')}>
+      <Card className={cn('app-interactive-card', isCompleted && 'opacity-70')}>
         <CardContent className="py-4">
           <div className="flex items-start justify-between gap-3">
             <div className="min-w-0 flex-1">
@@ -74,7 +75,7 @@ export const GoalCard = ({ goal, onEdit, onDelete, onComplete }: GoalCardProps) 
                       <Link
                         to="/planner"
                         search={{
-                          prefill: `Help me reach my goal: ${goal.title} ($${goal.current_amount.toLocaleString()} of $${goal.target_amount.toLocaleString()}${
+                          prefill: `Help me reach my goal: ${goal.title} (${formatCurrency(goal.current_amount)} of ${formatCurrency(goal.target_amount)}${
                             goal.deadline ? `, due ${format(new Date(goal.deadline), 'MMM d, yyyy')}` : ''
                           })`,
                         }}
@@ -97,10 +98,10 @@ export const GoalCard = ({ goal, onEdit, onDelete, onComplete }: GoalCardProps) 
           <div className="ml-7 mt-3 space-y-1.5">
             <div className="flex items-center justify-between text-sm">
               <span className="font-medium tabular-nums">
-                ${goal.current_amount.toLocaleString()}
+                {formatCurrency(goal.current_amount)}
               </span>
               <span className="text-muted-foreground">
-                ${goal.target_amount.toLocaleString()}
+                {formatCurrency(goal.target_amount)}
               </span>
             </div>
             <Progress value={pct} className={cn('h-2', isCompleted && 'opacity-50')} />

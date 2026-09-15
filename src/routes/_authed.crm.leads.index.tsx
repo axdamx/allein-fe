@@ -44,6 +44,7 @@ import { usePlan } from '@/hooks/use-plan'
 import { UsageIndicator } from '@/components/billing/usage-indicator'
 import type { LeadRow } from '@/server/crm'
 import { cn } from '@/lib/utils'
+import { formatCurrency } from '@/components/dashboard/dashboard-utils'
 
 export type FilterMode = 'all' | 'today'
 
@@ -159,9 +160,7 @@ const LeadsPage = () => {
         cell: ({ row }) => {
           const v = row.getValue<number>('value')
           return v > 0 ? (
-            <span className="font-medium">
-              ${v.toLocaleString()}
-            </span>
+            <span className="font-medium">{formatCurrency(v)}</span>
           ) : (
             '—'
           )
@@ -199,10 +198,11 @@ const LeadsPage = () => {
 
   return (
     <>
-      <div className="mb-6 flex items-center justify-between gap-3">
+      <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight">Leads</h1>
-          <p className="text-sm text-muted-foreground">
+          <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-[#E95F36]">Prospect desk</p>
+          <h2 className="mt-1 text-xl font-semibold tracking-[-0.03em]">Leads</h2>
+          <p className="mt-1 text-sm text-muted-foreground">
             {leads?.length ?? 0} prospect{leads?.length === 1 ? '' : 's'} in your pipeline
           </p>
         </div>
@@ -215,7 +215,7 @@ const LeadsPage = () => {
 
       <Card>
         <CardContent className="p-0">
-          <div className="flex items-center gap-2 border-b p-3">
+          <div className="flex flex-col gap-2 border-b border-black/5 p-3 sm:flex-row sm:items-center dark:border-white/10">
             <div className="relative max-w-xs flex-1">
               <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
               <Input
@@ -225,13 +225,13 @@ const LeadsPage = () => {
                 className="pl-9"
               />
             </div>
-            <div className="flex items-center rounded-lg border bg-muted/30 p-0.5">
+            <div className="flex items-center rounded-full border border-black/5 bg-[#E9E1D6]/60 p-1 dark:border-white/10 dark:bg-white/5">
               <button
                 onClick={() => setFilterMode('all')}
                 className={cn(
-                  'inline-flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-xs font-medium transition-colors',
+                  'inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium transition-colors',
                   filterMode === 'all'
-                    ? 'bg-background text-foreground shadow-sm'
+                    ? 'bg-[#171713] text-[#FFF9F1] shadow-sm dark:bg-[#F1663C] dark:text-[#171713]'
                     : 'text-muted-foreground hover:text-foreground',
                 )}
               >
@@ -240,9 +240,9 @@ const LeadsPage = () => {
               <button
                 onClick={() => setFilterMode('today')}
                 className={cn(
-                  'inline-flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-xs font-medium transition-colors',
+                  'inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium transition-colors',
                   filterMode === 'today'
-                    ? 'bg-background text-foreground shadow-sm'
+                    ? 'bg-[#171713] text-[#FFF9F1] shadow-sm dark:bg-[#F1663C] dark:text-[#171713]'
                     : 'text-muted-foreground hover:text-foreground',
                 )}
               >

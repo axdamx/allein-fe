@@ -12,8 +12,8 @@ export const formatNumber = (n: number): string => {
 }
 
 export const formatCurrency = (n: number): string => {
-  if (n === 0) return '$0'
-  if (n >= 1_000_000) return `$${(n / 1_000_000).toFixed(1)}M`
-  if (n >= 1_000) return `$${(n / 1_000).toFixed(1)}K`
-  return `$${n}`
+  if (n === 0) return 'RM0'
+  if (n >= 1_000_000) return `RM${(n / 1_000_000).toFixed(1)}M`
+  if (n >= 1_000) return `RM${(n / 1_000).toFixed(1)}K`
+  return `RM${n}`
 }

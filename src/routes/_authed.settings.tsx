@@ -1,8 +1,9 @@
 import { useQuery } from '@tanstack/react-query'
 import { createFileRoute } from '@tanstack/react-router'
-import { Loader2 } from 'lucide-react'
+import { Loader2, Settings2 } from 'lucide-react'
 
 import { DashboardShell } from '@/components/layout/dashboard-shell'
+import { PageHeader } from '@/components/layout/page-header'
 import {
   Card,
   CardContent,
@@ -28,12 +29,12 @@ function SettingsPage() {
 
   return (
     <DashboardShell userEmail={user?.email} userName={user?.email?.split('@')[0]}>
-      <div className="mb-6">
-        <h1 className="text-2xl font-semibold tracking-tight">Settings</h1>
-        <p className="text-sm text-muted-foreground">
-          Manage your profile, plan, and integrations.
-        </p>
-      </div>
+      <PageHeader
+        eyebrow="Workspace control"
+        icon={Settings2}
+        title="Settings"
+        description="Manage your identity, subscription, connected channels, and developer access."
+      />
 
       {isLoading || !profile ? (
         <Card>
@@ -42,8 +43,8 @@ function SettingsPage() {
           </CardContent>
         </Card>
       ) : (
-        <Tabs defaultValue="profile" className="max-w-2xl">
-          <TabsList>
+        <Tabs defaultValue="profile" className="max-w-3xl">
+          <TabsList className="max-w-full overflow-x-auto">
             <TabsTrigger value="profile">Profile</TabsTrigger>
             <TabsTrigger value="plan">Plan &amp; Billing</TabsTrigger>
             <TabsTrigger value="integrations">Integrations</TabsTrigger>

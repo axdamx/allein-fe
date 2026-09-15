@@ -1,14 +1,15 @@
 import { ArrowDownRight, ArrowUpRight } from 'lucide-react'
 
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from '@/components/ui/card'
 import { cn } from '@/lib/utils'
 import { motion } from '@/lib/animations'
 import type { Stat } from '@/lib/types'
+
+const ACCENTS = [
+  'bg-[#F8D8C8] text-[#A54528]',
+  'bg-[#E3F2D7] text-[#447534]',
+  'bg-[#E9D8F5] text-[#734F8D]',
+  'bg-[#F8E9B9] text-[#8A6A15]',
+]
 
 export const StatCard = ({ stat, index = 0 }: { stat: Stat; index?: number }) => {
   const Icon = stat.icon
@@ -19,7 +20,7 @@ export const StatCard = ({ stat, index = 0 }: { stat: Stat; index?: number }) =>
 
   return (
     <motion.div
-      initial={{ opacity: 0, y: 16 }}
+      initial={{ opacity: 0.7, y: 12 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{
         duration: 0.35,
@@ -27,21 +28,22 @@ export const StatCard = ({ stat, index = 0 }: { stat: Stat; index?: number }) =>
         delay: index * 0.08,
       }}
     >
-      <Card>
-        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-          <CardTitle className="text-sm font-medium text-muted-foreground">
-            {stat.label}
-          </CardTitle>
-          <div className="flex size-8 items-center justify-center rounded-md bg-muted text-muted-foreground">
+      <article className="group min-h-[156px] rounded-[22px] border border-[#171713]/7 bg-[#FCF9F4] p-5 shadow-[0_14px_38px_rgba(35,27,18,0.035)] transition-transform hover:-translate-y-0.5 dark:border-white/[0.07] dark:bg-[#1B1B17]">
+        <div className="flex items-start justify-between">
+          <div className={cn('flex size-10 items-center justify-center rounded-xl', ACCENTS[index % ACCENTS.length])}>
             <Icon className="size-4" />
           </div>
-        </CardHeader>
-        <CardContent>
-          <div className="text-2xl font-semibold tracking-tight">
+          <span className="text-[9px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">Live</span>
+        </div>
+        <div className="mt-6 flex items-end justify-between gap-3">
+          <div>
+            <div className="text-3xl font-semibold tracking-[-0.045em] tabular-nums">
             {stat.value}
+            </div>
+            <p className="mt-1 text-[11px] font-medium text-muted-foreground">{stat.label}</p>
           </div>
           {showTrend ? (
-            <div className="mt-1 flex items-center gap-1 text-xs">
+            <div className="mb-0.5 flex items-center gap-1 text-[10px]">
               <span
                 className={cn(
                   'inline-flex items-center gap-0.5 font-medium',
@@ -55,13 +57,11 @@ export const StatCard = ({ stat, index = 0 }: { stat: Stat; index?: number }) =>
                 )}
                 {stat.delta}%
               </span>
-              <span className="text-muted-foreground">vs last month</span>
+              <span className="hidden text-muted-foreground xl:inline">this month</span>
             </div>
-          ) : (
-            <div className="mt-1 h-4" />
-          )}
-        </CardContent>
-      </Card>
+          ) : null}
+        </div>
+      </article>
     </motion.div>
   )
 }

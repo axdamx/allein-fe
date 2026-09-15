@@ -1,6 +1,7 @@
 import { Outlet, Link, createFileRoute, useRouterState } from '@tanstack/react-router'
 
 import { DashboardShell } from '@/components/layout/dashboard-shell'
+import { PageHeader } from '@/components/layout/page-header'
 import { cn } from '@/lib/utils'
 
 /**
@@ -23,16 +24,13 @@ const StudioLayout = () => {
       userEmail={user?.email}
       userName={user?.email?.split('@')[0]}
     >
-      <div className="mb-6">
-        <h1 className="text-2xl font-semibold tracking-tight">
-          Marketing Studio
-        </h1>
-        <p className="text-sm text-muted-foreground">
-          Generate content, images, and video with AI — by form or by chat.
-        </p>
-      </div>
+      <PageHeader
+        eyebrow="Creative workspace"
+        title="Marketing Studio"
+        description="Turn a simple brief into polished campaigns, visuals, and storyboards with your AI creative team."
+      />
 
-      <div className="mb-4 flex gap-1 border-b">
+      <nav className="app-section-nav mb-7" aria-label="Studio sections">
         {TABS.map((tab) => {
           const isActive =
             tab.to === '/studio'
@@ -43,17 +41,15 @@ const StudioLayout = () => {
               key={tab.to}
               to={tab.to}
               className={cn(
-                'px-4 py-2 text-sm font-medium transition-colors',
-                isActive
-                  ? 'border-b-2 border-primary'
-                  : 'border-b-2 border-transparent text-muted-foreground hover:text-foreground',
+                isActive && 'is-active',
               )}
+              data-active={isActive}
             >
               {tab.label}
             </Link>
           )
         })}
-      </div>
+      </nav>
 
       <Outlet />
     </DashboardShell>

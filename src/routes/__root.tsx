@@ -40,26 +40,26 @@ const RootComponent = () => {
   const { queryClient } = Route.useRouteContext()
 
   return (
-    <ThemeProvider
-      attribute="class"
-      defaultTheme="system"
-      enableSystem
-    >
-      <QueryClientProvider client={queryClient}>
-        <html lang="en" suppressHydrationWarning>
-          <head>
-            <HeadContent />
-          </head>
-          <body>
+    <html lang="en" suppressHydrationWarning>
+      <head>
+        <HeadContent />
+      </head>
+      <body>
+        <ThemeProvider
+          attribute="class"
+          defaultTheme="system"
+          enableSystem
+        >
+          <QueryClientProvider client={queryClient}>
             <Outlet />
             <Toaster richColors closeButton />
             <ReactQueryDevtools buttonPosition="bottom-right" />
             <TanStackRouterDevtools position="bottom-right" />
             <Scripts />
-          </body>
-        </html>
-      </QueryClientProvider>
-    </ThemeProvider>
+          </QueryClientProvider>
+        </ThemeProvider>
+      </body>
+    </html>
   )
 }
 

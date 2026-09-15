@@ -139,12 +139,216 @@ html {
   color: #fff;
 }
 
+.allein-app-shell ::selection {
+  background: #f1663c;
+  color: #fff;
+}
+
+/* Authenticated product design system. These rules are intentionally scoped to
+   the application shell so public marketing and auth surfaces keep their own
+   visual language. */
+.allein-app-shell [data-slot='card'] {
+  border-color: rgba(69, 55, 41, 0.09);
+  border-radius: 1.5rem;
+  background-color: rgba(255, 253, 249, 0.82);
+  box-shadow: 0 1px 1px rgba(39, 30, 21, 0.02), 0 14px 34px rgba(50, 37, 24, 0.045);
+}
+
+.allein-app-shell [data-slot='button'] {
+  border-radius: 999px;
+}
+
+.allein-app-shell [data-slot='button'][data-variant='default'] {
+  background-color: #171713;
+  color: #fffaf3;
+  box-shadow: 0 8px 20px rgba(23, 23, 19, 0.12);
+}
+
+.allein-app-shell [data-slot='button'][data-variant='default']:hover {
+  background-color: #2d2b25;
+  transform: translateY(-1px);
+}
+
+.allein-app-shell [data-slot='button'][data-variant='outline'] {
+  border-color: rgba(69, 55, 41, 0.13);
+  background-color: rgba(255, 253, 249, 0.72);
+}
+
+.allein-app-shell [data-slot='input'],
+.allein-app-shell [data-slot='textarea'],
+.allein-app-shell [data-slot='select-trigger'] {
+  border-color: rgba(69, 55, 41, 0.12);
+  border-radius: 0.875rem;
+  background-color: rgba(255, 253, 249, 0.76);
+  box-shadow: 0 1px 1px rgba(39, 30, 21, 0.02);
+}
+
+.allein-app-shell [data-slot='tabs-list'][data-variant='default'] {
+  height: auto;
+  gap: 0.125rem;
+  border: 1px solid rgba(69, 55, 41, 0.08);
+  border-radius: 999px;
+  background-color: rgba(228, 220, 209, 0.55);
+  padding: 0.25rem;
+}
+
+.allein-app-shell [data-slot='tabs-trigger'] {
+  min-height: 2rem;
+  border-radius: 999px;
+  padding-inline: 0.875rem;
+}
+
+.allein-app-shell [data-slot='tabs-trigger'][data-state='active'] {
+  background-color: #171713;
+  color: #fffaf3;
+  box-shadow: 0 6px 14px rgba(23, 23, 19, 0.12);
+}
+
+.allein-app-shell [data-slot='table-header'] {
+  background-color: rgba(234, 226, 215, 0.42);
+}
+
+.allein-app-shell [data-slot='table-head'] {
+  height: 2.75rem;
+  color: #797166;
+  font-size: 0.6875rem;
+  font-weight: 650;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.allein-app-shell [data-slot='table-row'] {
+  border-color: rgba(69, 55, 41, 0.07);
+}
+
+.allein-app-shell [data-slot='table-body'] [data-slot='table-row'] {
+  transition: background-color 160ms ease;
+}
+
+.allein-app-shell [data-slot='table-body'] [data-slot='table-row']:hover {
+  background-color: rgba(241, 102, 60, 0.035);
+}
+
+.allein-app-shell .app-section-nav {
+  display: flex;
+  width: fit-content;
+  max-width: 100%;
+  gap: 0.25rem;
+  overflow-x: auto;
+  border: 1px solid rgba(69, 55, 41, 0.09);
+  border-radius: 999px;
+  background: rgba(255, 253, 249, 0.68);
+  padding: 0.3rem;
+  box-shadow: 0 10px 30px rgba(50, 37, 24, 0.04);
+}
+
+.allein-app-shell .app-section-nav a {
+  flex: none;
+  border-radius: 999px;
+  padding: 0.55rem 1rem;
+  color: #756d63;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  transition: background-color 160ms ease, color 160ms ease, transform 160ms ease;
+}
+
+.allein-app-shell .app-section-nav a:hover {
+  color: #171713;
+}
+
+.allein-app-shell .app-section-nav a[data-active='true'] {
+  background: #171713;
+  color: #fffaf3;
+  box-shadow: 0 7px 16px rgba(23, 23, 19, 0.12);
+}
+
+.allein-app-shell .app-interactive-card {
+  transition: transform 220ms cubic-bezier(0.16, 1, 0.3, 1), box-shadow 220ms ease, border-color 220ms ease;
+}
+
+.allein-app-shell .app-interactive-card:hover {
+  transform: translateY(-3px);
+  border-color: rgba(241, 102, 60, 0.2);
+  box-shadow: 0 20px 44px rgba(50, 37, 24, 0.09);
+}
+
+.allein-app-shell [data-slot='card'].app-accent-card {
+  border-color: rgba(218, 94, 55, 0.16);
+  background-color: #f3dfd4;
+  background-image:
+    radial-gradient(circle at 95% 0%, rgba(241, 102, 60, 0.24), transparent 34%),
+    linear-gradient(145deg, rgba(255, 255, 255, 0.42), transparent 58%);
+}
+
+.allein-app-shell [data-slot='card'].app-ink-card {
+  border-color: rgba(255, 255, 255, 0.06);
+  background-color: #171713;
+  background-image: radial-gradient(circle at 100% 0%, rgba(241, 102, 60, 0.2), transparent 38%);
+  color: #fffaf3;
+}
+
+.allein-app-shell .app-ink-card .text-muted-foreground {
+  color: #aaa298;
+}
+
+.dark .allein-app-shell [data-slot='card'] {
+  border-color: rgba(255, 245, 232, 0.08);
+  background-color: rgba(31, 30, 26, 0.86);
+  box-shadow: 0 18px 42px rgba(0, 0, 0, 0.14);
+}
+
+.dark .allein-app-shell [data-slot='card'].app-accent-card {
+  border-color: rgba(241, 102, 60, 0.22);
+  background-color: #30221c;
+}
+
+.dark .allein-app-shell [data-slot='card'].app-ink-card {
+  border-color: rgba(255, 245, 232, 0.08);
+  background-color: #151512;
+}
+
+.dark .allein-app-shell [data-slot='button'][data-variant='default'],
+.dark .allein-app-shell [data-slot='tabs-trigger'][data-state='active'],
+.dark .allein-app-shell .app-section-nav a[data-active='true'] {
+  background-color: #f1663c;
+  color: #171713;
+}
+
+.dark .allein-app-shell [data-slot='button'][data-variant='outline'],
+.dark .allein-app-shell [data-slot='input'],
+.dark .allein-app-shell [data-slot='textarea'],
+.dark .allein-app-shell [data-slot='select-trigger'],
+.dark .allein-app-shell .app-section-nav {
+  border-color: rgba(255, 245, 232, 0.1);
+  background-color: rgba(31, 30, 26, 0.72);
+}
+
+.dark .allein-app-shell [data-slot='tabs-list'][data-variant='default'] {
+  border-color: rgba(255, 245, 232, 0.08);
+  background-color: rgba(255, 245, 232, 0.055);
+}
+
+.dark .allein-app-shell .app-section-nav a {
+  color: #aaa298;
+}
+
+.dark .allein-app-shell .app-section-nav a:hover {
+  color: #fffaf3;
+}
+
 .landing-grid {
   background-image:
     linear-gradient(rgba(255, 255, 255, 0.055) 1px, transparent 1px),
     linear-gradient(90deg, rgba(255, 255, 255, 0.055) 1px, transparent 1px);
   background-size: 48px 48px;
   mask-image: linear-gradient(to bottom, black, transparent 90%);
+}
+
+.dashboard-grid {
+  background-image:
+    linear-gradient(rgba(255, 255, 255, 0.035) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.035) 1px, transparent 1px);
+  background-size: 42px 42px;
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -155,6 +359,15 @@ html {
   .landing-page *,
   .landing-page *::before,
   .landing-page *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
+  }
+
+  .allein-app-shell *,
+  .allein-app-shell *::before,
+  .allein-app-shell *::after {
     animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;
     scroll-behavior: auto !important;

@@ -1,6 +1,7 @@
 import { Outlet, Link, createFileRoute, useRouterState } from '@tanstack/react-router'
 
 import { DashboardShell } from '@/components/layout/dashboard-shell'
+import { PageHeader } from '@/components/layout/page-header'
 import { cn } from '@/lib/utils'
 
 const TABS = [
@@ -15,7 +16,12 @@ const CrmLayout = () => {
 
   return (
     <DashboardShell userEmail={user?.email} userName={user?.email?.split('@')[0]}>
-      <div className="mb-4 flex gap-1 border-b">
+      <PageHeader
+        eyebrow="Relationships"
+        title="CRM workspace"
+        description="Move prospects from first contact to trusted client with every follow-up in one place."
+      />
+      <nav className="app-section-nav mb-7" aria-label="CRM sections">
         {TABS.map((tab) => {
           const isActive = pathname === tab.to || pathname.startsWith(tab.to + '/')
           return (
@@ -23,17 +29,15 @@ const CrmLayout = () => {
               key={tab.to}
               to={tab.to}
               className={cn(
-                'px-4 py-2 text-sm font-medium transition-colors',
-                isActive
-                  ? 'border-b-2 border-primary'
-                  : 'border-b-2 border-transparent text-muted-foreground hover:text-foreground',
+                isActive && 'is-active',
               )}
+              data-active={isActive}
             >
               {tab.label}
             </Link>
           )
         })}
-      </div>
+      </nav>
       <Outlet />
     </DashboardShell>
   )

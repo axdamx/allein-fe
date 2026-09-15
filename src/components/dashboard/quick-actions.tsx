@@ -1,79 +1,61 @@
 import { Link } from '@tanstack/react-router'
-import {
-  Brain,
-  Calendar,
-  ChevronRight,
-  MessageSquare,
-  Sparkles,
-} from 'lucide-react'
-
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from '@/components/ui/card'
+import { ArrowUpRight, Brain, Calendar, MessageSquare, Sparkles } from 'lucide-react'
 
 const ACTIONS = [
   {
     icon: MessageSquare,
-    label: 'Open Chat',
-    description: 'Talk to your AI agent',
+    label: 'Ask your agent',
+    description: 'Get help with a client or task',
     to: '/chat' as const,
-  },
-  {
-    icon: Calendar,
-    label: 'Plan your week',
-    description: 'Generate tasks with AI',
-    to: '/planner' as const,
+    color: 'bg-[#F8D8C8] text-[#A54528]',
   },
   {
     icon: Sparkles,
     label: 'Create content',
-    description: 'Images & video in Studio',
+    description: 'Start a post or campaign',
     to: '/studio' as const,
+    color: 'bg-[#E9D8F5] text-[#734F8D]',
+  },
+  {
+    icon: Calendar,
+    label: 'Plan the week',
+    description: 'Turn priorities into a plan',
+    to: '/planner' as const,
+    color: 'bg-[#F8E9B9] text-[#8A6A15]',
   },
   {
     icon: Brain,
     label: 'Add knowledge',
-    description: 'Upload docs for your agent',
+    description: 'Ground AI in your documents',
     to: '/knowledge-base' as const,
+    color: 'bg-[#E3F2D7] text-[#447534]',
   },
 ]
 
-/**
- * Dashboard "Quick actions" card — surfaces the primary modules that the
- * dashboard's other cards don't already link to (Chat, Planner, Studio, KB).
- * Replaces the previous passive "Overview" stats card with active navigation.
- */
-export const QuickActions = () => {
-  return (
-    <Card data-tour="dashboard-quickactions">
-      <CardHeader>
-        <CardTitle className="text-base">Quick actions</CardTitle>
-        <CardDescription>Jump to any module</CardDescription>
-      </CardHeader>
-      <CardContent className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-        {ACTIONS.map((action) => (
-          <Link
-            key={action.label}
-            to={action.to}
-            className="group flex items-center gap-3 rounded-lg border border-transparent p-2.5 transition-colors hover:border-border hover:bg-muted/50"
-          >
-            <div className="flex size-9 shrink-0 items-center justify-center rounded-md bg-primary/10 text-primary">
-              <action.icon className="size-4" />
-            </div>
-            <div className="min-w-0 flex-1">
-              <p className="text-sm font-medium">{action.label}</p>
-              <p className="truncate text-xs text-muted-foreground">
-                {action.description}
-              </p>
-            </div>
-            <ChevronRight className="size-4 shrink-0 text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100" />
-          </Link>
-        ))}
-      </CardContent>
-    </Card>
-  )
-}
+export const QuickActions = () => (
+  <section data-tour="dashboard-quickactions" className="rounded-[24px] border border-[#171713]/7 bg-[#FCF9F4] p-5 shadow-[0_16px_45px_rgba(35,27,18,0.04)] dark:border-white/[0.07] dark:bg-[#1B1B17] sm:p-6">
+    <div>
+      <p className="text-[9px] font-bold uppercase tracking-[0.2em] text-[#F1663C]">Move faster</p>
+      <h2 className="mt-2 text-lg font-semibold tracking-[-0.025em]">Quick actions</h2>
+    </div>
+
+    <div className="mt-5 grid gap-2 sm:grid-cols-2">
+      {ACTIONS.map((action) => (
+        <Link
+          key={action.label}
+          to={action.to}
+          className="group flex min-h-24 items-center gap-3 rounded-2xl border border-transparent bg-black/[0.025] p-3 transition-all hover:border-black/[0.06] hover:bg-white hover:shadow-sm dark:bg-white/[0.035] dark:hover:border-white/[0.07] dark:hover:bg-white/[0.06]"
+        >
+          <span className={`flex size-10 shrink-0 items-center justify-center rounded-xl ${action.color}`}>
+            <action.icon className="size-4" />
+          </span>
+          <span className="min-w-0 flex-1">
+            <span className="block text-xs font-semibold">{action.label}</span>
+            <span className="mt-1 block text-[10px] leading-4 text-muted-foreground">{action.description}</span>
+          </span>
+          <ArrowUpRight className="size-3.5 shrink-0 text-muted-foreground transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5 group-hover:text-[#F1663C]" />
+        </Link>
+      ))}
+    </div>
+  </section>
+)

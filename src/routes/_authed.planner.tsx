@@ -3,6 +3,7 @@ import { Calendar, CalendarDays, Columns3 } from 'lucide-react'
 import { createFileRoute } from '@tanstack/react-router'
 
 import { DashboardShell } from '@/components/layout/dashboard-shell'
+import { PageHeader } from '@/components/layout/page-header'
 import {
   Tabs,
   TabsList,
@@ -36,13 +37,13 @@ const PlannerPage = () => {
     <DashboardShell userEmail={user?.email} userName={user?.email?.split('@')[0]}>
       <div className="flex h-full flex-col">
         <div className="shrink-0">
-          <div className="mb-6">
-            <div className="flex items-center justify-between gap-3">
-              <div className="flex items-center gap-2">
-                <Calendar className="size-6 text-primary" />
-                <h1 className="text-2xl font-semibold tracking-tight">Planner</h1>
-              </div>
-              <div className="flex items-center gap-2">
+          <PageHeader
+            eyebrow="Focus and follow-through"
+            icon={Calendar}
+            title="Planner"
+            description="Shape priorities into a practical schedule, then let your AI help protect the time to deliver."
+            actions={(
+              <div className="flex flex-wrap items-center gap-2">
                 <GeneratePlanDialog
                   timeFrame={timeFrame}
                   initialPrompt={prefill ?? ''}
@@ -51,11 +52,8 @@ const PlannerPage = () => {
                 <ImportCalendarDialog />
                 <AddTaskDialog timeFrame={timeFrame} />
               </div>
-            </div>
-            <p className="text-sm text-muted-foreground">
-              Plan your tasks and generate AI-powered schedules.
-            </p>
-          </div>
+            )}
+          />
 
           <div className="flex items-center justify-between gap-3">
             {view === 'calendar' && (
@@ -71,12 +69,12 @@ const PlannerPage = () => {
             )}
             {view === 'board' && <div />}
 
-            <div className="flex items-center rounded-lg border bg-muted/30 p-0.5">
+            <div className="flex items-center rounded-full border border-black/5 bg-white/60 p-1 shadow-sm dark:border-white/10 dark:bg-white/5">
               <button
                 onClick={() => setView('board')}
                 className={cn(
-                  'inline-flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-xs font-medium transition-colors',
-                  view === 'board' ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground',
+                  'inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium transition-colors',
+                  view === 'board' ? 'bg-[#171713] text-[#FFF9F1] shadow-sm dark:bg-[#F1663C] dark:text-[#171713]' : 'text-muted-foreground hover:text-foreground',
                 )}
               >
                 <Columns3 className="size-3.5" />
@@ -85,8 +83,8 @@ const PlannerPage = () => {
               <button
                 onClick={() => setView('calendar')}
                 className={cn(
-                  'inline-flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-xs font-medium transition-colors',
-                  view === 'calendar' ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground',
+                  'inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium transition-colors',
+                  view === 'calendar' ? 'bg-[#171713] text-[#FFF9F1] shadow-sm dark:bg-[#F1663C] dark:text-[#171713]' : 'text-muted-foreground hover:text-foreground',
                 )}
               >
                 <CalendarDays className="size-3.5" />

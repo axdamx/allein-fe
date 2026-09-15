@@ -7,6 +7,7 @@ import {
 import { createFileRoute, Link } from '@tanstack/react-router'
 
 import { DashboardShell } from '@/components/layout/dashboard-shell'
+import { PageHeader } from '@/components/layout/page-header'
 import { MessageBubble, StreamingBubble } from '@/components/chat/message-bubble'
 import { UsageLimitBanner } from '@/components/billing/usage-limit-banner'
 
@@ -53,7 +54,10 @@ function ChatPage() {
   const scrollRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
+    scrollRef.current?.scrollTo({
+      top: scrollRef.current.scrollHeight,
+      behavior: 'smooth',
+    })
   }, [messages, streamingText])
 
   const activeConvo = conversations?.find((c) => c.id === activeConvoId)
@@ -160,18 +164,15 @@ function ChatPage() {
       userEmail={user?.email}
       userName={user?.email?.split('@')[0]}
     >
-      <div className="mb-4 flex items-center justify-between gap-3">
-        <div>
-          <h1 className="text-2xl font-semibold tracking-tight">
-            {headerTitle}
-          </h1>
-          <p className="text-sm text-muted-foreground">
-            {activeAgent
-              ? <>Talking with <span className="font-medium text-foreground">{activeAgent.name}</span></>
-              : 'Start a conversation with your AI agent'}
-          </p>
-        </div>
-      </div>
+      <PageHeader
+        eyebrow="Agent workspace"
+        icon={Bot}
+        title={headerTitle}
+        description={activeAgent
+          ? <>Working alongside <span className="font-medium text-foreground">{activeAgent.name}</span></>
+          : 'Start a focused conversation with one of your AI agents.'}
+        className="mb-5"
+      />
 
       {/* Soft pre-warning at 80% of the daily message quota. Only shown
           when a conversation is active — no point nagging on the empty
@@ -180,9 +181,9 @@ function ChatPage() {
         <UsageLimitBanner metric="messages" className="mb-4" />
       )}
 
-      <div className="grid h-[calc(100vh-12rem)] grid-cols-1 gap-4 lg:grid-cols-[280px_1fr]">
+      <div className="grid h-[calc(100vh-13.5rem)] min-h-[520px] grid-cols-1 gap-4 lg:grid-cols-[280px_1fr]">
         {/* Conversation list sidebar */}
-        <Card className="flex flex-col overflow-hidden">
+        <Card className="flex flex-col overflow-hidden bg-[#E9E1D6]/65 dark:bg-[#1A1916]">
           <div className="border-b p-3">
             <Button
               className="w-full"
@@ -212,10 +213,10 @@ function ChatPage() {
                     <button
                       onClick={() => setActiveConvoId(convo.id)}
                       className={cn(
-                        'group flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-sm transition-colors',
+                        'group flex w-full items-center gap-2 rounded-xl px-3 py-2.5 text-left text-sm transition-colors',
                         activeConvoId === convo.id
-                          ? 'bg-primary/10 text-primary'
-                          : 'hover:bg-muted',
+                          ? 'bg-[#171713] text-[#FFF9F1] shadow-sm dark:bg-[#F1663C] dark:text-[#171713]'
+                          : 'hover:bg-white/70 dark:hover:bg-white/5',
                       )}
                     >
                       <Bot className="size-4 shrink-0 text-muted-foreground" />

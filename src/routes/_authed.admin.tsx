@@ -21,6 +21,7 @@ import { formatDistanceToNow } from 'date-fns'
 import { createFileRoute } from '@tanstack/react-router'
 
 import { DashboardShell } from '@/components/layout/dashboard-shell'
+import { PageHeader } from '@/components/layout/page-header'
 import { PlanBadge } from '@/components/billing/plan-badge'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -65,17 +66,12 @@ const AdminPage = () => {
 
   return (
     <DashboardShell userEmail={user?.email} userName={user?.email?.split('@')[0]}>
-      <div className="mb-6">
-        <div className="flex items-center gap-2">
-          <Shield className="size-6 text-primary" />
-          <h1 className="text-2xl font-semibold tracking-tight">
-            Admin Dashboard
-          </h1>
-        </div>
-        <p className="text-sm text-muted-foreground">
-          Manage users, agent configurations, and system settings.
-        </p>
-      </div>
+      <PageHeader
+        eyebrow="Operations"
+        icon={Shield}
+        title="Admin Dashboard"
+        description="Monitor the platform, manage access, and keep billing and agent infrastructure healthy."
+      />
 
       <Tabs defaultValue="overview">
         <TabsList>

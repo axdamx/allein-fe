@@ -19,6 +19,7 @@ import { useDeals, useUpdateDealStage } from '@/hooks/use-crm'
 import { DEAL_STAGES } from '@/server/crm'
 import type { DealRow, DealStage } from '@/server/crm'
 import { cn } from '@/lib/utils'
+import { formatCurrency } from '@/components/dashboard/dashboard-utils'
 
 const PipelinePage = () => {
   const { data: deals, isLoading } = useDeals()
@@ -41,13 +42,14 @@ const PipelinePage = () => {
 
   return (
     <>
-      <div className="mb-6 flex items-center justify-between gap-3">
+      <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight">Pipeline</h1>
-          <p className="text-sm text-muted-foreground">
+          <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-[#E95F36]">Deal flow</p>
+          <h2 className="mt-1 text-xl font-semibold tracking-[-0.03em]">Pipeline</h2>
+          <p className="mt-1 text-sm text-muted-foreground">
             {deals?.length ?? 0} deals ·{' '}
             <span className="font-medium text-foreground">
-              ${totalValue.toLocaleString()}
+              {formatCurrency(totalValue)}
             </span>{' '}
             open
           </p>
@@ -75,8 +77,8 @@ const PipelinePage = () => {
                 0,
               )
               return (
-                <div key={stage.value} className="flex flex-col gap-2">
-                  <div className="flex items-center justify-between rounded-md bg-muted/50 px-3 py-2">
+                <div key={stage.value} className="flex min-w-0 flex-col gap-2 rounded-[20px] border border-black/[0.05] bg-white/30 p-2 dark:border-white/10 dark:bg-white/[0.025]">
+                  <div className="flex items-center justify-between rounded-xl bg-[#E9E1D6]/70 px-3 py-2 dark:bg-white/5">
                     <div className="flex items-center gap-2">
                       <span
                         className="size-2 rounded-full"
@@ -91,14 +93,14 @@ const PipelinePage = () => {
                     </span>
                   </div>
                   <p className="px-1 text-xs text-muted-foreground">
-                    ${stageValue.toLocaleString()}
+                    {formatCurrency(stageValue)}
                   </p>
                   <div className="flex flex-col gap-2">
                     {stageDeals.map((deal) => (
                       <DealCard key={deal.id} deal={deal} />
                     ))}
                     {stageDeals.length === 0 && (
-                      <div className="rounded-md border border-dashed py-6 text-center text-xs text-muted-foreground">
+                      <div className="rounded-2xl border border-dashed py-6 text-center text-xs text-muted-foreground">
                         No deals
                       </div>
                     )}
@@ -121,7 +123,7 @@ const DealCard = ({ deal }: { deal: DealRow }) => {
   const stageInfo = DEAL_STAGES.find((s) => s.value === deal.stage)
 
   return (
-    <Card className="cursor-default">
+    <Card className="app-interactive-card cursor-default gap-3 rounded-[18px] py-4">
       <CardContent className="p-3">
         <div className="flex items-start justify-between gap-2">
           <p className="text-sm font-medium leading-tight">{deal.title}</p>
@@ -155,7 +157,7 @@ const DealCard = ({ deal }: { deal: DealRow }) => {
         </div>
         <div className="mt-2 flex items-center justify-between">
           <span className="text-lg font-semibold">
-            ${Number(deal.value).toLocaleString()}
+            {formatCurrency(Number(deal.value))}
           </span>
           <span
             className={cn(

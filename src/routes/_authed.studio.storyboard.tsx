@@ -92,7 +92,8 @@ const StoryboardListAndGenerator = ({
     <div className="grid grid-cols-1 gap-6 lg:grid-cols-[1fr_360px]">
       {/* Existing storyboards */}
       <div>
-        <h2 className="mb-3 text-sm font-medium">Your storyboards</h2>
+        <p className="mb-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-[#E95F36]">Production board</p>
+        <h2 className="mb-4 text-xl font-semibold tracking-[-0.03em]">Your storyboards</h2>
         {loading ? (
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             {Array.from({ length: 4 }).map((_, i) => (
@@ -105,10 +106,10 @@ const StoryboardListAndGenerator = ({
               <button
                 key={sb.id}
                 onClick={() => onOpen(sb.id)}
-                className="group flex flex-col gap-1.5 rounded-lg border p-4 text-left transition-colors hover:border-primary/40 hover:bg-muted/30"
+                className="group flex min-h-32 flex-col gap-2 rounded-[20px] border border-black/[0.06] bg-white/45 p-4 text-left shadow-sm transition-all hover:-translate-y-0.5 hover:border-[#F1663C]/30 hover:bg-white/75 hover:shadow-lg dark:border-white/10 dark:bg-white/[0.025] dark:hover:bg-white/5"
               >
                 <div className="flex items-center gap-2">
-                  <Film className="size-4 text-muted-foreground" />
+                  <span className="flex size-8 items-center justify-center rounded-xl bg-[#F1663C]/10 text-[#E95F36]"><Film className="size-4" /></span>
                   <span className="font-medium">{sb.title}</span>
                 </div>
                 {sb.brief && (
@@ -140,7 +141,7 @@ const StoryboardListAndGenerator = ({
       </div>
 
       {/* Brief generator */}
-      <Card className="h-fit">
+      <Card className="app-accent-card h-fit lg:sticky lg:top-24">
         <CardContent className="space-y-3 p-5">
           <div className="flex items-center gap-2">
             <Sparkles className="size-4 text-primary" />

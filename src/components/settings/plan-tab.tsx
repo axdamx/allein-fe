@@ -55,8 +55,8 @@ export const PlanTab = ({ currentPlan }: { currentPlan: PlanTier }) => {
             <div
               key={tier}
               className={cn(
-                'flex items-center justify-between rounded-lg border p-3',
-                isCurrent && 'border-primary bg-primary/5',
+                'flex items-center justify-between rounded-2xl border border-black/[0.06] bg-white/35 p-4 transition-colors dark:border-white/10 dark:bg-white/[0.025]',
+                isCurrent && 'border-[#F1663C]/30 bg-[#F1663C]/8 dark:border-[#F1663C]/30 dark:bg-[#F1663C]/10',
               )}
             >
               <div>

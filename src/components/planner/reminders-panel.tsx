@@ -159,7 +159,7 @@ export const RemindersPanel = () => {
     return (
       <div
         key={r.id}
-        className="flex items-center justify-between rounded-md px-2 py-1.5 hover:bg-muted/50 cursor-pointer"
+        className="flex cursor-pointer items-center justify-between rounded-xl px-2.5 py-2 hover:bg-white/55 dark:hover:bg-white/5"
         onClick={() => handleClick(r)}
       >
         <div className="min-w-0 flex-1">
@@ -183,7 +183,7 @@ export const RemindersPanel = () => {
 
   return (
     <>
-      <Card>
+      <Card className="app-accent-card gap-3 py-4">
         <CardHeader className="py-3">
           <CardTitle className="flex items-center gap-2 text-sm font-medium">
             <Bell className="size-4 text-muted-foreground" />

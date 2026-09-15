@@ -25,6 +25,7 @@ import { useUpdateLead } from '@/hooks/use-crm'
 import type { LeadSourceType } from '@/server/crm'
 import { InfoRow } from '@/components/crm/lead-info-row'
 import { InlineField } from '@/components/crm/lead-inline-field'
+import { formatCurrency } from '@/components/dashboard/dashboard-utils'
 
 const SOURCE_OPTIONS: { value: LeadSourceType; label: string }[] = [
   { value: 'website', label: 'Website' },
@@ -142,7 +143,7 @@ export const EditableContactCard = ({ lead }: { lead: { id: string; name: string
           <InfoRow icon={<Phone className="size-4" />} label="Phone" value={lead.phone} />
           <InfoRow icon={<Building2 className="size-4" />} label="Company" value={lead.company} />
           <InfoRow icon={<Calendar className="size-4" />} label="Source" value={lead.source} capitalize />
-          <InfoRow icon={<DollarSign className="size-4" />} label="Deal value" value={lead.value > 0 ? `$${Number(lead.value).toLocaleString()}` : null} />
+          <InfoRow icon={<DollarSign className="size-4" />} label="Deal value" value={lead.value > 0 ? formatCurrency(Number(lead.value)) : null} />
           {lead.scheduled_date && (
             <div className="col-span-full">
               <InfoRow

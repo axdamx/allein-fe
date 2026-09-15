@@ -49,7 +49,7 @@ const ClientDetailPage = () => {
 
   return (
     <div>
-      <div className="mb-6">
+      <div className="mb-6 rounded-[24px] border border-black/[0.05] bg-white/45 p-4 dark:border-white/10 dark:bg-white/[0.025] sm:p-5">
         <Button asChild variant="ghost" size="sm" className="mb-2">
           <Link to="/crm/clients">
             <ArrowLeft className="size-4" /> Back to clients
@@ -58,9 +58,9 @@ const ClientDetailPage = () => {
         <div className="flex items-center justify-between gap-3">
           <div className="min-w-0 flex-1">
             <div className="flex items-center gap-3">
-              <h1 className="truncate text-2xl font-semibold tracking-tight">
+              <h2 className="truncate text-2xl font-semibold tracking-[-0.035em]">
                 {client.name}
-              </h1>
+              </h2>
               <StatusBadge status={client.status} />
             </div>
             <p className="text-sm text-muted-foreground">

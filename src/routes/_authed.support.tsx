@@ -2,6 +2,7 @@ import { Mail, MessageSquare, BookOpen, LifeBuoy } from 'lucide-react'
 import { createFileRoute } from '@tanstack/react-router'
 
 import { DashboardShell } from '@/components/layout/dashboard-shell'
+import { PageHeader } from '@/components/layout/page-header'
 import {
   Card,
   CardContent,
@@ -16,15 +17,15 @@ const SupportPage = () => {
 
   return (
     <DashboardShell userEmail={user?.email} userName={user?.email?.split('@')[0]}>
-      <div className="mb-6">
-        <h1 className="text-2xl font-semibold tracking-tight">Support</h1>
-        <p className="text-sm text-muted-foreground">
-          Get help with your agents, account, or billing.
-        </p>
-      </div>
+      <PageHeader
+        eyebrow="Here when you need us"
+        icon={LifeBuoy}
+        title="Support"
+        description="Find the right path for product questions, technical help, account care, or billing."
+      />
 
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-        <Card>
+        <Card className="app-accent-card app-interactive-card">
           <CardHeader>
             <div className="flex items-center gap-3">
               <div className="flex size-10 items-center justify-center rounded-lg bg-primary/10">
@@ -46,7 +47,7 @@ const SupportPage = () => {
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="app-interactive-card">
           <CardHeader>
             <div className="flex items-center gap-3">
               <div className="flex size-10 items-center justify-center rounded-lg bg-primary/10">
@@ -68,7 +69,7 @@ const SupportPage = () => {
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="app-interactive-card">
           <CardHeader>
             <div className="flex items-center gap-3">
               <div className="flex size-10 items-center justify-center rounded-lg bg-primary/10">
@@ -90,7 +91,7 @@ const SupportPage = () => {
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="app-interactive-card">
           <CardHeader>
             <div className="flex items-center gap-3">
               <div className="flex size-10 items-center justify-center rounded-lg bg-primary/10">

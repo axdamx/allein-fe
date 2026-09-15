@@ -29,7 +29,7 @@ export const DashboardShell = ({
   const agentTypeInfo = agentTypes?.find((t) => t.key === profile?.agent_type)
 
   return (
-    <div className="flex min-h-svh bg-muted/30">
+    <div className="allein-app-shell flex min-h-svh bg-[#F3EEE7] text-[#171713] dark:bg-[#10100D] dark:text-[#F7F2EA]">
       <Sidebar
         userEmail={userEmail}
         userName={userName}
@@ -46,10 +46,10 @@ export const DashboardShell = ({
           agentType={agentTypeInfo ?? null}
         />
         <motion.main
-          initial={{ opacity: 0, y: 8 }}
+          initial={{ opacity: 0.75, y: 6 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
-          className="flex-1 overflow-y-auto p-4 lg:p-6"
+          className="flex-1 overflow-y-auto px-4 pb-8 pt-3 sm:px-6 lg:px-8 lg:pb-10 lg:pt-4"
         >
           {children}
         </motion.main>

@@ -14,6 +14,7 @@ import { formatDistanceToNow } from 'date-fns'
 import { createFileRoute } from '@tanstack/react-router'
 
 import { DashboardShell } from '@/components/layout/dashboard-shell'
+import { PageHeader } from '@/components/layout/page-header'
 import { Button } from '@/components/ui/button'
 import {
   Card,
@@ -82,15 +83,12 @@ const KnowledgeBasePage = () => {
       userEmail={user?.email}
       userName={user?.email?.split('@')[0]}
     >
-        <div className="mb-6 flex items-center justify-between gap-3">
-          <div>
-            <h1 className="text-2xl font-semibold tracking-tight">
-              Knowledge Base
-            </h1>
-            <p className="text-sm text-muted-foreground">
-              Upload documents so your agents can answer from your data (RAG).
-            </p>
-          </div>
+        <PageHeader
+          eyebrow="Grounded intelligence"
+          icon={Brain}
+          title="Knowledge Base"
+          description="Give your agents the business context they need to respond accurately and consistently."
+          actions={(
           <div className="flex items-center gap-3">
             <input
               ref={fileInputRef}
@@ -133,7 +131,8 @@ const KnowledgeBasePage = () => {
               )}
             </Button>
           </div>
-        </div>
+          )}
+        />
 
         {/* Usage indicator */}
         <UsageIndicator metric="documents" label="documents" />
@@ -146,7 +145,7 @@ const KnowledgeBasePage = () => {
             hidden: {},
             visible: { transition: { staggerChildren: 0.08 } },
           }}
-          className="mb-4 grid grid-cols-3 gap-3"
+          className="mb-4 grid grid-cols-1 gap-3 sm:grid-cols-3"
         >
           <motion.div
             variants={{
@@ -154,10 +153,10 @@ const KnowledgeBasePage = () => {
               visible: { opacity: 1, y: 0, transition: { duration: 0.35, ease: [0.16, 1, 0.3, 1] } },
             }}
           >
-            <Card>
-              <CardContent className="pt-4">
+            <Card className="app-ink-card gap-3 py-5">
+              <CardContent>
                 <div className="flex items-center gap-2">
-                  <FileText className="size-4 text-muted-foreground" />
+                  <FileText className="size-4 text-[#FF8B66]" />
                   <span className="text-sm text-muted-foreground">Documents</span>
                 </div>
                 <p className="mt-1 text-2xl font-semibold">
@@ -172,8 +171,8 @@ const KnowledgeBasePage = () => {
               visible: { opacity: 1, y: 0, transition: { duration: 0.35, ease: [0.16, 1, 0.3, 1] } },
             }}
           >
-            <Card>
-              <CardContent className="pt-4">
+            <Card className="gap-3 py-5">
+              <CardContent>
                 <div className="flex items-center gap-2">
                   <CheckCircle2 className="size-4 text-emerald-500" />
                   <span className="text-sm text-muted-foreground">Ready</span>
@@ -188,8 +187,8 @@ const KnowledgeBasePage = () => {
               visible: { opacity: 1, y: 0, transition: { duration: 0.35, ease: [0.16, 1, 0.3, 1] } },
             }}
           >
-            <Card>
-              <CardContent className="pt-4">
+            <Card className="app-accent-card gap-3 py-5">
+              <CardContent>
                 <div className="flex items-center gap-2">
                   <Brain className="size-4 text-primary" />
                   <span className="text-sm text-muted-foreground">
@@ -208,7 +207,7 @@ const KnowledgeBasePage = () => {
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1], delay: 0.2 }}
         >
-          <Card className="mb-4 border-primary/20 bg-primary/5">
+          <Card className="app-accent-card mb-4 gap-3 py-4">
             <CardContent className="flex items-start gap-3 py-3">
               <Brain className="mt-0.5 size-5 shrink-0 text-primary" />
               <div className="text-sm">
@@ -250,11 +249,11 @@ const KnowledgeBasePage = () => {
                     visible: { opacity: 1, y: 0, transition: { duration: 0.3, ease: [0.16, 1, 0.3, 1] } },
                   }}
                 >
-                  <Card>
+                  <Card className="app-interactive-card gap-3 py-4">
                     <CardContent className="flex items-center justify-between py-3">
                       <div className="flex min-w-0 flex-1 items-center gap-3">
                         <div className={cn(
-                          "flex size-10 shrink-0 items-center justify-center rounded-lg",
+                          "flex size-10 shrink-0 items-center justify-center rounded-2xl",
                           isProcessing ? "bg-primary/10" : "bg-muted",
                         )}>
                           {isProcessing ? (
@@ -306,9 +305,9 @@ const KnowledgeBasePage = () => {
                   initial={{ scale: 0 }}
                   animate={{ scale: 1 }}
                   transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1], delay: 0.25, type: 'spring', stiffness: 200, damping: 15 }}
-                  className="flex size-12 items-center justify-center rounded-full bg-muted"
+                  className="flex size-12 items-center justify-center rounded-2xl bg-[#F1663C]/10 text-[#E95F36]"
                 >
-                  <Upload className="size-5 text-muted-foreground" />
+                  <Upload className="size-5" />
                 </motion.div>
                 <div>
                   <p className="font-medium">No documents yet</p>

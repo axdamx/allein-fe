@@ -43,17 +43,17 @@ const StudioLibraryPage = () => {
   return (
     <div className="space-y-4">
       {/* Filter bar */}
-      <div className="flex items-center justify-between gap-3">
-        <div className="flex items-center gap-1.5">
+      <div className="flex items-center justify-between gap-3 rounded-[20px] border border-black/[0.05] bg-white/40 p-2 dark:border-white/10 dark:bg-white/[0.025]">
+        <div className="flex items-center gap-1.5 overflow-x-auto">
           <Filter className="size-4 text-muted-foreground" />
           {FILTERS.map((f) => (
             <button
               key={f.value}
               onClick={() => setFilter(f.value)}
               className={cn(
-                'rounded-md border px-3 py-1 text-xs font-medium transition-colors',
+                'rounded-full border px-3 py-1.5 text-xs font-medium transition-colors',
                 filter === f.value
-                  ? 'border-primary bg-primary/5 text-primary'
+                  ? 'border-[#171713] bg-[#171713] text-[#FFF9F1] shadow-sm dark:border-[#F1663C] dark:bg-[#F1663C] dark:text-[#171713]'
                   : 'text-muted-foreground hover:border-foreground/30',
               )}
             >
@@ -79,20 +79,20 @@ const StudioLibraryPage = () => {
             const isVideo = asset.kind === 'video'
             const isReady = asset.status === 'ready' && asset.url
             return (
-              <Card key={asset.id} className="group overflow-hidden">
-                <div className="relative aspect-square bg-muted">
+              <Card key={asset.id} className="app-interactive-card group gap-0 overflow-hidden py-0">
+                <div className="relative aspect-square overflow-hidden bg-muted">
                   {isReady ? (
                     isVideo ? (
                       <video
                         src={asset.url!}
                         controls
-                        className="size-full object-cover"
+                        className="size-full object-cover transition duration-500 group-hover:scale-[1.03]"
                       />
                     ) : (
                       <img
                         src={asset.url!}
                         alt={asset.prompt}
-                        className="size-full object-cover"
+                        className="size-full object-cover transition duration-500 group-hover:scale-[1.03]"
                       />
                     )
                   ) : (
@@ -177,7 +177,7 @@ const StudioLibraryPage = () => {
         </div>
       ) : (
         <div className="flex flex-col items-center justify-center gap-3 py-20 text-center">
-          <div className="flex size-14 items-center justify-center rounded-full bg-muted">
+          <div className="flex size-14 items-center justify-center rounded-2xl bg-[#F1663C]/10 text-[#E95F36]">
             <ImageIcon className="size-7 text-muted-foreground" />
           </div>
           <div>

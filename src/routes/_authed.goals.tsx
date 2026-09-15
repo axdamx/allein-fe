@@ -7,6 +7,7 @@ import {
 } from 'lucide-react'
 import { createFileRoute } from '@tanstack/react-router'
 import { DashboardShell } from '@/components/layout/dashboard-shell'
+import { PageHeader } from '@/components/layout/page-header'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import {
@@ -33,6 +34,7 @@ import { GoalCard } from '@/components/goals/goal-card'
 import { GoalModal } from '@/components/goals/goals-modal'
 import { useFinancialGoals, useUpdateGoal, useDeleteGoal } from '@/hooks/use-financial-goals'
 import { motion, staggerContainer } from '@/lib/animations'
+import { formatCurrency } from '@/components/dashboard/dashboard-utils'
 import type { FinancialGoalRow } from '@/server/financial-goals.server'
 
 export const Route = createFileRoute('/_authed/goals')({
@@ -94,23 +96,20 @@ function GoalsPage() {
 
   return (
     <DashboardShell userEmail={user?.email} userName={user?.email?.split('@')[0]}>
-      <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <div className="flex items-center gap-2">
-            <Target className="size-6 text-primary" />
-            <h1 className="text-2xl font-semibold tracking-tight">Financial Goals</h1>
-          </div>
-          <p className="text-sm text-muted-foreground">
-            Set, track, and achieve your financial targets.
-          </p>
-        </div>
-        <Button onClick={() => { setEditGoal(null); setModalOpen(true) }}>
-          <Plus className="size-4" /> New Goal
-        </Button>
-      </div>
+      <PageHeader
+        eyebrow="Momentum"
+        icon={Target}
+        title="Financial Goals"
+        description="Turn long-term targets into visible progress and keep your next milestone within reach."
+        actions={(
+          <Button onClick={() => { setEditGoal(null); setModalOpen(true) }}>
+            <Plus className="size-4" /> New Goal
+          </Button>
+        )}
+      />
 
       {activeGoals.length > 0 && (
-        <Card className="mb-6 border-primary/20">
+        <Card className="app-accent-card mb-6">
           <CardContent className="py-4">
             <div className="flex flex-wrap items-center gap-4">
               <div className="flex items-center gap-3">
@@ -125,10 +124,10 @@ function GoalsPage() {
               <Separator orientation="vertical" className="hidden h-10 md:block" />
               <div>
                 <p className="text-lg font-semibold tabular-nums">
-                  ${totalCurrent.toLocaleString()}
+                  {formatCurrency(totalCurrent)}
                 </p>
                 <p className="text-xs text-muted-foreground">
-                  of ${totalTarget.toLocaleString()} target
+                  of {formatCurrency(totalTarget)} target
                 </p>
               </div>
               <Separator orientation="vertical" className="hidden h-10 md:block" />
@@ -152,8 +151,8 @@ function GoalsPage() {
       {activeGoals.length === 0 && completedGoals.length === 0 ? (
         <Card>
           <CardContent className="flex flex-col items-center justify-center py-16 text-center">
-            <div className="mb-4 flex size-16 items-center justify-center rounded-full bg-muted">
-              <Target className="size-8 text-muted-foreground" />
+            <div className="mb-4 flex size-16 items-center justify-center rounded-[22px] bg-[#F1663C]/10 text-[#E95F36]">
+              <Target className="size-8" />
             </div>
             <h2 className="text-lg font-semibold">No goals set yet</h2>
             <p className="mb-4 max-w-sm text-sm text-muted-foreground">
@@ -247,5 +246,3 @@ function GoalsPage() {
     </DashboardShell>
   )
 }
-
-
