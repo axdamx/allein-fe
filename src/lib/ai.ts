@@ -4,14 +4,14 @@
  * Currently configured for ZAI (Zhipu) GLM API. Supports any OpenAI-compatible
  * provider by changing LLM_BASE_URL + LLM_API_KEY + model name.
  *
- * Default model: glm-5.2-turbo (fast, capable, included in ZAI subscription)
+ * Default model: glm-4.5-flash
  *
  * All calls happen server-side (only imported by .server.ts files).
  */
 
 const LLM_BASE_URL =
   process.env.LLM_BASE_URL || 'https://api.z.ai/api/paas/v4'
-const LLM_API_KEY = process.env.LLM_API_KEY || process.env.DEEPSEEK_API_KEY
+const LLM_API_KEY = process.env.LLM_API_KEY
 
 /** Default model used when an agent doesn't specify one. */
 export const DEFAULT_MODEL = process.env.LLM_DEFAULT_MODEL || 'glm-4.5-flash'

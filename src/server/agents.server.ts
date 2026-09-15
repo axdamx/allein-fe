@@ -5,7 +5,7 @@
  */
 import { getSupabaseServerClient } from '@/lib/supabase/server.server'
 import { sanitizeSupabaseMessage } from '@/server/_errors'
-import { DEFAULT_MODEL } from '@/lib/ai'
+import { DEFAULT_MODEL_ID } from '@/lib/ai-provider'
 import type { AgentTypeKey } from '@/lib/agent-types'
 
 export interface AgentTypeRow {
@@ -110,7 +110,7 @@ export async function createAgentImpl(
       owner_id: user.id,
       type: input.type,
       name: input.name,
-      model: input.model ?? DEFAULT_MODEL,
+      model: input.model ?? DEFAULT_MODEL_ID,
       system_prompt: input.systemPrompt ?? null,
       status: 'active',
     })

@@ -43,6 +43,8 @@ export interface SendMessageResult {
     max: number | null
     resetAt: string
   }
+  /** Actual provider model used for this turn. */
+  model?: string
 }
 
 /** Returned when the user's daily message quota is exhausted. */

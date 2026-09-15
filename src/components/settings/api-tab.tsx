@@ -19,13 +19,18 @@ export const ApiTab = () => {
       </CardHeader>
       <CardContent className="space-y-3 text-sm">
         <KeyRow
-          label="DeepSeek"
-          description="Primary LLM for agent chat"
+          label="Z.AI"
+          description="GLM-4.5-Flash for agent chat and text generation"
           status="configured"
         />
         <KeyRow
-          label="OpenAI"
-          description="Image generation (GPT-Image-1)"
+          label="Z.AI Media"
+          description="CogView-4 images and CogVideoX-3 video"
+          status="configured"
+        />
+        <KeyRow
+          label="Local embeddings"
+          description="MiniLM-L6-v2 knowledge-base retrieval"
           status="configured"
         />
         <p className="pt-2 text-xs text-muted-foreground">

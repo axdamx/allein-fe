@@ -744,7 +744,7 @@ const SystemConfigTab = () => {
               {formatTokenCount(health.tokenUsage.totalTokens)}
             </p>
             <p className="text-xs text-muted-foreground">
-              ~${health.tokenUsage.estimatedCost} estimated cost
+              {health.tokenUsage.model}
             </p>
           </CardContent>
         </Card>
@@ -826,8 +826,17 @@ const SystemConfigTab = () => {
             <TokenRow label="Output Tokens" value={health.tokenUsage.tokensOut} color="bg-violet-500" />
             <TokenRow label="Total Tokens" value={health.tokenUsage.totalTokens} color="bg-pink-500" />
             <div className="pt-2 text-center text-xs text-muted-foreground">
-              Estimated cost: <span className="font-medium text-foreground">${health.tokenUsage.estimatedCost}</span>
-              {' '}(DeepSeek pricing: $0.14/M input, $0.28/M output)
+              {health.tokenUsage.pricingKnown ? (
+                <>
+                  Estimated text cost:{' '}
+                  <span className="font-medium text-foreground">
+                    ${health.tokenUsage.estimatedCost.toFixed(2)}
+                  </span>{' '}
+                  at the current {health.tokenUsage.model} list price
+                </>
+              ) : (
+                <>Pricing is not configured for {health.tokenUsage.model}</>
+              )}
             </div>
           </CardContent>
         </Card>
@@ -896,8 +905,9 @@ const SystemConfigTab = () => {
               <CardDescription>Third-party services configured server-side</CardDescription>
             </CardHeader>
             <CardContent className="space-y-3">
-              <IntegrationRow provider="DeepSeek" description="Primary LLM for agent chat &amp; generation" configured />
-              <IntegrationRow provider="OpenAI" description="Image generation (GPT-Image-1)" configured />
+              <IntegrationRow provider="Z.AI" description="GLM-4.5-Flash agent chat &amp; text generation" configured />
+              <IntegrationRow provider="Z.AI Media" description="CogView-4 images &amp; CogVideoX-3 video" configured />
+              <IntegrationRow provider="Local MiniLM" description="On-device knowledge-base embeddings" configured />
               <IntegrationRow provider="Supabase" description="Database, auth, and storage" configured />
             </CardContent>
           </Card>
@@ -912,8 +922,11 @@ const SystemConfigTab = () => {
               <EnvRow label="Framework" value="TanStack Start (React)" />
               <EnvRow label="Database" value="Supabase (PostgreSQL)" />
               <EnvRow label="Auth" value="Supabase Auth (SSR cookies)" />
-              <EnvRow label="LLM Provider" value="DeepSeek" />
-              <EnvRow label="Image Gen" value="OpenAI GPT-Image-1" />
+              <EnvRow label="LLM Provider" value="Z.AI" />
+              <EnvRow label="Text Model" value="GLM-4.5-Flash" />
+              <EnvRow label="Image Gen" value="Z.AI CogView-4" />
+              <EnvRow label="Video Gen" value="Z.AI CogVideoX-3" />
+              <EnvRow label="Embeddings" value="Local MiniLM-L6-v2" />
             </CardContent>
           </Card>
         </div>

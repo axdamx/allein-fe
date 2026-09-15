@@ -4,6 +4,10 @@ import { getAgentByType } from '@/mastra'
 import { consumeQuota } from '@/server/profile.server'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { sanitizeSupabaseMessage, safeError } from '@/server/_errors'
+import {
+  DEFAULT_MODEL_ID,
+  ZAI_CHAT_PROVIDER_OPTIONS,
+} from '@/lib/ai-provider'
 
 export interface ConversationRow {
   id: string
@@ -44,6 +48,16 @@ export interface SendMessageResult {
     max: number | null
     resetAt: string
   }
+  /** Actual provider model used for this turn. */
+  model?: string
+}
+
+export interface MessageGenerationOptions {
+  /** Fires after context preparation, immediately before model execution. */
+  onGenerationStart?: () => void
+  /** Receives real provider text deltas as they arrive. */
+  onDelta?: (delta: string) => void
+  abortSignal?: AbortSignal
 }
 
 /** Returned when the user's daily message quota is exhausted. */
@@ -196,27 +210,12 @@ export async function sendMessageImpl(input: {
   attachmentUrl?: string | null
   attachmentMime?: string | null
   attachmentFileName?: string | null
-}): Promise<SendMessageResult | SendMessageLimitResult | { error: string }> {
+}, options?: MessageGenerationOptions): Promise<SendMessageResult | SendMessageLimitResult | { error: string }> {
   const supabase = getSupabaseServerClient()
   const {
     data: { user },
   } = await supabase.auth.getUser()
   if (!user) return { error: 'Not authenticated' }
-
-  // ── Daily quota gate ────────────────────────────────────────────────
-  // Atomically consumes one message credit. Race-proof: the underlying
-  // try_consume RPC takes a row lock, so concurrent sends (multiple tabs,
-  // or many users at once) cannot exceed the cap. Bails out BEFORE the
-  // LLM call — quota denial never costs us a token.
-  const quota = await consumeQuota('messages')
-  if (!quota.allowed) {
-    return {
-      error: 'daily_message_limit_reached',
-      remaining: quota.remaining ?? 0,
-      max: quota.max,
-      resetAt: quota.resetAt,
-    }
-  }
 
   const { data: conversation } = await supabase
     .from('conversations')
@@ -226,6 +225,18 @@ export async function sendMessageImpl(input: {
 
   if (!conversation || conversation.owner_id !== user.id) {
     return { error: 'Conversation not found' }
+  }
+
+  // Atomically consume quota only after ownership is verified. Invalid or
+  // stale conversation ids must never burn a user's daily message allowance.
+  const quota = await consumeQuota('messages')
+  if (!quota.allowed) {
+    return {
+      error: 'daily_message_limit_reached',
+      remaining: quota.remaining ?? 0,
+      max: quota.max,
+      resetAt: quota.resetAt,
+    }
   }
 
   const { data: agent } = await supabase
@@ -246,11 +257,11 @@ export async function sendMessageImpl(input: {
     systemPrompt = agentType?.system_prompt ?? ''
   }
 
-  const { data: msgCount } = await supabase
+  const { count: messageCount } = await supabase
     .from('messages')
     .select('id', { count: 'exact', head: true })
     .eq('conversation_id', input.conversationId)
-  const isFirst = (msgCount?.length ?? 0) === 0
+  const isFirst = (messageCount ?? 0) === 0
 
   await supabase.from('messages').insert({
     conversation_id: input.conversationId,
@@ -267,7 +278,14 @@ export async function sendMessageImpl(input: {
   // need the lifetime counter for dashboards, increment it in a fire-and-
   // forget manner (not on the enforcement path).
 
-  const relevantChunks = await retrieveContext(input.content, agent.id, 5)
+  // These lookups are independent. Running them together removes one serial
+  // wait from the hot path before the provider can start returning tokens.
+  const [relevantChunks, userContext] = await Promise.all([
+    input.content.trim()
+      ? retrieveContext(input.content, agent.id, 5)
+      : Promise.resolve([]),
+    buildUserContext(user.id, supabase),
+  ])
 
   let ragContext = ''
   if (relevantChunks.length > 0) {
@@ -284,8 +302,6 @@ ${contextText}
 
 ## End of Knowledge Base Context`
   }
-
-  const userContext = await buildUserContext(user.id, supabase)
 
   const today = new Date()
   const dateStr = today.toLocaleDateString('en-US', {
@@ -355,13 +371,12 @@ Rule: Call the tool first, explain later. Never ask "what details?" — use what
       } as const)
     : ({ role: 'user' as const, content: userText })
 
-  // Generate inside a try — a provider hiccup (rate limit, timeout, network)
-  // would otherwise throw raw out of the server fn. The user message was
-  // already persisted above, so on failure we surface a clean error instead
-  // of a half-broken turn. No retry here (kept simple); the client can resend.
+  // Mastra streams the real provider output. Non-browser callers omit onDelta
+  // and still receive the same buffered SendMessageResult at completion.
   let result
   try {
-    result = await mastraAgent.generate(
+    options?.onGenerationStart?.()
+    result = await mastraAgent.stream(
       [
         { role: 'system' as const, content: dynamicPrompt },
         userMessage as never, // AI SDK accepts multimodal; Mastra types are stricter
@@ -372,17 +387,27 @@ Rule: Call the tool first, explain later. Never ask "what details?" — use what
           thread: input.conversationId,
         },
         maxSteps: 3,
+        abortSignal: options?.abortSignal,
+        providerOptions: ZAI_CHAT_PROVIDER_OPTIONS,
       },
     )
+
+    for await (const delta of result.textStream) {
+      options?.onDelta?.(delta)
+    }
   } catch (err) {
     return { error: safeError(err, 'The assistant is unavailable. Please try again.') }
   }
 
-  const replyText = result.text
+  const [replyText, steps, usage, response] = await Promise.all([
+    result.text,
+    result.steps,
+    result.usage,
+    result.response,
+  ])
 
   const toolCalls: SendMessageResult['toolCalls'] = []
-  const steps = result.steps ?? []
-  for (const step of steps) {
+  for (const step of steps ?? []) {
     const toolResults = (step as any).toolResults ?? []
     for (const tr of toolResults) {
       const output = tr.output ?? tr.result ?? {}
@@ -398,9 +423,9 @@ Rule: Call the tool first, explain later. Never ask "what details?" — use what
     conversation_id: input.conversationId,
     role: 'assistant',
     content: replyText,
-    model: agent.model,
-    tokens_in: result.usage?.inputTokens ?? 0,
-    tokens_out: result.usage?.outputTokens ?? 0,
+    model: response.modelId ?? DEFAULT_MODEL_ID,
+    tokens_in: usage?.inputTokens ?? 0,
+    tokens_out: usage?.outputTokens ?? 0,
   })
 
   if (isFirst) {
@@ -423,6 +448,7 @@ Rule: Call the tool first, explain later. Never ask "what details?" — use what
       max: quota.max,
       resetAt: quota.resetAt,
     },
+    model: response.modelId ?? DEFAULT_MODEL_ID,
   }
 }
 
@@ -486,11 +512,11 @@ export async function sendMessageForOwnerImpl(input: {
     content: input.content,
   })
 
-  const { data: msgCount } = await supabase
+  const { count: messageCount } = await supabase
     .from('messages')
     .select('id', { count: 'exact', head: true })
     .eq('conversation_id', input.conversationId)
-  const isFirst = (msgCount?.length ?? 0) === 1
+  const isFirst = (messageCount ?? 0) === 1
 
   const { retrieveContext } = await import('@/server/documents.server')
   const relevantChunks = await retrieveContext(input.content, agent.id, 5)
@@ -548,6 +574,7 @@ Rule: Call the tool first, explain later. Never ask "what details?" — use what
           thread: input.conversationId,
         },
         maxSteps: 3,
+        providerOptions: ZAI_CHAT_PROVIDER_OPTIONS,
       },
     )
   } catch (err) {
@@ -574,7 +601,7 @@ Rule: Call the tool first, explain later. Never ask "what details?" — use what
     conversation_id: input.conversationId,
     role: 'assistant',
     content: replyText,
-    model: agent.model,
+    model: DEFAULT_MODEL_ID,
     tokens_in: result.usage?.inputTokens ?? 0,
     tokens_out: result.usage?.outputTokens ?? 0,
   })

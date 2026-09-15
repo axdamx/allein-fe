@@ -29,6 +29,20 @@ export const DEFAULT_MODEL_ID =
   process.env.LLM_DEFAULT_MODEL || 'glm-4.5-flash'
 
 /**
+ * Chat favors responsiveness. Z.AI enables dynamic thinking by default, which
+ * can substantially delay the first visible token. Set LLM_CHAT_THINKING to
+ * "enabled" when a deployment prefers deeper reasoning over lower latency.
+ */
+export const CHAT_THINKING_MODE =
+  process.env.LLM_CHAT_THINKING === 'enabled' ? 'enabled' : 'disabled'
+
+export const ZAI_CHAT_PROVIDER_OPTIONS = {
+  zai: {
+    thinking: { type: CHAT_THINKING_MODE },
+  },
+}
+
+/**
  * Get a model instance for use with streamText/generateText/generateObject.
  *
  * @example

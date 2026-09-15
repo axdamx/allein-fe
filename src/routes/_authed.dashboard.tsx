@@ -145,7 +145,7 @@ const DashboardPage = () => {
                 {[
                   { label: 'New leads', value: stats?.new_leads ?? 0, icon: Users },
                   { label: 'Open deals', value: stats?.open_deals ?? 0, icon: CircleDollarSign },
-                  { label: 'Posts queued', value: stats?.scheduled_posts ?? 0, icon: Sparkles },
+                  { label: 'Active agents', value: stats?.active_agents ?? 0, icon: Bot },
                 ].map((item) => (
                   <div key={item.label} className="rounded-xl bg-black/18 p-3">
                     <item.icon className="size-3.5 text-[#F49A70]" />

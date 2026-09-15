@@ -9,6 +9,7 @@ import { getSupabaseServerClient } from '@/lib/supabase/server.server'
 import { safeError, sanitizeSupabaseMessage } from '@/server/_errors'
 import type { PlanTier } from '@/lib/plans'
 import type { AnalyticsTrends } from '@/server/analytics'
+import { DEFAULT_MODEL_ID } from '@/lib/ai-provider'
 
 // ---------------------------------------------------------------------------
 // Types
@@ -59,6 +60,8 @@ export interface AdminSystemHealth {
     tokensOut: number
     totalTokens: number
     estimatedCost: number
+    model: string
+    pricingKnown: boolean
   }
   usageTrend: {
     last24h: number
@@ -284,8 +287,16 @@ export async function getSystemHealthImpl(): Promise<
       tokensOut += m.tokens_out ?? 0
     }
     const totalTokens = tokensIn + tokensOut
-    // Cost estimate: DeepSeek ~$0.14/M input, $0.28/M output
-    const estimatedCost = (tokensIn / 1_000_000) * 0.14 + (tokensOut / 1_000_000) * 0.28
+    // GLM-4.5-Flash is currently free on Z.AI. Keep pricing explicit so an
+    // environment model change cannot silently reuse an unrelated rate.
+    const textPricing: Record<string, { input: number; output: number }> = {
+      'glm-4.5-flash': { input: 0, output: 0 },
+    }
+    const activePricing = textPricing[DEFAULT_MODEL_ID]
+    const estimatedCost = activePricing
+      ? (tokensIn / 1_000_000) * activePricing.input +
+        (tokensOut / 1_000_000) * activePricing.output
+      : 0
 
     // Usage trends
     const now = new Date()
@@ -377,6 +388,8 @@ export async function getSystemHealthImpl(): Promise<
         tokensOut,
         totalTokens,
         estimatedCost: Math.round(estimatedCost * 100) / 100,
+        model: DEFAULT_MODEL_ID,
+        pricingKnown: Boolean(activePricing),
       },
       usageTrend: {
         last24h: msgs24h.count ?? 0,

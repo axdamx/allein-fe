@@ -27,6 +27,8 @@ interface NavItem {
   label: string
   icon: ComponentType<{ className?: string }>
   to: string
+  disabled?: boolean
+  badge?: string
 }
 
 interface NavGroup {
@@ -54,7 +56,7 @@ const navGroups: NavGroup[] = [
   {
     label: 'Create',
     items: [
-      { label: 'Studio', icon: Sparkles, to: '/studio' },
+      { label: 'Studio', icon: Sparkles, to: '/studio', disabled: true, badge: 'Coming soon' },
       { label: 'Knowledge', icon: Brain, to: '/knowledge-base' },
       { label: 'Analytics', icon: BarChart3, to: '/analytics' },
     ],
@@ -92,6 +94,30 @@ const NavLink = ({
   darkSurface?: boolean
 }) => {
   const Icon = item.icon
+
+  if (item.disabled) {
+    return (
+      <div
+        aria-disabled="true"
+        title={`${item.label} is coming soon`}
+        className={cn(
+          'flex cursor-not-allowed items-center gap-3 rounded-xl px-3 py-2.5 text-[13px] font-medium',
+          darkSurface ? 'text-white/25' : 'text-muted-foreground/55',
+        )}
+      >
+        <Icon className="size-4 shrink-0" />
+        <span className="flex-1">{item.label}</span>
+        {item.badge && (
+          <span className={cn(
+            'rounded-full px-2 py-0.5 text-[8px] font-bold uppercase tracking-[0.1em]',
+            darkSurface ? 'bg-[#F1663C]/12 text-[#F49A70]/70' : 'bg-[#F1663C]/10 text-[#C95735]',
+          )}>
+            {item.badge}
+          </span>
+        )}
+      </div>
+    )
+  }
 
   return (
     <Link
@@ -140,7 +166,7 @@ export const NavContent = ({
             <NavLink
               key={item.label}
               item={item}
-              active={isActive(currentPath, item.to)}
+              active={!item.disabled && isActive(currentPath, item.to)}
               darkSurface={darkSurface}
             />
           ))}

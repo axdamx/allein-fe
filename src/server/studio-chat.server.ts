@@ -12,6 +12,7 @@ import { getSupabaseServerClient } from '@/lib/supabase/server.server'
 import { getStudioAgent } from '@/mastra'
 import { consumeQuota } from '@/server/profile.server'
 import { sanitizeSupabaseMessage, safeError } from '@/server/_errors'
+import { DEFAULT_MODEL_ID } from '@/lib/ai-provider'
 
 // ---------------------------------------------------------------------------
 // Types
@@ -355,7 +356,7 @@ export async function sendStudioMessageImpl(input: {
     chat_id: input.chatId,
     role: 'assistant',
     content: replyText,
-    model: 'glm-4.5-flash',
+    model: DEFAULT_MODEL_ID,
     asset_id: lastAssetId ?? null,
     attachment_url: lastAssetUrl ?? null,
     tool_calls: toolCalls,

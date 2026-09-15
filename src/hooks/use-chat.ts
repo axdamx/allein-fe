@@ -6,11 +6,11 @@ import {
   createConversation,
   deleteConversation,
   getMessages,
-  sendMessage,
   type ConversationRow,
   type MessageRow,
   type SendMessageResult,
 } from '@/server/chat'
+import type { ChatStreamEvent } from '@/lib/chat-stream'
 import { PLAN_CONFIGS } from '@/lib/plans'
 import { showUsageWarning } from '@/lib/usage-warnings'
 import type { PlanState } from '@/server/profile'
@@ -86,8 +86,30 @@ interface StreamState {
 
 const TEMP_ID_PREFIX = 'temp-'
 
+async function* readChatEvents(
+  body: ReadableStream<Uint8Array>,
+): AsyncGenerator<ChatStreamEvent> {
+  const reader = body.getReader()
+  const decoder = new TextDecoder()
+  let buffer = ''
+
+  for (;;) {
+    const { done, value } = await reader.read()
+    if (done) break
+    buffer += decoder.decode(value, { stream: true })
+    const lines = buffer.split('\n')
+    buffer = lines.pop() ?? ''
+    for (const line of lines) {
+      if (line.trim()) yield JSON.parse(line) as ChatStreamEvent
+    }
+  }
+
+  buffer += decoder.decode()
+  if (buffer.trim()) yield JSON.parse(buffer) as ChatStreamEvent
+}
+
 /**
- * Sends a message with optimistic updates + progressive text reveal.
+ * Sends a message with optimistic updates + real provider token streaming.
  * Tool call results (e.g. "Lead created") are surfaced as toasts and
  * trigger query invalidation so new leads/reminders show up instantly.
  */
@@ -99,7 +121,8 @@ export const useChatStream = (conversationId: string | null) => {
     error: null,
     toolCallResults: [],
   })
-  const abortRef = useRef(false)
+  const abortRef = useRef<AbortController | null>(null)
+  const activeConversationRef = useRef<string | null>(null)
 
   const send = useCallback(
     async (
@@ -120,15 +143,8 @@ export const useChatStream = (conversationId: string | null) => {
       const attachmentUrl = opts.attachmentUrl ?? null
       const attachmentMime = opts.attachmentMime ?? null
       const attachmentFileName = opts.attachmentFileName ?? null
-      console.log('[chat-debug] CRM send() entered', { id, hasContent: !!content.trim(), hasAttachment: !!attachmentUrl })
-      if (!id || (!content.trim() && !attachmentUrl)) {
-        console.log('[chat-debug] ✋ CRM send() early-return (guard)')
-        return
-      }
-      if (state.isStreaming) {
-        console.log('[chat-debug] ✋ CRM send() early-return (streaming)')
-        return
-      }
+      if (!id || (!content.trim() && !attachmentUrl)) return
+      if (abortRef.current) return
 
       // Optimistic: show user message immediately
       const optimisticMessage: MessageRow = {
@@ -150,7 +166,9 @@ export const useChatStream = (conversationId: string | null) => {
         (old) => [...(old ?? []), optimisticMessage],
       )
 
-      abortRef.current = false
+      const controller = new AbortController()
+      abortRef.current = controller
+      activeConversationRef.current = id
       setState({
         isStreaming: true,
         streamingText: '',
@@ -159,60 +177,74 @@ export const useChatStream = (conversationId: string | null) => {
       })
 
       try {
-        const result = (await sendMessage({
-          data: {
+        const response = await fetch('/api/chat/stream', {
+          method: 'POST',
+          headers: {
+            Accept: 'application/x-ndjson',
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
             conversationId: id,
             content,
             attachmentUrl,
             attachmentMime,
             attachmentFileName,
-          },
-        })) as
-          | SendMessageResult
-          | { error: 'daily_message_limit_reached'; remaining: number; max: number | null; resetAt: string }
-          | { error: string }
+          }),
+          signal: controller.signal,
+        })
 
-        const isLimit = (
-          r: typeof result,
-        ): r is { error: 'daily_message_limit_reached'; remaining: number; max: number | null; resetAt: string } =>
-          'error' in r &&
-          typeof (r as { remaining?: unknown }).remaining === 'number'
+        if (!response.ok || !response.body) {
+          throw new Error(
+            response.status === 400
+              ? 'Invalid chat request'
+              : 'The assistant is unavailable. Please try again.',
+          )
+        }
 
-        if (isLimit(result)) {
-          const reset = new Date(result.resetAt)
+        let streamedText = ''
+        let completed: Extract<ChatStreamEvent, { type: 'done' }> | null = null
+        let streamError: Extract<ChatStreamEvent, { type: 'error' }> | null = null
+
+        for await (const event of readChatEvents(response.body)) {
+          if (event.type === 'text') {
+            streamedText += event.delta
+            setState({
+              isStreaming: true,
+              streamingText: streamedText,
+              error: null,
+              toolCallResults: [],
+            })
+          } else if (event.type === 'done') {
+            completed = event
+          } else {
+            streamError = event
+            break
+          }
+        }
+
+        if (streamError?.code === 'daily_message_limit_reached') {
+          const reset = new Date(streamError.resetAt ?? Date.now())
           const resetLabel = reset.toLocaleString([], {
             hour: '2-digit',
             minute: '2-digit',
           })
           toast.error(
-            `Daily message limit reached (${result.max ?? '—'}). Resets at ${resetLabel}.`,
+            `Daily message limit reached (${streamError.max ?? '—'}). Resets at ${resetLabel}.`,
           )
-          qc.invalidateQueries({ queryKey: ['plan-state'] })
+          await Promise.all([
+            qc.invalidateQueries({ queryKey: ['chat', 'messages', id] }),
+            qc.invalidateQueries({ queryKey: ['plan-state'] }),
+          ])
           setState((s) => ({ ...s, isStreaming: false, error: null }))
           return
         }
 
-        if ('error' in result) {
-          throw new Error(result.error)
-        }
-
-        // Reveal reply progressively for typing UX
-        const fullText = result.reply
-        const chunkSize = Math.max(1, Math.ceil(fullText.length / 80))
-        for (let i = 0; i < fullText.length; i += chunkSize) {
-          if (abortRef.current) break
-          setState({
-            isStreaming: true,
-            streamingText: fullText.slice(0, i + chunkSize),
-            error: null,
-            toolCallResults: [],
-          })
-          await new Promise((r) => setTimeout(r, 12))
-        }
+        if (streamError) throw new Error(streamError.message)
+        if (!completed) throw new Error('The chat stream ended unexpectedly.')
 
         // Handle tool calls — show toast + invalidate queries
-        if (result.toolCalls.length > 0) {
-          for (const tc of result.toolCalls) {
+        if (completed.toolCalls.length > 0) {
+          for (const tc of completed.toolCalls) {
             if (tc.success) {
               toast.success(tc.message)
 
@@ -230,19 +262,21 @@ export const useChatStream = (conversationId: string | null) => {
           }
         }
 
+        // The server persists the completed answer before sending "done".
+        // Keep the streamed bubble visible until the canonical row is loaded,
+        // avoiding a flash where the answer briefly disappears.
+        await Promise.all([
+          qc.invalidateQueries({ queryKey: ['chat', 'messages', id] }),
+          qc.invalidateQueries({ queryKey: ['chat', 'conversations'] }),
+          qc.invalidateQueries({ queryKey: ['plan-state'] }),
+        ])
+
         setState({
           isStreaming: false,
           streamingText: '',
           error: null,
-          toolCallResults: result.toolCalls,
+          toolCallResults: completed.toolCalls,
         })
-
-        // Refresh persisted messages
-        qc.invalidateQueries({
-          queryKey: ['chat', 'messages', conversationId],
-        })
-        qc.invalidateQueries({ queryKey: ['chat', 'conversations'] })
-        qc.invalidateQueries({ queryKey: ['plan-state'] })
 
         // Warn if nearing message limit (reads cached plan state — no extra fetch)
         const ps = qc.getQueryData<PlanState>(['plan-state'])
@@ -259,7 +293,12 @@ export const useChatStream = (conversationId: string | null) => {
           }
         }
       } catch (err) {
+        if (controller.signal.aborted) {
+          await qc.invalidateQueries({ queryKey: ['chat', 'messages', id] })
+          return
+        }
         const message = err instanceof Error ? err.message : 'Failed to send'
+        await qc.invalidateQueries({ queryKey: ['chat', 'messages', id] })
         setState({
           isStreaming: false,
           streamingText: '',
@@ -267,20 +306,33 @@ export const useChatStream = (conversationId: string | null) => {
           toolCallResults: [],
         })
         toast.error(message)
+      } finally {
+        if (abortRef.current === controller) abortRef.current = null
+        if (activeConversationRef.current === id) {
+          activeConversationRef.current = null
+        }
       }
     },
-    [conversationId, state.isStreaming, qc],
+    [conversationId, qc],
   )
 
   const stop = useCallback(() => {
-    abortRef.current = true
+    abortRef.current?.abort()
+    abortRef.current = null
+    const activeConversation = activeConversationRef.current
+    activeConversationRef.current = null
+    if (activeConversation) {
+      void qc.invalidateQueries({
+        queryKey: ['chat', 'messages', activeConversation],
+      })
+    }
     setState({
       isStreaming: false,
       streamingText: '',
       error: null,
       toolCallResults: [],
     })
-  }, [])
+  }, [qc])
 
   const dismissToolResults = useCallback(() => {
     setState((s) => ({ ...s, toolCallResults: [] }))

@@ -69,7 +69,7 @@ const PricingPage = () => {
           </h1>
           <p className="mx-auto mt-3 max-w-xl text-muted-foreground">
             Start free, upgrade when you're ready. Every plan includes the
-            agent framework, DeepSeek-powered chat, and Supabase storage.
+            agent framework, Z.AI GLM-powered chat, and Supabase storage.
           </p>
         </div>
 
