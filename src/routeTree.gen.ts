@@ -30,6 +30,7 @@ import { Route as AuthedStudioIndexRouteImport } from './routes/_authed.studio.i
 import { Route as ApiMessagingWhatsappRouteImport } from './routes/api/messaging/whatsapp'
 import { Route as ApiMessagingTelegramRouteImport } from './routes/api/messaging/telegram'
 import { Route as ApiChatStreamRouteImport } from './routes/api.chat.stream'
+import { Route as ApiBillingStripeWebhookRouteImport } from './routes/api.billing.stripe-webhook'
 import { Route as AuthedStudioStoryboardRouteImport } from './routes/_authed.studio.storyboard'
 import { Route as AuthedStudioLibraryRouteImport } from './routes/_authed.studio.library'
 import { Route as AuthedStudioChatRouteImport } from './routes/_authed.studio.chat'
@@ -145,6 +146,11 @@ const ApiChatStreamRoute = ApiChatStreamRouteImport.update({
   path: '/api/chat/stream',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiBillingStripeWebhookRoute = ApiBillingStripeWebhookRouteImport.update({
+  id: '/api/billing/stripe-webhook',
+  path: '/api/billing/stripe-webhook',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AuthedStudioStoryboardRoute = AuthedStudioStoryboardRouteImport.update({
   id: '/storyboard',
   path: '/storyboard',
@@ -220,6 +226,7 @@ export interface FileRoutesByFullPath {
   '/studio/chat': typeof AuthedStudioChatRoute
   '/studio/library': typeof AuthedStudioLibraryRoute
   '/studio/storyboard': typeof AuthedStudioStoryboardRoute
+  '/api/billing/stripe-webhook': typeof ApiBillingStripeWebhookRoute
   '/api/chat/stream': typeof ApiChatStreamRoute
   '/api/messaging/telegram': typeof ApiMessagingTelegramRoute
   '/api/messaging/whatsapp': typeof ApiMessagingWhatsappRoute
@@ -249,6 +256,7 @@ export interface FileRoutesByTo {
   '/studio/chat': typeof AuthedStudioChatRoute
   '/studio/library': typeof AuthedStudioLibraryRoute
   '/studio/storyboard': typeof AuthedStudioStoryboardRoute
+  '/api/billing/stripe-webhook': typeof ApiBillingStripeWebhookRoute
   '/api/chat/stream': typeof ApiChatStreamRoute
   '/api/messaging/telegram': typeof ApiMessagingTelegramRoute
   '/api/messaging/whatsapp': typeof ApiMessagingWhatsappRoute
@@ -283,6 +291,7 @@ export interface FileRoutesById {
   '/_authed/studio/chat': typeof AuthedStudioChatRoute
   '/_authed/studio/library': typeof AuthedStudioLibraryRoute
   '/_authed/studio/storyboard': typeof AuthedStudioStoryboardRoute
+  '/api/billing/stripe-webhook': typeof ApiBillingStripeWebhookRoute
   '/api/chat/stream': typeof ApiChatStreamRoute
   '/api/messaging/telegram': typeof ApiMessagingTelegramRoute
   '/api/messaging/whatsapp': typeof ApiMessagingWhatsappRoute
@@ -317,6 +326,7 @@ export interface FileRouteTypes {
     | '/studio/chat'
     | '/studio/library'
     | '/studio/storyboard'
+    | '/api/billing/stripe-webhook'
     | '/api/chat/stream'
     | '/api/messaging/telegram'
     | '/api/messaging/whatsapp'
@@ -346,6 +356,7 @@ export interface FileRouteTypes {
     | '/studio/chat'
     | '/studio/library'
     | '/studio/storyboard'
+    | '/api/billing/stripe-webhook'
     | '/api/chat/stream'
     | '/api/messaging/telegram'
     | '/api/messaging/whatsapp'
@@ -379,6 +390,7 @@ export interface FileRouteTypes {
     | '/_authed/studio/chat'
     | '/_authed/studio/library'
     | '/_authed/studio/storyboard'
+    | '/api/billing/stripe-webhook'
     | '/api/chat/stream'
     | '/api/messaging/telegram'
     | '/api/messaging/whatsapp'
@@ -395,6 +407,7 @@ export interface RootRouteChildren {
   LoginRoute: typeof LoginRoute
   LogoutRoute: typeof LogoutRoute
   PricingRoute: typeof PricingRoute
+  ApiBillingStripeWebhookRoute: typeof ApiBillingStripeWebhookRoute
   ApiChatStreamRoute: typeof ApiChatStreamRoute
   ApiMessagingTelegramRoute: typeof ApiMessagingTelegramRoute
   ApiMessagingWhatsappRoute: typeof ApiMessagingWhatsappRoute
@@ -547,6 +560,13 @@ declare module '@tanstack/react-router' {
       path: '/api/chat/stream'
       fullPath: '/api/chat/stream'
       preLoaderRoute: typeof ApiChatStreamRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/billing/stripe-webhook': {
+      id: '/api/billing/stripe-webhook'
+      path: '/api/billing/stripe-webhook'
+      fullPath: '/api/billing/stripe-webhook'
+      preLoaderRoute: typeof ApiBillingStripeWebhookRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/_authed/studio/storyboard': {
@@ -722,6 +742,7 @@ const rootRouteChildren: RootRouteChildren = {
   LoginRoute: LoginRoute,
   LogoutRoute: LogoutRoute,
   PricingRoute: PricingRoute,
+  ApiBillingStripeWebhookRoute: ApiBillingStripeWebhookRoute,
   ApiChatStreamRoute: ApiChatStreamRoute,
   ApiMessagingTelegramRoute: ApiMessagingTelegramRoute,
   ApiMessagingWhatsappRoute: ApiMessagingWhatsappRoute,

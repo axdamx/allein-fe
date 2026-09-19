@@ -1,7 +1,7 @@
 /** Public server functions for the settings page. */
 import { createServerFn } from '@tanstack/react-start'
-import type { PlanTier } from '@/lib/plans'
 import type { AgentTypeKey } from '@/lib/agent-types'
+import type { PlanTier } from '@/lib/plans'
 
 export interface ProfileRow {
   id: string
@@ -36,13 +36,6 @@ export const updateProfile = createServerFn({ method: 'POST' })
   .handler(async ({ data }) => {
     const { updateProfileImpl } = await import('./settings.server')
     return updateProfileImpl(data)
-  })
-
-export const updatePlan = createServerFn({ method: 'POST' })
-  .validator((d: { plan: PlanTier }) => d)
-  .handler(async ({ data }) => {
-    const { updatePlanImpl } = await import('./settings.server')
-    return updatePlanImpl(data.plan)
   })
 
 export const updateUserAgentType = createServerFn({ method: 'POST' })

@@ -174,8 +174,12 @@ const PricingPage = () => {
                     {isCurrent ? (
                       <span className="text-muted-foreground">Current plan</span>
                     ) : (
-                      <Link to={user ? '/dashboard' : '/login'}>
-                        {isNext ? `Upgrade to ${cfg.label}` : cfg.cta}
+                      <Link to={user ? '/settings' : '/login'}>
+                        {user
+                          ? isNext
+                            ? `Upgrade to ${cfg.label}`
+                            : 'Manage in settings'
+                          : cfg.cta}
                       </Link>
                     )}
                   </Button>

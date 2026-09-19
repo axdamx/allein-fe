@@ -7,6 +7,7 @@
  */
 import { getSupabaseServerClient } from '@/lib/supabase/server.server'
 import { safeError, sanitizeSupabaseMessage } from '@/server/_errors'
+import { PLAN_CONFIGS } from '@/lib/plans'
 import type { PlanTier } from '@/lib/plans'
 import type { AnalyticsTrends } from '@/server/analytics'
 import { DEFAULT_MODEL_ID } from '@/lib/ai-provider'
@@ -425,12 +426,6 @@ export async function getAdminBillingImpl(): Promise<
       return { error: 'Failed to load billing data' }
     }
 
-    const PLAN_PRICES: Record<string, number> = {
-      free: 0,
-      lite: 29,
-      pro: 99,
-    }
-
     let totalMessages = 0
     let totalConversations = 0
     let totalAgents = 0
@@ -447,7 +442,7 @@ export async function getAdminBillingImpl(): Promise<
         trialUsers++
       }
 
-      const price = PLAN_PRICES[p.plan] ?? 0
+      const price = PLAN_CONFIGS[p.plan as PlanTier]?.price ?? 0
       revenueByPlan[p.plan] = (revenueByPlan[p.plan] ?? 0) + price
 
       const status = p.subscription_status ?? 'inactive'

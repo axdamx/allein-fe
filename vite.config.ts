@@ -21,6 +21,10 @@ export default defineConfig(({ mode }) => {
   return {
     server: {
       port: 3000,
+      // Billing redirects use APP_URL (localhost:3000 by default). Failing
+      // loudly prevents Vite from silently selecting a different port and
+      // sending Checkout customers back to the wrong local process.
+      strictPort: true,
       allowedHosts: true, // allow cloudflared / ngrok tunnels in dev
     },
     resolve: {

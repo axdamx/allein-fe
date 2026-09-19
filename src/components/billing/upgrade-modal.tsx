@@ -1,4 +1,4 @@
-import { Check, Sparkles } from 'lucide-react'
+import { ArrowUpRight, Check, Loader2, Sparkles } from 'lucide-react'
 
 import { Button } from '@/components/ui/button'
 import {
@@ -10,6 +10,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 import { cn } from '@/lib/utils'
+import { useStartSubscriptionCheckout } from '@/hooks/use-billing'
 import {
   PLAN_CONFIGS,
   PLAN_ORDER,
@@ -65,6 +66,7 @@ export const UpgradeModal = ({
   currentTier,
   reason = { kind: 'general' },
 }: UpgradeModalProps) => {
+  const checkout = useStartSubscriptionCheckout()
   // Only show tiers higher than the current one.
   const upgradeOptions = PLAN_ORDER.filter((t) => isHigherTier(currentTier, t))
 
@@ -143,12 +145,25 @@ export const UpgradeModal = ({
                 <Button
                   variant={cfg.featured ? 'default' : 'outline'}
                   className="w-full"
-                  onClick={() => {
-                    // Phase 2+ will wire this to Stripe checkout.
-                    onOpenChange(false)
-                  }}
+                  asChild={tier === 'custom'}
+                  disabled={tier !== 'custom' && checkout.isPending}
+                  onClick={
+                    tier === 'lite' || tier === 'pro'
+                      ? () => checkout.mutate(tier)
+                      : undefined
+                  }
                 >
-                  {cfg.cta}
+                  {tier === 'custom' ? (
+                    <a href="mailto:billing@allein.ai?subject=Allein%20Custom%20plan">
+                      Contact sales <ArrowUpRight />
+                    </a>
+                  ) : checkout.isPending && checkout.variables === tier ? (
+                    <>
+                      <Loader2 className="animate-spin" /> Opening checkout
+                    </>
+                  ) : (
+                    cfg.cta
+                  )}
                 </Button>
               </div>
             )
@@ -156,7 +171,7 @@ export const UpgradeModal = ({
         </div>
 
         <DialogFooter className="text-xs text-muted-foreground">
-          Billing integration coming soon. For now these are plan presets.
+          Secure checkout and subscription management are powered by Stripe.
         </DialogFooter>
       </DialogContent>
     </Dialog>
