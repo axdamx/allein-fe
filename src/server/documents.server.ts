@@ -2,10 +2,9 @@
  * Server-only implementation for the RAG document pipeline.
  *
  * Handles: document upload → text extraction → chunking → embedding → storage
- * Plus: retrieval (semantic search) used at chat time.
  */
 import { getSupabaseServerClient } from '@/lib/supabase/server.server'
-import { embed, embedBatch } from '@/lib/embeddings'
+import { embedBatch } from '@/lib/embeddings'
 import { extractText, chunkText } from '@/lib/chunking'
 import { safeError, sanitizePostgrestFilter, sanitizeSupabaseMessage } from '@/server/_errors'
 
@@ -281,54 +280,4 @@ export async function uploadDocumentImpl(
       error: safeError(err, 'Document processing failed'),
     }
   }
-}
-
-// ---------------------------------------------------------------------------
-// Retrieval — used at chat time to find relevant context
-// ---------------------------------------------------------------------------
-
-export interface RetrievedChunk {
-  content: string
-  similarity: number
-}
-
-/**
- * Search the user's documents for chunks relevant to a query.
- * Uses pgvector cosine similarity via the match_documents RPC.
- *
- * @param query The user's question
- * @param agentId Optional: restrict to documents linked to this agent
- * @param matchCount How many chunks to retrieve (default 5)
- */
-export async function retrieveContext(
-  query: string,
-  agentId?: string,
-  matchCount = 5,
-): Promise<RetrievedChunk[]> {
-  const supabase = getSupabaseServerClient()
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
-  if (!user) return []
-
-  // Embed the query using the same model as the documents
-  const queryEmbedding = await embed(query)
-
-  // Search pgvector for similar chunks
-  const { data, error } = await supabase.rpc('match_documents', {
-    query_embedding: queryEmbedding,
-    match_count: matchCount,
-    filter_owner_id: user.id,
-    filter_agent_id: agentId ?? null,
-  })
-
-  if (error || !data) return []
-
-  // Only return chunks above a similarity threshold.
-  // MiniLM (384-dim) produces lower similarity scores than larger models,
-  // so we use a lower threshold (0.12). Even weak matches can contain the
-  // answer — the LLM decides whether to use the context or ignore it.
-  return (data as RetrievedChunk[])
-    .filter((c) => c.similarity > 0.12)
-    .sort((a, b) => b.similarity - a.similarity)
 }

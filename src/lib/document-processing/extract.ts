@@ -17,6 +17,10 @@
  */
 import { assertSafeUrl } from '@/lib/url-guard'
 import { extractText } from '@/lib/chunking'
+import {
+  createSemaphore,
+  readConcurrencyLimit,
+} from '@/lib/concurrency.server'
 
 // ---------------------------------------------------------------------------
 // Types
@@ -49,6 +53,9 @@ export interface ExtractInput {
 
 /** Cap extracted text so a huge PDF can't blow the context window. */
 const MAX_EXTRACTED_CHARS = 8000
+const withOcrPermit = createSemaphore(
+  readConcurrencyLimit('OCR_MAX_CONCURRENCY', 1, 2),
+)
 
 /**
  * Filename / message patterns that suggest the user wants the *text* out of an
@@ -115,15 +122,17 @@ function clampText(text: string): string {
 // ---------------------------------------------------------------------------
 
 async function ocrImage(buffer: Buffer): Promise<{ text: string; confidence: number }> {
-  // Lazy require: tesseract pulls in worker + wasm on first use. Avoiding the
-  // import at module top keeps cold text/pdf turns fast.
-  const { default: Tesseract } = await import('tesseract.js')
-  const result = await Tesseract.recognize(buffer, 'eng')
-  const text = (result?.data?.text ?? '').trim()
-  // Average word confidence — 0..100. Low confidence (<40) usually means the
-  // image wasn't actually text, surfaced to the caller for a graceful message.
-  const confidence = result?.data?.confidence ?? 0
-  return { text, confidence }
+  return withOcrPermit(async () => {
+    // Lazy require: tesseract pulls in worker + wasm on first use. Avoiding the
+    // import at module top keeps cold text/pdf turns fast.
+    const { default: Tesseract } = await import('tesseract.js')
+    const result = await Tesseract.recognize(buffer, 'eng')
+    const text = (result?.data?.text ?? '').trim()
+    // Average word confidence — 0..100. Low confidence (<40) usually means the
+    // image wasn't actually text, surfaced to the caller for a graceful message.
+    const confidence = result?.data?.confidence ?? 0
+    return { text, confidence }
+  })
 }
 
 // ---------------------------------------------------------------------------

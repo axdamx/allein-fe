@@ -1,7 +1,8 @@
 import { Agent } from '@mastra/core/agent'
 import { Memory } from '@mastra/memory'
 import { getDefaultModel } from '@/lib/ai-provider'
-import { storage, vectorStore } from '@/mastra/config'
+import { storage } from '@/mastra/config'
+import { vectorStore } from '@/mastra/vector-config'
 import { localEmbedder } from '@/mastra/local-embedder'
 import {
   createLeadTool,

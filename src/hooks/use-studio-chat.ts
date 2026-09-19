@@ -24,6 +24,7 @@ import {
 import { PLAN_CONFIGS } from '@/lib/plans'
 import { showUsageWarning } from '@/lib/usage-warnings'
 import type { PlanState } from '@/server/profile'
+import { patchMessageQuota } from '@/lib/plan-cache'
 
 // ---------------------------------------------------------------------------
 // Chats list
@@ -221,6 +222,12 @@ export const useStudioChatStream = (chatId: string | null) => {
           throw new Error(result.error)
         }
 
+        if (result.quota) {
+          qc.setQueryData<PlanState>(['plan-state'], (current) =>
+            patchMessageQuota(current, result.quota!),
+          )
+        }
+
         // Progressive reveal for typing UX.
         const fullText = result.reply
         const chunkSize = Math.max(1, Math.ceil(fullText.length / 80))
@@ -256,9 +263,8 @@ export const useStudioChatStream = (chatId: string | null) => {
           lastToolResults: result.toolCalls,
         })
 
-        qc.invalidateQueries({ queryKey: ['studio', 'messages', chatId] })
+        qc.invalidateQueries({ queryKey: ['studio', 'messages', id] })
         qc.invalidateQueries({ queryKey: ['studio', 'chats'] })
-        qc.invalidateQueries({ queryKey: ['plan-state'] })
 
         const ps = qc.getQueryData<PlanState>(['plan-state'])
         if (ps) {

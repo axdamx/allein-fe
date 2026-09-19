@@ -227,8 +227,29 @@ export async function sendStudioMessageImpl(input: {
   } = await supabase.auth.getUser()
   if (!user) return { error: 'Not authenticated' }
 
-  // ── Daily message quota (shared with CRM chat) ──────────────────────
-  const quota = await consumeQuota('messages')
+  const [{ data: chat }, { data: profile }] = await Promise.all([
+    supabase
+      .from('studio_chats')
+      .select('id, owner_id')
+      .eq('id', input.chatId)
+      .single(),
+    supabase
+      .from('profiles')
+      .select('plan')
+      .eq('id', user.id)
+      .single(),
+  ])
+  if (!chat || chat.owner_id !== user.id) {
+    return { error: 'Chat not found' }
+  }
+  if (!profile) return { error: 'Profile not found' }
+
+  // Shared daily quota, consumed only after chat ownership is verified.
+  const quota = await consumeQuota('messages', {
+    userId: user.id,
+    plan: profile.plan as import('@/lib/plans').PlanTier,
+    supabase,
+  })
   if (!quota.allowed) {
     return {
       error: 'daily_message_limit_reached',
@@ -238,21 +259,12 @@ export async function sendStudioMessageImpl(input: {
     }
   }
 
-  const { data: chat } = await supabase
-    .from('studio_chats')
-    .select('id, owner_id')
-    .eq('id', input.chatId)
-    .single()
-  if (!chat || chat.owner_id !== user.id) {
-    return { error: 'Chat not found' }
-  }
-
   // Persist the user message (with attachment if any).
-  const { data: msgCount } = await supabase
+  const { count: messageCount } = await supabase
     .from('studio_messages')
     .select('id', { count: 'exact', head: true })
     .eq('chat_id', input.chatId)
-  const isFirst = (msgCount?.length ?? 0) === 0
+  const isFirst = (messageCount ?? 0) === 0
 
   await supabase.from('studio_messages').insert({
     chat_id: input.chatId,
@@ -305,7 +317,7 @@ export async function sendStudioMessageImpl(input: {
     userContent.push({ type: 'image', image: userImage })
   }
 
-  const agent = getStudioAgent()
+  const agent = await getStudioAgent()
   if (!agent) return { error: 'Studio agent unavailable' }
 
   let result

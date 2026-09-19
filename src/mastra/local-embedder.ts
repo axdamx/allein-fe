@@ -16,7 +16,7 @@
  *     ...
  *   })
  */
-import { embedBatch } from '@/lib/embeddings'
+import { embed, embedBatch } from '@/lib/embeddings'
 
 const MODEL_ID = 'local/all-MiniLM-L6-v2'
 const DIMENSIONS = 384
@@ -26,7 +26,7 @@ export class LocalEmbedder {
   readonly modelId = MODEL_ID
   readonly provider = 'local'
   readonly maxEmbeddingsPerCall = 32
-  readonly supportsParallelCalls = true
+  readonly supportsParallelCalls = false
 
   /**
    * Embed an array of string values using the local Transformers.js pipeline.
@@ -36,7 +36,8 @@ export class LocalEmbedder {
     embeddings: number[][]
   }> {
     if (!values.length) return { embeddings: [] }
-    const embeddings = await embedBatch(values)
+    const embeddings =
+      values.length === 1 ? [await embed(values[0])] : await embedBatch(values)
     return { embeddings }
   }
 }
