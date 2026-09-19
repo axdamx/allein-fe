@@ -17,6 +17,8 @@ export const usePlan = () => {
     queryFn: () => getPlanState(),
     staleTime: 5 * 60 * 1000, // 5 min
     refetchOnWindowFocus: true,
+    // Reconcile plan changes and usage performed from other devices/tabs.
+    refetchInterval: 15 * 60 * 1000,
   })
 
   const state = query.data ?? null

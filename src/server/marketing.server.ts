@@ -13,7 +13,7 @@ import { getSupabaseServerClient } from '@/lib/supabase/server.server'
 import { safeError, sanitizeSupabaseMessage } from '@/server/_errors'
 import { consumeQuota } from '@/server/profile.server'
 import { getDefaultModel } from '@/lib/ai-provider'
-import { retrieveContext } from '@/server/documents.server'
+import { retrieveContext } from '@/server/document-retrieval.server'
 import { extractJson } from '@/lib/json-extract'
 
 // ---------------------------------------------------------------------------
@@ -97,6 +97,12 @@ export async function generatePostImpl(input: {
   agentId?: string
 }): Promise<GeneratedPost | { error: string }> {
   try {
+    const supabase = getSupabaseServerClient()
+    const {
+      data: { user },
+    } = await supabase.auth.getUser()
+    if (!user) return { error: 'Not authenticated' }
+
     const platformGuides: Record<PostPlatform, string> = {
       instagram: 'Instagram: visual-first, use emojis, 5-10 hashtags, max 2200 chars',
       facebook: 'Facebook: conversational, 2-5 hashtags, max 2000 chars',
@@ -109,7 +115,13 @@ export async function generatePostImpl(input: {
     }
 
     // Retrieve RAG context for brand voice / product info
-    const relevantChunks = await retrieveContext(input.prompt, input.agentId, 3)
+    const relevantChunks = await retrieveContext({
+      query: input.prompt,
+      ownerId: user.id,
+      supabase,
+      agentId: input.agentId,
+      matchCount: 3,
+    })
     const ragContext =
       relevantChunks.length > 0
         ? `\n\nBrand/product context from knowledge base:\n${relevantChunks
