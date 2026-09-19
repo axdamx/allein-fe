@@ -3,6 +3,7 @@ import { loadEnv } from 'vite'
 import viteReact from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
 import { defineConfig } from 'vite'
+import { nitro } from 'nitro/vite'
 
 export default defineConfig(({ mode }) => {
   // Load ALL env vars (not just VITE_-prefixed) into process.env so they
@@ -26,6 +27,6 @@ export default defineConfig(({ mode }) => {
     resolve: {
       tsconfigPaths: true,
     },
-    plugins: [tailwindcss(), tanstackStart(), viteReact()],
+    plugins: [tailwindcss(), tanstackStart(), nitro(), viteReact()],
   }
 })
