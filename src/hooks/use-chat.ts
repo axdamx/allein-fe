@@ -14,6 +14,7 @@ import type { ChatStreamEvent } from '@/lib/chat-stream'
 import { PLAN_CONFIGS } from '@/lib/plans'
 import { showUsageWarning } from '@/lib/usage-warnings'
 import type { PlanState } from '@/server/profile'
+import { patchMessageQuota } from '@/lib/plan-cache'
 
 // ---------------------------------------------------------------------------
 // Conversations
@@ -242,6 +243,10 @@ export const useChatStream = (conversationId: string | null) => {
         if (streamError) throw new Error(streamError.message)
         if (!completed) throw new Error('The chat stream ended unexpectedly.')
 
+        qc.setQueryData<PlanState>(['plan-state'], (current) =>
+          patchMessageQuota(current, completed.quota),
+        )
+
         // Handle tool calls — show toast + invalidate queries
         if (completed.toolCalls.length > 0) {
           for (const tc of completed.toolCalls) {
@@ -268,7 +273,6 @@ export const useChatStream = (conversationId: string | null) => {
         await Promise.all([
           qc.invalidateQueries({ queryKey: ['chat', 'messages', id] }),
           qc.invalidateQueries({ queryKey: ['chat', 'conversations'] }),
-          qc.invalidateQueries({ queryKey: ['plan-state'] }),
         ])
 
         setState({

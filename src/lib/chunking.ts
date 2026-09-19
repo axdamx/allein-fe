@@ -3,8 +3,6 @@
  *
  * Flow: raw file bytes → extract text → split into ~500-char chunks
  */
-import { PDFParse } from 'pdf-parse'
-
 /**
  * Extract plain text from common file types.
  * Supports: .txt, .md, .csv, .json (as text), and .pdf (via pdf-parse v2).
@@ -21,6 +19,9 @@ export const extractText = async (
   // PDF — use pdf-parse v2 (PDFParse class) for proper extraction
   if (mimeType.includes('pdf')) {
     try {
+      // Only load the PDF runtime on ingestion/attachment paths. Normal chat
+      // turns should not pay its startup and resident-memory cost.
+      const { PDFParse } = await import('pdf-parse')
       const buffer = isBase64
         ? Buffer.from(content, 'base64')
         : Buffer.from(content, 'utf-8')
@@ -32,6 +33,7 @@ export const extractText = async (
     } catch (err) {
       throw new Error(
         `PDF parsing failed: ${err instanceof Error ? err.message : 'unknown error'}`,
+        { cause: err },
       )
     }
   }

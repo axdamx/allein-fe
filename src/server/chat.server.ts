@@ -1,8 +1,7 @@
 import { getSupabaseServerClient } from '@/lib/supabase/server.server'
-import { retrieveContext } from '@/server/documents.server'
+import { retrieveContext } from '@/server/document-retrieval.server'
 import { getAgentByType } from '@/mastra'
 import { consumeQuota } from '@/server/profile.server'
-import type { SupabaseClient } from '@supabase/supabase-js'
 import { sanitizeSupabaseMessage, safeError } from '@/server/_errors'
 import {
   DEFAULT_MODEL_ID,
@@ -68,17 +67,17 @@ export interface SendMessageLimitResult {
   resetAt: string
 }
 
-async function buildUserContext(
-  userId: string,
-  supabase: SupabaseClient,
-): Promise<string> {
-  const { data: profile } = await supabase
-    .from('profiles')
-    .select('full_name, email, company, phone, plan, telegram_chat_id')
-    .eq('id', userId)
-    .single()
+interface ChatProfile {
+  id: string
+  full_name: string | null
+  email: string | null
+  company: string | null
+  phone: string | null
+  plan: string
+  telegram_chat_id: string | null
+}
 
-  if (!profile) return ''
+function buildUserContext(profile: ChatProfile): string {
 
   const parts: string[] = []
   if (profile.full_name) parts.push(`Name: ${profile.full_name}`)
@@ -217,27 +216,23 @@ export async function sendMessageImpl(input: {
   } = await supabase.auth.getUser()
   if (!user) return { error: 'Not authenticated' }
 
-  const { data: conversation } = await supabase
-    .from('conversations')
-    .select('id, agent_id, owner_id')
-    .eq('id', input.conversationId)
-    .single()
+  const [{ data: conversation }, { data: profile }] = await Promise.all([
+    supabase
+      .from('conversations')
+      .select('id, agent_id, owner_id')
+      .eq('id', input.conversationId)
+      .single(),
+    supabase
+      .from('profiles')
+      .select('id, full_name, email, company, phone, plan, telegram_chat_id')
+      .eq('id', user.id)
+      .single(),
+  ])
 
   if (!conversation || conversation.owner_id !== user.id) {
     return { error: 'Conversation not found' }
   }
-
-  // Atomically consume quota only after ownership is verified. Invalid or
-  // stale conversation ids must never burn a user's daily message allowance.
-  const quota = await consumeQuota('messages')
-  if (!quota.allowed) {
-    return {
-      error: 'daily_message_limit_reached',
-      remaining: quota.remaining ?? 0,
-      max: quota.max,
-      resetAt: quota.resetAt,
-    }
-  }
+  if (!profile) return { error: 'Profile not found' }
 
   const { data: agent } = await supabase
     .from('agents')
@@ -246,6 +241,23 @@ export async function sendMessageImpl(input: {
     .single()
 
   if (!agent) return { error: 'Agent not found' }
+
+  // Accepted-attempt accounting: malformed/unauthorized requests do not
+  // count; once ownership and agent validity are established, provider or
+  // downstream failures still consume the attempt.
+  const quota = await consumeQuota('messages', {
+    userId: user.id,
+    plan: profile.plan as import('@/lib/plans').PlanTier,
+    supabase,
+  })
+  if (!quota.allowed) {
+    return {
+      error: 'daily_message_limit_reached',
+      remaining: quota.remaining ?? 0,
+      max: quota.max,
+      resetAt: quota.resetAt,
+    }
+  }
 
   let systemPrompt = agent.system_prompt
   if (!systemPrompt) {
@@ -263,7 +275,7 @@ export async function sendMessageImpl(input: {
     .eq('conversation_id', input.conversationId)
   const isFirst = (messageCount ?? 0) === 0
 
-  await supabase.from('messages').insert({
+  const { error: messageInsertError } = await supabase.from('messages').insert({
     conversation_id: input.conversationId,
     role: 'user',
     content: input.content,
@@ -271,6 +283,9 @@ export async function sendMessageImpl(input: {
     attachment_mime: input.attachmentMime ?? null,
     attachment_name: input.attachmentFileName ?? null,
   })
+  if (messageInsertError) {
+    return { error: sanitizeSupabaseMessage(messageInsertError.message, 'Failed to save message') }
+  }
 
   // NOTE: the daily quota was already incremented atomically by consumeQuota
   // above. The lifetime messages_count on profiles is no longer bumped here
@@ -280,12 +295,17 @@ export async function sendMessageImpl(input: {
 
   // These lookups are independent. Running them together removes one serial
   // wait from the hot path before the provider can start returning tokens.
-  const [relevantChunks, userContext] = await Promise.all([
-    input.content.trim()
-      ? retrieveContext(input.content, agent.id, 5)
-      : Promise.resolve([]),
-    buildUserContext(user.id, supabase),
+  const [relevantChunks, mastraAgent] = await Promise.all([
+    retrieveContext({
+      query: input.content,
+      ownerId: user.id,
+      supabase,
+      agentId: agent.id,
+      matchCount: 5,
+    }),
+    getAgentByType(agent.type),
   ])
+  const userContext = buildUserContext(profile as ChatProfile)
 
   let ragContext = ''
   if (relevantChunks.length > 0) {
@@ -323,7 +343,6 @@ User: "create a lead, planner and reminder" → call all three tools IMMEDIATELY
 
 Rule: Call the tool first, explain later. Never ask "what details?" — use what you already know.`
 
-  const mastraAgent = getAgentByType(agent.type)
   if (!mastraAgent) {
     return { error: `Agent type "${agent.type}" not found` }
   }
@@ -408,13 +427,13 @@ Rule: Call the tool first, explain later. Never ask "what details?" — use what
 
   const toolCalls: SendMessageResult['toolCalls'] = []
   for (const step of steps ?? []) {
-    const toolResults = (step as any).toolResults ?? []
-    for (const tr of toolResults) {
-      const output = tr.output ?? tr.result ?? {}
+    const toolResults = (step as { toolResults?: unknown[] }).toolResults ?? []
+    for (const tr of toolResults as Array<Record<string, unknown>>) {
+      const output = (tr.output ?? tr.result ?? {}) as Record<string, unknown>
       toolCalls.push({
-        name: tr.toolName ?? tr.name ?? 'unknown',
+        name: String(tr.toolName ?? tr.name ?? 'unknown'),
         success: output?.success !== false,
-        message: output?.message ?? output?.error ?? 'Completed',
+        message: String(output?.message ?? output?.error ?? 'Completed'),
       })
     }
   }
@@ -463,22 +482,36 @@ export async function sendMessageForOwnerImpl(input: {
   )
   const supabase = getSupabaseServiceClient()
 
-  const { data: agent } = await supabase
-    .from('agents')
-    .select('id, type, name, system_prompt, model')
-    .eq('id', input.agentId)
-    .single()
+  const [
+    { data: agent },
+    { data: ownerProfile },
+    { data: conversation },
+  ] = await Promise.all([
+    supabase
+      .from('agents')
+      .select('id, type, name, system_prompt, model')
+      .eq('id', input.agentId)
+      .eq('owner_id', input.ownerId)
+      .single(),
+    supabase
+      .from('profiles')
+      .select('id, full_name, email, company, phone, plan, telegram_chat_id')
+      .eq('id', input.ownerId)
+      .single(),
+    supabase
+      .from('conversations')
+      .select('id')
+      .eq('id', input.conversationId)
+      .eq('owner_id', input.ownerId)
+      .eq('agent_id', input.agentId)
+      .single(),
+  ])
 
   if (!agent) return { error: 'Agent not found' }
+  if (!conversation) return { error: 'Conversation not found' }
+  if (!ownerProfile) return { error: 'Profile not found' }
 
-  // Look up the owner's plan so we can enforce the daily message quota on
-  // inbound-triggered replies too (a contact texting the agent's WhatsApp
-  // consumes the owner's daily credit).
-  const { data: ownerProfile } = await supabase
-    .from('profiles')
-    .select('plan')
-    .eq('id', input.ownerId)
-    .single()
+  // Inbound WhatsApp/Telegram turns consume the owning account's allowance.
   const ownerPlan = (ownerProfile?.plan ?? 'free') as import('@/lib/plans').PlanTier
 
   // ── Daily quota gate (service-role path) ────────────────────────────
@@ -506,11 +539,14 @@ export async function sendMessageForOwnerImpl(input: {
     systemPrompt = agentType?.system_prompt ?? ''
   }
 
-  await supabase.from('messages').insert({
+  const { error: inboundInsertError } = await supabase.from('messages').insert({
     conversation_id: input.conversationId,
     role: 'user',
     content: input.content,
   })
+  if (inboundInsertError) {
+    return { error: sanitizeSupabaseMessage(inboundInsertError.message, 'Failed to save message') }
+  }
 
   const { count: messageCount } = await supabase
     .from('messages')
@@ -518,8 +554,16 @@ export async function sendMessageForOwnerImpl(input: {
     .eq('conversation_id', input.conversationId)
   const isFirst = (messageCount ?? 0) === 1
 
-  const { retrieveContext } = await import('@/server/documents.server')
-  const relevantChunks = await retrieveContext(input.content, agent.id, 5)
+  const [relevantChunks, mastraAgent] = await Promise.all([
+    retrieveContext({
+      query: input.content,
+      ownerId: input.ownerId,
+      supabase,
+      agentId: agent.id,
+      matchCount: 5,
+    }),
+    getAgentByType(agent.type),
+  ])
 
   let ragContext = ''
   if (relevantChunks.length > 0) {
@@ -537,7 +581,7 @@ ${contextText}
 ## End of Knowledge Base Context`
   }
 
-  const userContext = await buildUserContext(input.ownerId, supabase)
+  const userContext = buildUserContext(ownerProfile as ChatProfile)
 
   const today = new Date()
   const dateStr = today.toLocaleDateString('en-US', {
@@ -555,8 +599,6 @@ You have tools to create leads, reminders, tasks, and send messages.
 
 Rule: Call the tool first, explain later. Never ask "what details?" — use what you already know.`
 
-  const { getAgentByType } = await import('@/mastra')
-  const mastraAgent = getAgentByType(agent.type)
   if (!mastraAgent) {
     return { error: `Agent type "${agent.type}" not found` }
   }
@@ -586,13 +628,13 @@ Rule: Call the tool first, explain later. Never ask "what details?" — use what
   const toolCalls: SendMessageResult['toolCalls'] = []
   const steps = result.steps ?? []
   for (const step of steps) {
-    const toolResults = (step as any).toolResults ?? []
-    for (const tr of toolResults) {
-      const output = tr.output ?? tr.result ?? {}
+    const toolResults = (step as { toolResults?: unknown[] }).toolResults ?? []
+    for (const tr of toolResults as Array<Record<string, unknown>>) {
+      const output = (tr.output ?? tr.result ?? {}) as Record<string, unknown>
       toolCalls.push({
-        name: tr.toolName ?? tr.name ?? 'unknown',
+        name: String(tr.toolName ?? tr.name ?? 'unknown'),
         success: output?.success !== false,
-        message: output?.message ?? output?.error ?? 'Completed',
+        message: String(output?.message ?? output?.error ?? 'Completed'),
       })
     }
   }

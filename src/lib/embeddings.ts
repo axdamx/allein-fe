@@ -6,20 +6,34 @@
  *
  * Output: 384-dimensional vectors for semantic similarity search (RAG).
  */
-import { pipeline, env } from '@huggingface/transformers'
-
-// Allow remote model download (cached after first run)
-env.allowLocalModels = false
+import {
+  createSemaphore,
+  readConcurrencyLimit,
+} from '@/lib/concurrency.server'
 
 // Singleton — the model loads once and is reused across all requests
-let embedderPromise: Promise<any> | null = null
+type EmbeddingPipeline = (
+  input: string | Array<string>,
+  options: { pooling: 'mean'; normalize: boolean },
+) => Promise<{ data: Float32Array }>
 
-const getEmbedder = async () => {
+let embedderPromise: Promise<EmbeddingPipeline> | null = null
+
+const withEmbeddingPermit = createSemaphore(
+  readConcurrencyLimit('EMBEDDING_MAX_CONCURRENCY', 1, 4),
+)
+
+const getEmbedder = async (): Promise<EmbeddingPipeline> => {
   if (!embedderPromise) {
-    embedderPromise = pipeline(
-      'feature-extraction',
-      'Xenova/all-MiniLM-L6-v2',
-      { device: 'cpu' },
+    embedderPromise = import('@huggingface/transformers').then(
+      async ({ env, pipeline }) => {
+        env.allowLocalModels = false
+        return (await pipeline(
+          'feature-extraction',
+          'Xenova/all-MiniLM-L6-v2',
+          { device: 'cpu' },
+        )) as unknown as EmbeddingPipeline
+      },
     )
   }
   return embedderPromise
@@ -30,26 +44,32 @@ const getEmbedder = async () => {
  * Uses mean pooling over token embeddings (standard for MiniLM).
  */
 export const embed = async (text: string): Promise<number[]> => {
-  const embedder = await getEmbedder()
-  // pooling: 'mean' averages all token vectors into one sentence vector
-  // normalize: true ensures cosine similarity works well
-  const output = await embedder(text, { pooling: 'mean', normalize: true })
-  return Array.from(output.data as Float32Array)
+  return withEmbeddingPermit(async () => {
+    const embedder = await getEmbedder()
+    // pooling: 'mean' averages all token vectors into one sentence vector
+    // normalize: true ensures cosine similarity works well
+    const output = await embedder(text, { pooling: 'mean', normalize: true })
+    return Array.from(output.data)
+  })
 }
 
 /**
  * Batch-embed multiple texts (more efficient for document chunking).
  */
 export const embedBatch = async (texts: string[]): Promise<number[][]> => {
-  const embedder = await getEmbedder()
-  const output = await embedder(texts, { pooling: 'mean', normalize: true })
-  // output.data is a flat Float32Array: [dim0_text0, dim1_text0, ..., dim0_text1, ...]
-  const data = output.data as Float32Array
-  const dim = 384
-  const results: number[][] = []
-  for (let i = 0; i < texts.length; i++) {
-    const start = i * dim
-    results.push(Array.from(data.slice(start, start + dim)))
-  }
-  return results
+  if (!texts.length) return []
+
+  return withEmbeddingPermit(async () => {
+    const embedder = await getEmbedder()
+    const output = await embedder(texts, { pooling: 'mean', normalize: true })
+    // output.data is flat: [dim0_text0, ..., dim0_text1, ...]
+    const data = output.data
+    const dim = 384
+    const results: number[][] = []
+    for (let i = 0; i < texts.length; i++) {
+      const start = i * dim
+      results.push(Array.from(data.slice(start, start + dim)))
+    }
+    return results
+  })
 }

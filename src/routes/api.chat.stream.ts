@@ -113,6 +113,12 @@ export const Route = createFileRoute('/api/chat/stream')({
                 console.info('[chat-performance]', {
                   model: result.model ?? DEFAULT_MODEL_ID,
                   ...timing,
+                  memoryMb: Object.fromEntries(
+                    Object.entries(process.memoryUsage()).map(([key, bytes]) => [
+                      key,
+                      Math.round((bytes / 1024 / 1024) * 10) / 10,
+                    ]),
+                  ),
                 })
 
                 push({

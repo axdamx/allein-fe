@@ -9,6 +9,7 @@ import { getSupabaseServerClient } from '@/lib/supabase/server.server'
 import { PLAN_CONFIGS, minTierForFeature, minTierForLimit } from '@/lib/plans'
 import type { PlanTier, LimitMetric, LimitWindow } from '@/lib/plans'
 import type { PlanState } from '@/server/profile'
+import type { SupabaseClient } from '@supabase/supabase-js'
 
 /**
  * Local timezone for daily quota windows. All users are in Malaysia; if/when
@@ -75,8 +76,8 @@ export interface ConsumeResult {
 
 /**
  * Atomically checks the daily quota for `metric` and consumes one unit if
- * allowed. Race-proof: the underlying try_consume RPC takes a row lock, so
- * concurrent calls are serialised — exactly `max` succeed under any load.
+ * allowed. Race-proof: the underlying conditional upsert serialises on the
+ * unique window key — including the first consume of a new day.
  *
  * Returns the resulting quota state. The caller MUST bail out (without
  * performing the metered operation) when `allowed === false`.
@@ -95,7 +96,7 @@ export async function consumeQuota(
   opts?: {
     userId?: string
     plan?: PlanTier
-    supabase?: ReturnType<typeof getSupabaseServerClient>
+    supabase?: SupabaseClient
   },
 ): Promise<ConsumeResult> {
   let userId: string
@@ -105,7 +106,7 @@ export async function consumeQuota(
     userId = opts.userId
     plan = opts.plan
   } else {
-    const profile = await getCurrentUserProfile()
+    const profile = await getCurrentUserProfile(opts?.supabase)
     if (!profile) throw new Error('Not authenticated')
     userId = profile.id
     plan = profile.plan as PlanTier
@@ -159,8 +160,9 @@ export async function consumeQuota(
 }
 
 /** Fetch the logged-in user's id + profile row. Returns null if unauthed. */
-export async function getCurrentUserProfile() {
-  const supabase = getSupabaseServerClient()
+export async function getCurrentUserProfile(
+  supabase: SupabaseClient = getSupabaseServerClient(),
+) {
   const {
     data: { user },
   } = await supabase.auth.getUser()
@@ -181,8 +183,10 @@ export async function getCurrentUserProfile() {
 }
 
 /** Count the user's leads for plan tracking (no DB column needed). */
-async function countUserLeads(userId: string): Promise<number> {
-  const supabase = getSupabaseServerClient()
+async function countUserLeads(
+  userId: string,
+  supabase: SupabaseClient = getSupabaseServerClient(),
+): Promise<number> {
   const { count } = await supabase
     .from('leads')
     .select('*', { count: 'exact', head: true })
@@ -192,16 +196,15 @@ async function countUserLeads(userId: string): Promise<number> {
 
 /**
  * For each metric whose limit has a window (day), read today's used count
- * from usage_windows. Returns a partial override map. Single round-trip
- * per metric — kept O(metrics) since there are only a handful. Lifetime
- * metrics are absent from the result and fall back to profile counters.
+ * from usage_windows. Returns a partial override map in one database round
+ * trip. Lifetime metrics are absent and fall back to profile counters.
  */
 async function getWindowedUsage(
   userId: string,
   plan: PlanTier,
+  supabase: SupabaseClient = getSupabaseServerClient(),
 ): Promise<Partial<Record<LimitMetric, number>>> {
   const config = PLAN_CONFIGS[plan] ?? PLAN_CONFIGS.free
-  const supabase = getSupabaseServerClient()
   const today = windowKeyForWindow('day')
   if (!today) return {}
 
@@ -210,18 +213,21 @@ async function getWindowedUsage(
     (m) => config.limits[m].window === 'day',
   )
 
-  await Promise.all(
-    windowedMetrics.map(async (metric) => {
-      const { data } = await supabase.rpc('get_window_usage', {
-        p_user_id: userId,
-        p_metric: METRIC_KEY[metric],
-        p_window_key: today,
-      })
-      // RPC returns a single-row table with a `used` column.
-      const row = Array.isArray(data) ? data[0] : data
-      out[metric] = Number(row?.used ?? 0)
-    }),
+  for (const metric of windowedMetrics) out[metric] = 0
+
+  const { data } = await supabase.rpc('get_window_usage_all', {
+    p_user_id: userId,
+    p_window_key: today,
+  })
+
+  const metricByStorageKey = new Map(
+    windowedMetrics.map((metric) => [METRIC_KEY[metric], metric] as const),
   )
+
+  for (const row of data ?? []) {
+    const metric = metricByStorageKey.get(row.metric)
+    if (metric) out[metric] = Number(row.used ?? 0)
+  }
   return out
 }
 
@@ -288,12 +294,13 @@ export function buildPlanState(
 
 /** Implementation of getPlanState — runs on server only. */
 export async function getPlanStateImpl(): Promise<PlanState | null> {
-  const profile = await getCurrentUserProfile()
+  const supabase = getSupabaseServerClient()
+  const profile = await getCurrentUserProfile(supabase)
   if (!profile) return null
 
   const [leadsCount, windowed] = await Promise.all([
-    countUserLeads(profile.id),
-    getWindowedUsage(profile.id, profile.plan as PlanTier),
+    countUserLeads(profile.id, supabase),
+    getWindowedUsage(profile.id, profile.plan as PlanTier, supabase),
   ])
   const state = buildPlanState(profile, leadsCount)
 
