@@ -1,8 +1,12 @@
 import { format } from 'date-fns'
 import {
   ArrowUpRight,
+  CalendarClock,
+  Check,
+  Clock3,
   CreditCard,
   Loader2,
+  RotateCcw,
   ShieldCheck,
   TriangleAlert,
 } from 'lucide-react'
@@ -43,6 +47,10 @@ export const PlanTab = ({ currentPlan }: { currentPlan: PlanTier }) => {
     summary?.status === 'past_due' || summary?.status === 'unpaid'
   const isInactiveStripeSubscription =
     hasStripeSubscription && !hasActiveStripeSubscription
+  const hasScheduledCancellation =
+    hasActiveStripeSubscription &&
+    summary?.cancelAtPeriodEnd === true &&
+    !hasPaymentIssue
 
   const openPortal = () => portal.mutate()
   const contactBilling = () =>
@@ -61,7 +69,14 @@ export const PlanTab = ({ currentPlan }: { currentPlan: PlanTier }) => {
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
-        {summary?.provider === 'stripe' ? (
+        {summary?.provider === 'stripe' && hasScheduledCancellation ? (
+          <ScheduledCancellationCard
+            tier={summary.plan}
+            currentPeriodEnd={summary.currentPeriodEnd}
+            isOpeningPortal={portal.isPending}
+            onManage={openPortal}
+          />
+        ) : summary?.provider === 'stripe' ? (
           <div
             className={cn(
               'flex flex-col gap-3 rounded-2xl border p-4 sm:flex-row sm:items-center sm:justify-between',
@@ -86,15 +101,13 @@ export const PlanTab = ({ currentPlan }: { currentPlan: PlanTier }) => {
                     ? 'Payment needs attention'
                     : isInactiveStripeSubscription
                       ? 'Subscription inactive'
-                    : summary.cancelAtPeriodEnd
-                      ? 'Cancellation scheduled'
                       : 'Subscription active'}
                 </p>
                 <p className="text-xs text-muted-foreground">
                   {isInactiveStripeSubscription
                     ? 'Paid access is inactive. You can review invoices or update payment details in Stripe.'
                     : summary.currentPeriodEnd
-                      ? `${summary.cancelAtPeriodEnd ? 'Access ends' : 'Current billing period ends'} ${format(new Date(summary.currentPeriodEnd), 'd MMMM yyyy')}.`
+                      ? `Current billing period ends ${format(new Date(summary.currentPeriodEnd), 'd MMMM yyyy')}.`
                       : 'Stripe securely manages your billing details.'}
                 </p>
               </div>
@@ -212,5 +225,115 @@ export const PlanTab = ({ currentPlan }: { currentPlan: PlanTier }) => {
         </div>
       </CardContent>
     </Card>
+  )
+}
+
+function ScheduledCancellationCard({
+  tier,
+  currentPeriodEnd,
+  isOpeningPortal,
+  onManage,
+}: {
+  tier: PlanTier
+  currentPeriodEnd: string | null
+  isOpeningPortal: boolean
+  onManage: () => void
+}) {
+  const plan = PLAN_CONFIGS[tier]
+  const endDate = currentPeriodEnd
+    ? format(new Date(currentPeriodEnd), 'd MMMM yyyy')
+    : 'the end of your billing period'
+
+  return (
+    <section className="relative overflow-hidden rounded-3xl border border-amber-500/25 bg-gradient-to-br from-amber-500/[0.11] via-orange-500/[0.055] to-background shadow-[0_14px_40px_rgba(120,75,15,0.08)] dark:from-amber-400/[0.12] dark:via-orange-400/[0.05]">
+      <div className="pointer-events-none absolute -right-14 -top-16 size-44 rounded-full bg-amber-300/15 blur-3xl" />
+
+      <div className="relative p-5 sm:p-6">
+        <div className="flex flex-col gap-5 sm:flex-row sm:items-start sm:justify-between">
+          <div className="flex items-start gap-3.5">
+            <div className="flex size-11 shrink-0 items-center justify-center rounded-2xl border border-amber-500/20 bg-background/75 text-amber-700 shadow-sm backdrop-blur dark:text-amber-300">
+              <CalendarClock className="size-5" />
+            </div>
+            <div>
+              <div className="flex flex-wrap items-center gap-2">
+                <p className="text-base font-semibold tracking-[-0.015em]">
+                  Your {plan.label} plan is ending
+                </p>
+                <span className="rounded-full border border-amber-500/20 bg-amber-500/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.14em] text-amber-800 dark:text-amber-300">
+                  Cancellation scheduled
+                </span>
+              </div>
+              <p className="mt-1.5 max-w-xl text-sm leading-6 text-muted-foreground">
+                You&apos;ve canceled renewal, but nothing changes today. Your
+                full <span className="font-medium text-foreground">{plan.label}</span>{' '}
+                access continues until{' '}
+                <span className="font-medium text-foreground">{endDate}</span>.
+              </p>
+            </div>
+          </div>
+
+          <Button
+            size="sm"
+            variant="outline"
+            className="shrink-0 border-amber-500/25 bg-background/70 hover:bg-background"
+            disabled={isOpeningPortal}
+            onClick={onManage}
+          >
+            {isOpeningPortal ? (
+              <Loader2 className="animate-spin" />
+            ) : (
+              <RotateCcw />
+            )}
+            Review or resume
+          </Button>
+        </div>
+
+        <div className="mt-5 grid gap-2 sm:grid-cols-3">
+          <CancellationFact
+            icon={Check}
+            label="Access now"
+            value={`${plan.label} stays active`}
+          />
+          <CancellationFact
+            icon={Clock3}
+            label="Access ends"
+            value={endDate}
+          />
+          <CancellationFact
+            icon={CreditCard}
+            label="Next step"
+            value="Moves to Free automatically"
+          />
+        </div>
+
+        <div className="mt-4 flex items-start gap-2 border-t border-amber-500/15 pt-4 text-xs leading-5 text-muted-foreground">
+          <ShieldCheck className="mt-0.5 size-3.5 shrink-0 text-amber-700 dark:text-amber-300" />
+          <p>
+            Your plan will not renew after this period. Changed your mind? You
+            can resume it in Stripe any time before {endDate}.
+          </p>
+        </div>
+      </div>
+    </section>
+  )
+}
+
+function CancellationFact({
+  icon: Icon,
+  label,
+  value,
+}: {
+  icon: typeof Check
+  label: string
+  value: string
+}) {
+  return (
+    <div className="rounded-2xl border border-amber-500/15 bg-background/55 p-3.5 backdrop-blur-sm">
+      <div className="flex items-center gap-2 text-[11px] font-medium uppercase tracking-[0.12em] text-muted-foreground">
+        <Icon className="size-3.5 text-amber-700 dark:text-amber-300" />
+        {label}
+      </div>
+      <p className="mt-2 text-sm font-medium">{value}</p>
+    </div>
   )
 }
