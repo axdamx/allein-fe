@@ -18,10 +18,13 @@ import { ApiTab } from '@/components/settings/api-tab'
 import { IntegrationsTab } from '@/components/settings/integrations-tab'
 import { PlanTab } from '@/components/settings/plan-tab'
 import { ProfileTab } from '@/components/settings/profile-tab'
+import { SubscriptionSuccessModal } from '@/components/billing/subscription-success-modal'
 import { getProfile } from '@/server/settings'
 
 function SettingsPage() {
   const { user } = Route.useRouteContext()
+  const { billing } = Route.useSearch()
+  const navigate = Route.useNavigate()
   const { data: profile, isLoading } = useQuery({
     queryKey: ['profile'],
     queryFn: () => getProfile(),
@@ -43,7 +46,7 @@ function SettingsPage() {
           </CardContent>
         </Card>
       ) : (
-        <Tabs defaultValue="profile" className="max-w-3xl">
+        <Tabs defaultValue={billing ? 'plan' : 'profile'} className="max-w-3xl">
           <TabsList className="max-w-full overflow-x-auto">
             <TabsTrigger value="profile">Profile</TabsTrigger>
             <TabsTrigger value="plan">Plan &amp; Billing</TabsTrigger>
@@ -65,10 +68,25 @@ function SettingsPage() {
           </TabsContent>
         </Tabs>
       )}
+
+      <SubscriptionSuccessModal
+        checkoutReturn={billing}
+        onDismiss={() => {
+          void navigate({ to: '/settings', search: {}, replace: true })
+        }}
+      />
     </DashboardShell>
   )
 }
 
 export const Route = createFileRoute('/_authed/settings')({
+  validateSearch: (
+    search: Record<string, unknown>,
+  ): { billing?: 'success' | 'canceled' } => ({
+    billing:
+      search.billing === 'success' || search.billing === 'canceled'
+        ? search.billing
+        : undefined,
+  }),
   component: SettingsPage,
 })
