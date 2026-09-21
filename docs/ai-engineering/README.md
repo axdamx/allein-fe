@@ -15,12 +15,12 @@ implementation as the worked example.
 
 ## Reading order
 
-1. [Agents & the agent loop](./01-agents-and-the-agent-loop.md) — the foundational concept.
-2. [Tool calling](./02-tool-calling.md) — how agents take action.
-3. [Memory & context](./05-memory-and-context.md) — how agents remember (read before RAG, because RAG makes more sense once memory is clear).
-4. [RAG & embeddings](./03-rag-and-embeddings.md) — retrieval over your own documents.
-5. [Structured LLM output](./04-structured-llm-output.md) — getting JSON from a model.
-6. [Cost & metering](./06-cost-and-metering.md) — the economics that make or break an AI product.
+1. [Agents & the agent loop](./01-agents-and-the-agent-loop.md) — the foundational concept: the LLM↔tool loop, system prompts, `maxSteps`. *Start here.*
+2. [Tool calling](./02-tool-calling.md) — how the model invokes typed functions; Zod schemas, `resourceId` ownership, in-tool gating, SSRF.
+3. [Memory & context](./05-memory-and-context.md) — the three memory layers (short-term / working / recall); thread & resource scoping; why memory ≠ RAG. *Read before RAG.*
+4. [RAG & embeddings](./03-rag-and-embeddings.md) — embeddings, pgvector, chunking, the `0.12` threshold, and the OpenAI-embedder trap.
+5. [Structured LLM output](./04-structured-llm-output.md) — why `generateObject` is avoided, the `extractJson` 4-stage pipeline, and the `planner.server.ts` counter-example.
+6. [Cost & metering](./06-cost-and-metering.md) — per-token and per-media economics; the three gates; the race-proof `try_consume` RPC; the unmetered-media gap.
 
 ## How to use each doc
 

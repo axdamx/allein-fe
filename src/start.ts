@@ -64,6 +64,17 @@ const SECURITY_HEADERS: Record<string, string> = {
 const SAFE_METHODS = new Set(['GET', 'HEAD', 'OPTIONS'])
 
 /**
+ * Server-to-server webhook providers don't send browser Origin/Referer
+ * headers. Each route below performs its own provider signature/secret check,
+ * so the browser-focused CSRF middleware must let the request reach it.
+ */
+const SIGNED_WEBHOOK_PATHS = new Set([
+  '/api/billing/stripe-webhook',
+  '/api/messaging/telegram',
+  '/api/messaging/whatsapp',
+])
+
+/**
  * Request middleware that stamps security headers onto every response.
  * Runs AFTER the framework produces the downstream response.
  */
@@ -86,7 +97,10 @@ export const startInstance = createStart(() => ({
     // always send Sec-Fetch-Site/Origin/Referer on top-level navigations,
     // and GETs are not CSRF-relevant (they shouldn't mutate state anyway).
     createCsrfMiddleware({
-      filter: (ctx) => !SAFE_METHODS.has(ctx.request.method.toUpperCase()),
+      filter: (ctx) => {
+        if (SAFE_METHODS.has(ctx.request.method.toUpperCase())) return false
+        return !SIGNED_WEBHOOK_PATHS.has(new URL(ctx.request.url).pathname)
+      },
       secFetchSite: ['same-origin', 'same-site', 'none'],
       referer: true,
       // For validated (unsafe) requests that carry NONE of the three signals,

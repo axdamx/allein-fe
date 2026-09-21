@@ -1,4 +1,4 @@
-/** Server-only implementation for settings (profile + plan updates). */
+/** Server-only implementation for settings profile updates. */
 import { getSupabaseServerClient } from '@/lib/supabase/server.server'
 import { sanitizeSupabaseMessage } from '@/server/_errors'
 import type { PlanTier } from '@/lib/plans'
@@ -59,25 +59,6 @@ export async function updateProfileImpl(input: {
   const { error } = await supabase
     .from('profiles')
     .update(updates)
-    .eq('id', user.id)
-
-  if (error) return { error: sanitizeSupabaseMessage(error.message, 'Operation failed') }
-  return null
-}
-
-/** Change the user's plan (demo only — real billing ships in Phase 7). */
-export async function updatePlanImpl(
-  plan: PlanTier,
-): Promise<{ error: string } | null> {
-  const supabase = getSupabaseServerClient()
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
-  if (!user) return { error: 'Not authenticated' }
-
-  const { error } = await supabase
-    .from('profiles')
-    .update({ plan })
     .eq('id', user.id)
 
   if (error) return { error: sanitizeSupabaseMessage(error.message, 'Operation failed') }
