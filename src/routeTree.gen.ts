@@ -14,6 +14,8 @@ import { Route as LogoutRouteImport } from './routes/logout'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as AuthedRouteImport } from './routes/_authed'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as AuthGoogleRouteImport } from './routes/auth.google'
+import { Route as AuthCallbackRouteImport } from './routes/auth.callback'
 import { Route as AuthedSupportRouteImport } from './routes/_authed.support'
 import { Route as AuthedStudioRouteImport } from './routes/_authed.studio'
 import { Route as AuthedSettingsRouteImport } from './routes/_authed.settings'
@@ -64,6 +66,16 @@ const AuthedRoute = AuthedRouteImport.update({
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AuthGoogleRoute = AuthGoogleRouteImport.update({
+  id: '/auth/google',
+  path: '/auth/google',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AuthCallbackRoute = AuthCallbackRouteImport.update({
+  id: '/auth/callback',
+  path: '/auth/callback',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AuthedSupportRoute = AuthedSupportRouteImport.update({
@@ -220,6 +232,8 @@ export interface FileRoutesByFullPath {
   '/settings': typeof AuthedSettingsRoute
   '/studio': typeof AuthedStudioRouteWithChildren
   '/support': typeof AuthedSupportRoute
+  '/auth/callback': typeof AuthCallbackRoute
+  '/auth/google': typeof AuthGoogleRoute
   '/crm/clients': typeof AuthedCrmClientsRouteWithChildren
   '/crm/leads': typeof AuthedCrmLeadsRouteWithChildren
   '/crm/pipeline': typeof AuthedCrmPipelineRoute
@@ -252,6 +266,8 @@ export interface FileRoutesByTo {
   '/planner': typeof AuthedPlannerRoute
   '/settings': typeof AuthedSettingsRoute
   '/support': typeof AuthedSupportRoute
+  '/auth/callback': typeof AuthCallbackRoute
+  '/auth/google': typeof AuthGoogleRoute
   '/crm/pipeline': typeof AuthedCrmPipelineRoute
   '/studio/chat': typeof AuthedStudioChatRoute
   '/studio/library': typeof AuthedStudioLibraryRoute
@@ -285,6 +301,8 @@ export interface FileRoutesById {
   '/_authed/settings': typeof AuthedSettingsRoute
   '/_authed/studio': typeof AuthedStudioRouteWithChildren
   '/_authed/support': typeof AuthedSupportRoute
+  '/auth/callback': typeof AuthCallbackRoute
+  '/auth/google': typeof AuthGoogleRoute
   '/_authed/crm/clients': typeof AuthedCrmClientsRouteWithChildren
   '/_authed/crm/leads': typeof AuthedCrmLeadsRouteWithChildren
   '/_authed/crm/pipeline': typeof AuthedCrmPipelineRoute
@@ -320,6 +338,8 @@ export interface FileRouteTypes {
     | '/settings'
     | '/studio'
     | '/support'
+    | '/auth/callback'
+    | '/auth/google'
     | '/crm/clients'
     | '/crm/leads'
     | '/crm/pipeline'
@@ -352,6 +372,8 @@ export interface FileRouteTypes {
     | '/planner'
     | '/settings'
     | '/support'
+    | '/auth/callback'
+    | '/auth/google'
     | '/crm/pipeline'
     | '/studio/chat'
     | '/studio/library'
@@ -384,6 +406,8 @@ export interface FileRouteTypes {
     | '/_authed/settings'
     | '/_authed/studio'
     | '/_authed/support'
+    | '/auth/callback'
+    | '/auth/google'
     | '/_authed/crm/clients'
     | '/_authed/crm/leads'
     | '/_authed/crm/pipeline'
@@ -407,6 +431,8 @@ export interface RootRouteChildren {
   LoginRoute: typeof LoginRoute
   LogoutRoute: typeof LogoutRoute
   PricingRoute: typeof PricingRoute
+  AuthCallbackRoute: typeof AuthCallbackRoute
+  AuthGoogleRoute: typeof AuthGoogleRoute
   ApiBillingStripeWebhookRoute: typeof ApiBillingStripeWebhookRoute
   ApiChatStreamRoute: typeof ApiChatStreamRoute
   ApiMessagingTelegramRoute: typeof ApiMessagingTelegramRoute
@@ -448,6 +474,20 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/auth/google': {
+      id: '/auth/google'
+      path: '/auth/google'
+      fullPath: '/auth/google'
+      preLoaderRoute: typeof AuthGoogleRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/auth/callback': {
+      id: '/auth/callback'
+      path: '/auth/callback'
+      fullPath: '/auth/callback'
+      preLoaderRoute: typeof AuthCallbackRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/_authed/support': {
@@ -742,6 +782,8 @@ const rootRouteChildren: RootRouteChildren = {
   LoginRoute: LoginRoute,
   LogoutRoute: LogoutRoute,
   PricingRoute: PricingRoute,
+  AuthCallbackRoute: AuthCallbackRoute,
+  AuthGoogleRoute: AuthGoogleRoute,
   ApiBillingStripeWebhookRoute: ApiBillingStripeWebhookRoute,
   ApiChatStreamRoute: ApiChatStreamRoute,
   ApiMessagingTelegramRoute: ApiMessagingTelegramRoute,

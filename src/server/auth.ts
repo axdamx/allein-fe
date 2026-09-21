@@ -60,10 +60,11 @@ export const signupFn = createServerFn({ method: 'POST' })
         error: false,
         message:
           'Account created — check your email to confirm, then sign in.',
+        requiresEmailConfirmation: true,
       }
     }
 
-    return { error: false, message: 'Account created' }
+    return { error: false, message: 'Account created', requiresEmailConfirmation: false }
   })
 
 export const logoutFn = createServerFn({ method: 'POST' }).handler(async () => {
