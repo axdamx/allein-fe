@@ -1,0 +1,313 @@
+import { useState } from 'react'
+import {
+  addMonths,
+  eachDayOfInterval,
+  endOfMonth,
+  endOfWeek,
+  format,
+  isSameDay,
+  isSameMonth,
+  startOfMonth,
+  startOfWeek,
+} from 'date-fns'
+import { CalendarDays, ChevronLeft, ChevronRight, Copy, List, Pencil, Plus } from 'lucide-react'
+import { Link } from '@tanstack/react-router'
+import { toast } from 'sonner'
+
+import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
+import { Skeleton } from '@/components/ui/skeleton'
+import { Textarea } from '@/components/ui/textarea'
+import { UsageIndicator } from '@/components/billing/usage-indicator'
+import { useAssets } from '@/hooks/use-media'
+import { ImageUploadButton } from '@/components/studio/image-upload-button'
+import { useDuplicatePost, usePosts, useUpdatePost } from '@/hooks/use-marketing'
+import type { PostPlatform, PostRow } from '@/server/marketing'
+import { cn } from '@/lib/utils'
+
+const PLATFORMS: { value: PostPlatform; label: string }[] = [
+  { value: 'instagram', label: 'Instagram' },
+  { value: 'facebook', label: 'Facebook' },
+  { value: 'linkedin', label: 'LinkedIn' },
+  { value: 'x', label: 'X' },
+  { value: 'tiktok', label: 'TikTok' },
+  { value: 'whatsapp', label: 'WhatsApp' },
+  { value: 'telegram', label: 'Telegram' },
+  { value: 'email', label: 'Email' },
+]
+
+type StatusFilter = 'all' | 'draft' | 'ready' | 'planned' | 'published' | 'failed'
+type View = 'list' | 'calendar'
+
+function visibleStatus(post: PostRow): StatusFilter {
+  if (post.status === 'scheduled' || (post.status === 'ready' && post.scheduled_for)) return 'planned'
+  if (post.status === 'draft' || post.status === 'published' || post.status === 'failed') return post.status
+  return 'ready'
+}
+
+function PostSummary({
+  post,
+  onEdit,
+  onDuplicate,
+  duplicating,
+}: {
+  post: PostRow
+  onEdit: () => void
+  onDuplicate: () => void
+  duplicating: boolean
+}) {
+  const status = visibleStatus(post)
+  const copy = async () => {
+    try {
+      await navigator.clipboard.writeText(
+        [post.caption, post.hashtags.map((tag) => `#${tag}`).join(' ')].filter(Boolean).join('\n\n'),
+      )
+      toast.success('Post copied')
+    } catch {
+      toast.error('Could not copy this post')
+    }
+  }
+
+  return (
+    <div className="flex gap-4 rounded-2xl border border-black/[0.06] bg-white/55 p-4 dark:border-white/10 dark:bg-white/[0.025]">
+      {post.media_type === 'image' && post.media_url && (
+        <img src={post.media_url} alt={post.title ?? 'Post image'} className="size-20 shrink-0 rounded-xl object-cover" />
+      )}
+      <div className="min-w-0 flex-1">
+        <div className="flex flex-wrap items-center gap-2">
+          <h3 className="truncate text-sm font-semibold">{post.title || 'Untitled'}</h3>
+          <Badge variant="secondary">{PLATFORMS.find((item) => item.value === post.platform)?.label ?? post.platform}</Badge>
+          <Badge variant={status === 'failed' ? 'destructive' : 'outline'} className="capitalize">{status}</Badge>
+        </div>
+        <p className="mt-1 line-clamp-2 whitespace-pre-wrap text-sm text-muted-foreground">{post.caption}</p>
+        {post.scheduled_for && (
+          <p className="mt-2 text-xs text-muted-foreground">
+            Planned for {format(new Date(post.scheduled_for), 'MMM d, yyyy · h:mm a')} · publish manually
+          </p>
+        )}
+        <div className="mt-3 flex flex-wrap gap-2">
+          {(status === 'draft' || status === 'ready' || status === 'planned') && (
+            <Button size="sm" variant="outline" onClick={onEdit}><Pencil className="size-3.5" /> Edit</Button>
+          )}
+          <Button size="sm" variant="outline" onClick={onDuplicate} disabled={duplicating}>
+            <Copy className="size-3.5" /> Duplicate
+          </Button>
+          <Button size="sm" variant="ghost" onClick={copy}>Copy text</Button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function PostEditor({ post, onClose }: { post: PostRow; onClose: () => void }) {
+  const update = useUpdatePost()
+  const { data: assets } = useAssets('image')
+  const images = (assets ?? []).filter((asset) => asset.status === 'ready' && asset.storage_path && asset.url)
+  const [title, setTitle] = useState(post.title ?? '')
+  const [caption, setCaption] = useState(post.caption ?? '')
+  const [hashtags, setHashtags] = useState(post.hashtags.join(', '))
+  const [platform, setPlatform] = useState<PostPlatform>(post.platform)
+  const [state, setState] = useState<'draft' | 'ready'>(post.status === 'draft' ? 'draft' : 'ready')
+  const [planned, setPlanned] = useState(Boolean(post.scheduled_for))
+  const initialPlannedFor = post.scheduled_for ? format(new Date(post.scheduled_for), "yyyy-MM-dd'T'HH:mm") : ''
+  const [plannedFor, setPlannedFor] = useState(initialPlannedFor)
+  const [mediaAssetId, setMediaAssetId] = useState<string | null | undefined>(undefined)
+  const [uploadedImageUrl, setUploadedImageUrl] = useState<string | null>(null)
+  const selectedImage = mediaAssetId === undefined ? post.media_url
+    : mediaAssetId === null ? null : images.find((asset) => asset.id === mediaAssetId)?.url ?? uploadedImageUrl
+
+  const save = async (event: React.FormEvent) => {
+    event.preventDefault()
+    if (!title.trim() || !caption.trim() || (planned && !plannedFor)) return
+    try {
+      const result = await update.mutateAsync({
+        id: post.id,
+        title,
+        caption,
+        hashtags: hashtags.split(/[\s,]+/).map((tag) => tag.replace(/^#/, '').trim()).filter(Boolean).slice(0, 15),
+        platform,
+        status: state,
+        scheduledFor: planned
+          ? plannedFor === initialPlannedFor ? undefined : new Date(plannedFor).toISOString()
+          : post.scheduled_for ? null : undefined,
+        mediaAssetId,
+      })
+      if (!result?.error) {
+        toast.success('Post updated')
+        onClose()
+      }
+    } catch {
+      // The mutation displays the error toast.
+    }
+  }
+
+  return (
+    <Dialog open onOpenChange={(open) => { if (!open) onClose() }}>
+      <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-2xl">
+        <DialogHeader>
+          <DialogTitle>Edit post</DialogTitle>
+          <DialogDescription>Update the draft and planned date. Publishing remains manual.</DialogDescription>
+        </DialogHeader>
+        <form onSubmit={save} className="space-y-4">
+          <div className="space-y-1.5"><Label htmlFor="edit-title">Title</Label><Input id="edit-title" value={title} onChange={(e) => setTitle(e.target.value)} required maxLength={100} /></div>
+          <div className="space-y-1.5"><Label htmlFor="edit-caption">Caption</Label><Textarea id="edit-caption" value={caption} onChange={(e) => setCaption(e.target.value)} rows={6} required /></div>
+          <div className="space-y-1.5"><Label htmlFor="edit-tags">Hashtags</Label><Input id="edit-tags" value={hashtags} onChange={(e) => setHashtags(e.target.value)} placeholder="property, investment, malaysia" /></div>
+          <div className="grid gap-3 sm:grid-cols-2">
+            <div className="space-y-1.5"><Label>Channel</Label>
+              <Select value={platform} onValueChange={(value) => setPlatform(value as PostPlatform)}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>{PLATFORMS.map((item) => <SelectItem key={item.value} value={item.value}>{item.label}</SelectItem>)}</SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1.5"><Label>State</Label>
+              <Select value={state} onValueChange={(value) => setState(value as 'draft' | 'ready')}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent><SelectItem value="draft">Draft</SelectItem><SelectItem value="ready">Ready</SelectItem></SelectContent>
+              </Select>
+            </div>
+          </div>
+          <div className="space-y-2 rounded-xl border p-3">
+            <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={planned} onChange={(e) => setPlanned(e.target.checked)} /> Add to content plan</label>
+            {planned && <Input aria-label="Planned date and time" type="datetime-local" value={plannedFor} onChange={(e) => setPlannedFor(e.target.value)} required />}
+            <p className="text-xs text-muted-foreground">Planned dates do not publish automatically.</p>
+          </div>
+          <div className="space-y-2">
+            <Label>Image</Label>
+            <ImageUploadButton onUploaded={(asset) => { setMediaAssetId(asset.id); setUploadedImageUrl(asset.url) }} />
+            {selectedImage && <div className="flex items-center gap-3"><img src={selectedImage} alt="Selected post image" className="size-20 rounded-lg object-cover" /><Button type="button" size="sm" variant="outline" onClick={() => setMediaAssetId(null)}>Remove image</Button></div>}
+            {images.length > 0 && (
+              <div className="grid max-h-32 grid-cols-5 gap-2 overflow-y-auto" aria-label="Studio library images">
+                {images.map((image) => (
+                  <button key={image.id} type="button" onClick={() => setMediaAssetId(image.id)} aria-label={`Use image: ${image.prompt}`} className={cn('overflow-hidden rounded-lg border-2', mediaAssetId === image.id ? 'border-primary' : 'border-transparent')}>
+                    <img src={image.url!} alt={image.prompt} className="aspect-square w-full object-cover" />
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={onClose}>Cancel</Button>
+            <Button type="submit" disabled={update.isPending || !title.trim() || !caption.trim() || (planned && !plannedFor)}>{update.isPending ? 'Saving…' : 'Save changes'}</Button>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
+  )
+}
+
+export function ContentPlanner() {
+  const { data: posts, isLoading } = usePosts()
+  const duplicate = useDuplicatePost()
+  const [platform, setPlatform] = useState<PostPlatform | 'all'>('all')
+  const [status, setStatus] = useState<StatusFilter>('all')
+  const [from, setFrom] = useState('')
+  const [to, setTo] = useState('')
+  const [query, setQuery] = useState('')
+  const [view, setView] = useState<View>('list')
+  const [month, setMonth] = useState(startOfMonth(new Date()))
+  const [day, setDay] = useState<Date | null>(null)
+  const [editing, setEditing] = useState<PostRow | null>(null)
+
+  const filtered = (posts ?? []).filter((post) => {
+    if (platform !== 'all' && post.platform !== platform) return false
+    if (status !== 'all' && visibleStatus(post) !== status) return false
+    if (query.trim() && !`${post.title ?? ''} ${post.caption ?? ''}`.toLowerCase().includes(query.trim().toLowerCase())) return false
+    const postDay = format(new Date(post.scheduled_for ?? post.created_at), 'yyyy-MM-dd')
+    return (!from || postDay >= from) && (!to || postDay <= to)
+  })
+  const plannedPosts = filtered.filter((post) => post.scheduled_for && ['draft', 'ready', 'scheduled'].includes(post.status))
+  const days = eachDayOfInterval({
+    start: startOfWeek(startOfMonth(month), { weekStartsOn: 1 }),
+    end: endOfWeek(endOfMonth(month), { weekStartsOn: 1 }),
+  })
+  const dayPosts = day ? plannedPosts.filter((post) => isSameDay(new Date(post.scheduled_for!), day)) : []
+
+  const renderPost = (post: PostRow) => (
+    <PostSummary
+      key={post.id}
+      post={post}
+      onEdit={() => setEditing(post)}
+      onDuplicate={() => duplicate.mutate(post.id)}
+      duplicating={duplicate.isPending && duplicate.variables === post.id}
+    />
+  )
+
+  return (
+    <div className="space-y-5">
+      <UsageIndicator metric="posts" label="posts" windowSuffix="/day" />
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div><h2 className="text-xl font-semibold">Content planner</h2><p className="text-sm text-muted-foreground">Edit drafts, plan dates, and copy content when you are ready to post.</p></div>
+        <Button asChild><Link to="/studio"><Plus className="size-4" /> Create post</Link></Button>
+      </div>
+      <Card>
+        <CardContent className="grid gap-3 pt-5 sm:grid-cols-2 lg:grid-cols-[1fr_150px_150px_145px_145px]">
+          <Input aria-label="Search posts" placeholder="Search content…" value={query} onChange={(e) => setQuery(e.target.value)} />
+          <Select value={platform} onValueChange={(value) => setPlatform(value as PostPlatform | 'all')}>
+            <SelectTrigger aria-label="Filter channel"><SelectValue placeholder="All channels" /></SelectTrigger>
+            <SelectContent><SelectItem value="all">All channels</SelectItem>{PLATFORMS.map((item) => <SelectItem key={item.value} value={item.value}>{item.label}</SelectItem>)}</SelectContent>
+          </Select>
+          <Select value={status} onValueChange={(value) => setStatus(value as StatusFilter)}>
+            <SelectTrigger aria-label="Filter status"><SelectValue placeholder="All states" /></SelectTrigger>
+            <SelectContent>{(['all', 'draft', 'ready', 'planned', 'published', 'failed'] as const).map((item) => <SelectItem key={item} value={item} className="capitalize">{item === 'all' ? 'All states' : item}</SelectItem>)}</SelectContent>
+          </Select>
+          <Input type="date" aria-label="From date" value={from} onChange={(e) => setFrom(e.target.value)} />
+          <Input type="date" aria-label="To date" value={to} onChange={(e) => setTo(e.target.value)} />
+        </CardContent>
+      </Card>
+      <div className="flex items-center justify-between gap-3">
+        <p className="text-sm text-muted-foreground">{filtered.length} post{filtered.length === 1 ? '' : 's'} found</p>
+        <div className="flex gap-1 rounded-xl border p-1">
+          <Button size="sm" variant={view === 'list' ? 'secondary' : 'ghost'} onClick={() => setView('list')}><List className="size-4" /> List</Button>
+          <Button size="sm" variant={view === 'calendar' ? 'secondary' : 'ghost'} onClick={() => setView('calendar')}><CalendarDays className="size-4" /> Calendar</Button>
+        </div>
+      </div>
+      {isLoading ? <div className="space-y-3">{Array.from({ length: 3 }, (_, index) => <Skeleton key={index} className="h-28 w-full" />)}</div>
+        : view === 'list' ? (
+          filtered.length > 0 ? <div className="space-y-3">{filtered.map(renderPost)}</div>
+            : <p className="rounded-2xl border p-8 text-center text-sm text-muted-foreground">No posts match these filters.</p>
+        ) : (
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between">
+              <div><CardTitle>{format(month, 'MMMM yyyy')}</CardTitle><p className="mt-1 text-xs text-muted-foreground">Planned posts only · publishing is manual</p></div>
+              <div className="flex gap-1"><Button size="icon" variant="outline" aria-label="Previous month" onClick={() => { setMonth(addMonths(month, -1)); setDay(null) }}><ChevronLeft className="size-4" /></Button><Button size="icon" variant="outline" aria-label="Next month" onClick={() => { setMonth(addMonths(month, 1)); setDay(null) }}><ChevronRight className="size-4" /></Button></div>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="grid grid-cols-7 text-center text-xs font-medium text-muted-foreground">{['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map((name) => <span key={name} className="py-2">{name}</span>)}</div>
+              <div className="grid grid-cols-7 gap-1">
+                {days.map((date) => {
+                  const count = plannedPosts.filter((post) => isSameDay(new Date(post.scheduled_for!), date)).length
+                  return <button key={date.toISOString()} type="button" onClick={() => setDay(date)} className={cn('min-h-16 rounded-xl border p-2 text-left text-sm transition-colors hover:border-primary sm:min-h-24', !isSameMonth(date, month) && 'opacity-40', day && isSameDay(date, day) && 'border-primary bg-primary/5')}>
+                    <span className="font-medium">{format(date, 'd')}</span>
+                    {count > 0 && <span className="mt-1 block rounded-md bg-[#F1663C]/10 px-1 py-0.5 text-[10px] text-[#C95735]">{count} planned</span>}
+                  </button>
+                })}
+              </div>
+              <div className="border-t pt-4">
+                <h3 className="mb-3 text-sm font-semibold">{day ? format(day, 'EEEE, MMMM d') : 'Select a day to see planned posts'}</h3>
+                {day && (dayPosts.length > 0 ? <div className="space-y-3">{dayPosts.map(renderPost)}</div> : <p className="text-sm text-muted-foreground">Nothing planned for this day.</p>)}
+              </div>
+            </CardContent>
+          </Card>
+        )}
+      {editing && <PostEditor key={editing.id} post={editing} onClose={() => setEditing(null)} />}
+    </div>
+  )
+}

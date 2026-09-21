@@ -20,6 +20,8 @@ import { safeError, sanitizeSupabaseMessage } from '@/server/_errors'
 import { consumeQuota } from '@/server/profile.server'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { assertSafeUrl } from '@/lib/url-guard'
+import { validateUpload, uploadRejectionMessage, MAX_UPLOAD_BYTES } from '@/lib/media/upload-validate'
+import { rateLimit } from '@/server/_rate-limit'
 
 // ---------------------------------------------------------------------------
 // Types
@@ -107,6 +109,53 @@ export async function mirrorToStorage(
 // ---------------------------------------------------------------------------
 // Image generation
 // ---------------------------------------------------------------------------
+
+export async function uploadStudioImageImpl(input: {
+  fileName: string
+  mimeType: string
+  base64: string
+}): Promise<StudioAssetRow | { error: string }> {
+  try {
+    const userId = await getCurrentUserId()
+    if (!rateLimit(`studio-image-upload:${userId}`, { windowMs: 60_000, max: 10 }).allowed) {
+      return { error: 'Too many uploads. Please wait a minute and try again.' }
+    }
+    if (input.base64.length > Math.ceil(MAX_UPLOAD_BYTES * 4 / 3) + 16) {
+      return { error: 'Image is too large. Maximum size is 10 MB.' }
+    }
+    const validated = validateUpload(Buffer.from(input.base64, 'base64'), input.fileName, input.mimeType)
+    if ('reason' in validated) return { error: uploadRejectionMessage(validated) }
+    if (!validated.mime.startsWith('image/')) return { error: 'Choose a PNG, JPEG, WebP, or GIF image.' }
+
+    const supabase = getSupabaseServerClient()
+    const storagePath = `${userId}/${crypto.randomUUID()}.${validated.ext}`
+    const { error: uploadError } = await supabase.storage.from('media').upload(storagePath, validated.buffer, {
+      contentType: validated.mime,
+      cacheControl: '3600',
+      upsert: false,
+    })
+    if (uploadError) return { error: sanitizeSupabaseMessage(uploadError.message, 'Could not upload image.') }
+
+    const { data: publicData } = supabase.storage.from('media').getPublicUrl(storagePath)
+    const { data: row, error: rowError } = await supabase.from('studio_assets').insert({
+      owner_id: userId,
+      kind: 'image',
+      prompt: input.fileName.slice(0, 120),
+      provider: 'upload',
+      status: 'ready',
+      storage_path: storagePath,
+      url: publicData.publicUrl,
+      meta: { original_name: input.fileName.slice(0, 120) },
+    }).select('*').single()
+    if (rowError) {
+      await supabase.storage.from('media').remove([storagePath])
+      return { error: sanitizeSupabaseMessage(rowError.message, 'Could not save image to the library.') }
+    }
+    return row as unknown as StudioAssetRow
+  } catch (err) {
+    return { error: safeError(err, 'Image upload failed.') }
+  }
+}
 
 export interface GenerateImageInput {
   prompt: string
@@ -399,12 +448,22 @@ export async function deleteAssetImpl(
   // Scope the lookup by owner_id so foreign assets are invisible.
   const { data: row } = await supabase
     .from('studio_assets')
-    .select('storage_path')
+    .select('storage_path, url')
     .eq('id', assetId)
     .eq('owner_id', userId)
     .maybeSingle()
 
   if (!row) return { error: 'Asset not found' }
+
+  if (row.url) {
+    const { count, error: referencesError } = await supabase
+      .from('posts')
+      .select('id', { count: 'exact', head: true })
+      .eq('owner_id', userId)
+      .eq('media_url', row.url)
+    if (referencesError) return { error: 'Could not check whether this image is used by a post.' }
+    if (count && count > 0) return { error: 'This image is attached to a post. Remove it from the post before deleting.' }
+  }
 
   if (row.storage_path) {
     await supabase.storage.from('media').remove([row.storage_path])

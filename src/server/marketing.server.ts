@@ -213,6 +213,7 @@ export interface CreatePostInput {
   scheduledFor?: string
   prompt?: string
   mediaAssetId?: string
+  status?: 'draft' | 'ready'
 }
 
 export async function createPostImpl(
@@ -271,7 +272,7 @@ export async function createPostImpl(
       caption: input.caption,
       hashtags: input.hashtags,
       platform: input.platform,
-      status: 'ready',
+      status: input.status === 'draft' ? 'draft' : 'ready',
       scheduled_for: input.scheduledFor ?? null,
       prompt: input.prompt ?? null,
       media_url: mediaUrl,
@@ -297,15 +298,40 @@ export async function updatePostImpl(input: {
   title?: string
   caption?: string
   hashtags?: string[]
+  platform?: PostPlatform
+  mediaAssetId?: string | null
   scheduledFor?: string | null
   status?: PostStatus
 }): Promise<{ error: string } | null> {
   const supabase = getSupabaseServerClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { error: 'Not authenticated' }
 
   const updates: Record<string, string | string[] | null> = {}
-  if (input.title !== undefined) updates.title = input.title
-  if (input.caption !== undefined) updates.caption = input.caption
+  if (input.title !== undefined) updates.title = input.title.trim()
+  if (input.caption !== undefined) updates.caption = input.caption.trim()
   if (input.hashtags !== undefined) updates.hashtags = input.hashtags
+  if (input.platform !== undefined) updates.platform = input.platform
+  if (input.mediaAssetId !== undefined) {
+    if (input.mediaAssetId === null) {
+      updates.media_url = null
+      updates.media_type = null
+    } else {
+      const { data: asset, error: assetError } = await supabase
+        .from('studio_assets')
+        .select('url, storage_path')
+        .eq('id', input.mediaAssetId)
+        .eq('owner_id', user.id)
+        .eq('kind', 'image')
+        .eq('status', 'ready')
+        .maybeSingle()
+      if (assetError || !asset?.url || !asset.storage_path) {
+        return { error: 'Choose an image saved permanently in your Studio library.' }
+      }
+      updates.media_url = asset.url
+      updates.media_type = 'image'
+    }
+  }
   if (input.scheduledFor !== undefined)
     updates.scheduled_for = input.scheduledFor
   if (input.scheduledFor && (!Number.isFinite(Date.parse(input.scheduledFor)) || Date.parse(input.scheduledFor) <= Date.now())) {
@@ -317,15 +343,66 @@ export async function updatePostImpl(input: {
       return { error: 'Publishing is not available yet.' }
     }
     updates.status = input.status
+  } else if (input.scheduledFor !== undefined) {
+    // Old rows stored an unsupported "scheduled" state; editing their plan
+    // converts them back to a ready draft without asserting delivery.
+    updates.status = 'ready'
   }
 
-  const { error } = await supabase
+  if (Object.keys(updates).length === 0) return null
+
+  const { data, error } = await supabase
     .from('posts')
     .update(updates)
     .eq('id', input.id)
+    .eq('owner_id', user.id)
+    .in('status', ['draft', 'ready', 'scheduled'])
+    .select('id')
 
   if (error) return { error: sanitizeSupabaseMessage(error.message, 'Operation failed') }
+  if (!data?.length) return { error: 'Post not found or cannot be edited.' }
   return null
+}
+
+/** Make a new editable draft; a duplicate consumes the same daily post quota. */
+export async function duplicatePostImpl(postId: string) {
+  const supabase = getSupabaseServerClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { error: 'Not authenticated' }
+
+  const { data: source, error } = await supabase
+    .from('posts')
+    .select('title, caption, hashtags, platform, prompt, media_url')
+    .eq('id', postId)
+    .eq('owner_id', user.id)
+    .maybeSingle()
+  if (error || !source) return { error: 'Post not found.' }
+
+  let mediaAssetId: string | undefined
+  if (source.media_url) {
+    const { data: asset } = await supabase
+      .from('studio_assets')
+      .select('id, storage_path')
+      .eq('owner_id', user.id)
+      .eq('kind', 'image')
+      .eq('status', 'ready')
+      .eq('url', source.media_url)
+      .maybeSingle()
+    if (!asset?.storage_path) {
+      return { error: 'The original image is no longer saved permanently. Replace it before duplicating.' }
+    }
+    mediaAssetId = asset.id
+  }
+
+  return createPostImpl({
+    title: `${source.title || 'Untitled'} (copy)`,
+    caption: source.caption ?? '',
+    hashtags: source.hashtags ?? [],
+    platform: source.platform as PostPlatform,
+    prompt: source.prompt ?? undefined,
+    mediaAssetId,
+    status: 'draft',
+  })
 }
 
 export async function deletePostImpl(

@@ -10,6 +10,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import {
   generateImage,
+  uploadStudioImage,
   submitVideo,
   pollVideo,
   listAssets,
@@ -74,6 +75,34 @@ export const useGenerateImage = () => {
     onSettled: () => {
       qc.invalidateQueries({ queryKey: ['plan-state'] })
     },
+  })
+}
+
+export const useUploadStudioImage = () => {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async (file: File) => {
+      if (file.size > 10 * 1024 * 1024) return { error: 'Image is too large. Maximum size is 10 MB.' }
+      const base64 = await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader()
+        reader.onerror = () => reject(new Error('Could not read the image.'))
+        reader.onload = () => {
+          const value = String(reader.result ?? '')
+          resolve(value.slice(value.indexOf(',') + 1))
+        }
+        reader.readAsDataURL(file)
+      })
+      return uploadStudioImage({ data: { fileName: file.name, mimeType: file.type, base64 } })
+    },
+    onSuccess: (result) => {
+      if ('error' in result) {
+        toast.error(result.error)
+        return
+      }
+      toast.success('Image saved to Studio library')
+      qc.invalidateQueries({ queryKey: ['media', 'assets'] })
+    },
+    onError: (error: unknown) => toast.error(error instanceof Error ? error.message : 'Image upload failed'),
   })
 }
 

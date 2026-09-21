@@ -34,6 +34,7 @@ import { Route as ApiMessagingTelegramRouteImport } from './routes/api/messaging
 import { Route as ApiChatStreamRouteImport } from './routes/api.chat.stream'
 import { Route as ApiBillingStripeWebhookRouteImport } from './routes/api.billing.stripe-webhook'
 import { Route as AuthedStudioStoryboardRouteImport } from './routes/_authed.studio.storyboard'
+import { Route as AuthedStudioPlannerRouteImport } from './routes/_authed.studio.planner'
 import { Route as AuthedStudioLibraryRouteImport } from './routes/_authed.studio.library'
 import { Route as AuthedStudioChatRouteImport } from './routes/_authed.studio.chat'
 import { Route as AuthedCrmPipelineRouteImport } from './routes/_authed.crm.pipeline'
@@ -168,6 +169,11 @@ const AuthedStudioStoryboardRoute = AuthedStudioStoryboardRouteImport.update({
   path: '/storyboard',
   getParentRoute: () => AuthedStudioRoute,
 } as any)
+const AuthedStudioPlannerRoute = AuthedStudioPlannerRouteImport.update({
+  id: '/planner',
+  path: '/planner',
+  getParentRoute: () => AuthedStudioRoute,
+} as any)
 const AuthedStudioLibraryRoute = AuthedStudioLibraryRouteImport.update({
   id: '/library',
   path: '/library',
@@ -239,6 +245,7 @@ export interface FileRoutesByFullPath {
   '/crm/pipeline': typeof AuthedCrmPipelineRoute
   '/studio/chat': typeof AuthedStudioChatRoute
   '/studio/library': typeof AuthedStudioLibraryRoute
+  '/studio/planner': typeof AuthedStudioPlannerRoute
   '/studio/storyboard': typeof AuthedStudioStoryboardRoute
   '/api/billing/stripe-webhook': typeof ApiBillingStripeWebhookRoute
   '/api/chat/stream': typeof ApiChatStreamRoute
@@ -271,6 +278,7 @@ export interface FileRoutesByTo {
   '/crm/pipeline': typeof AuthedCrmPipelineRoute
   '/studio/chat': typeof AuthedStudioChatRoute
   '/studio/library': typeof AuthedStudioLibraryRoute
+  '/studio/planner': typeof AuthedStudioPlannerRoute
   '/studio/storyboard': typeof AuthedStudioStoryboardRoute
   '/api/billing/stripe-webhook': typeof ApiBillingStripeWebhookRoute
   '/api/chat/stream': typeof ApiChatStreamRoute
@@ -308,6 +316,7 @@ export interface FileRoutesById {
   '/_authed/crm/pipeline': typeof AuthedCrmPipelineRoute
   '/_authed/studio/chat': typeof AuthedStudioChatRoute
   '/_authed/studio/library': typeof AuthedStudioLibraryRoute
+  '/_authed/studio/planner': typeof AuthedStudioPlannerRoute
   '/_authed/studio/storyboard': typeof AuthedStudioStoryboardRoute
   '/api/billing/stripe-webhook': typeof ApiBillingStripeWebhookRoute
   '/api/chat/stream': typeof ApiChatStreamRoute
@@ -345,6 +354,7 @@ export interface FileRouteTypes {
     | '/crm/pipeline'
     | '/studio/chat'
     | '/studio/library'
+    | '/studio/planner'
     | '/studio/storyboard'
     | '/api/billing/stripe-webhook'
     | '/api/chat/stream'
@@ -377,6 +387,7 @@ export interface FileRouteTypes {
     | '/crm/pipeline'
     | '/studio/chat'
     | '/studio/library'
+    | '/studio/planner'
     | '/studio/storyboard'
     | '/api/billing/stripe-webhook'
     | '/api/chat/stream'
@@ -413,6 +424,7 @@ export interface FileRouteTypes {
     | '/_authed/crm/pipeline'
     | '/_authed/studio/chat'
     | '/_authed/studio/library'
+    | '/_authed/studio/planner'
     | '/_authed/studio/storyboard'
     | '/api/billing/stripe-webhook'
     | '/api/chat/stream'
@@ -616,6 +628,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthedStudioStoryboardRouteImport
       parentRoute: typeof AuthedStudioRoute
     }
+    '/_authed/studio/planner': {
+      id: '/_authed/studio/planner'
+      path: '/planner'
+      fullPath: '/studio/planner'
+      preLoaderRoute: typeof AuthedStudioPlannerRouteImport
+      parentRoute: typeof AuthedStudioRoute
+    }
     '/_authed/studio/library': {
       id: '/_authed/studio/library'
       path: '/library'
@@ -728,6 +747,7 @@ const AuthedCrmRouteWithChildren = AuthedCrmRoute._addFileChildren(
 interface AuthedStudioRouteChildren {
   AuthedStudioChatRoute: typeof AuthedStudioChatRoute
   AuthedStudioLibraryRoute: typeof AuthedStudioLibraryRoute
+  AuthedStudioPlannerRoute: typeof AuthedStudioPlannerRoute
   AuthedStudioStoryboardRoute: typeof AuthedStudioStoryboardRoute
   AuthedStudioIndexRoute: typeof AuthedStudioIndexRoute
 }
@@ -735,6 +755,7 @@ interface AuthedStudioRouteChildren {
 const AuthedStudioRouteChildren: AuthedStudioRouteChildren = {
   AuthedStudioChatRoute: AuthedStudioChatRoute,
   AuthedStudioLibraryRoute: AuthedStudioLibraryRoute,
+  AuthedStudioPlannerRoute: AuthedStudioPlannerRoute,
   AuthedStudioStoryboardRoute: AuthedStudioStoryboardRoute,
   AuthedStudioIndexRoute: AuthedStudioIndexRoute,
 }

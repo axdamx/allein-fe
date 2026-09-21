@@ -7,6 +7,7 @@ import { cn } from '@/lib/utils'
 
 const TABS = [
   { label: 'Create', to: '/studio' },
+  { label: 'Planner', to: '/studio/planner' },
   { label: 'Image chat', to: '/studio/chat' },
   { label: 'Library', to: '/studio/library' },
 ] as const

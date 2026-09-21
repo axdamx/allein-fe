@@ -16,6 +16,7 @@ import { Badge } from '@/components/ui/badge'
 import { cn } from '@/lib/utils'
 import { useAssets, useDeleteAsset } from '@/hooks/use-media'
 import type { MediaKind } from '@/server/media'
+import { ImageUploadButton } from '@/components/studio/image-upload-button'
 
 type FilterKind = 'all' | MediaKind
 
@@ -61,9 +62,12 @@ const StudioLibraryPage = () => {
             </button>
           ))}
         </div>
-        <span className="text-xs text-muted-foreground">
-          {assets?.length ?? 0} item{(assets?.length ?? 0) === 1 ? '' : 's'}
-        </span>
+        <div className="flex items-center gap-3">
+          <span className="text-xs text-muted-foreground">
+            {assets?.length ?? 0} item{(assets?.length ?? 0) === 1 ? '' : 's'}
+          </span>
+          <ImageUploadButton />
+        </div>
       </div>
 
       {/* Grid */}
@@ -183,7 +187,7 @@ const StudioLibraryPage = () => {
           <div>
             <p className="font-medium">No media yet</p>
             <p className="max-w-sm text-sm text-muted-foreground">
-              Generate images from the Create tab or by chatting with
+              Upload an image, generate one on the Create tab, or chat with
               the Studio agent.
             </p>
           </div>

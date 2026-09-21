@@ -30,12 +30,13 @@ entitlement stays configured.
 
 ## Step 2 — usable content workspace
 
-- [ ] Add draft editing, duplication, and a list/calendar view with filters for
+- [x] Add draft editing, duplication, and a list/calendar view with filters for
   platform, planned date, and status.
-- [ ] Let users upload and attach existing images, select from the Studio
-  library, and organize assets. Support several assets per post for carousels.
+- [x] Let users upload and attach existing images and select from the Studio
+  library. Keep AI output editable before saving.
+- [ ] Organize assets and support several assets per post for carousels.
 - [ ] Add a brand kit (voice, colors, logo, default hashtags) and reusable
-  post templates. Keep AI output editable before saving.
+  post templates.
 - [ ] Separate one content idea from channel-specific versions so Instagram,
   Facebook, LinkedIn, and other destinations can have tailored captions.
 

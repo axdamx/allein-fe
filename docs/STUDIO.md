@@ -1,10 +1,11 @@
 # Marketing Studio — Implementation Status
 
-> Last updated: 2026-09-21
+> Last updated: 2026-09-22
 > Status: **Content planning and image workflows open; video generation coming soon**
 
 The Studio is a creative workspace for AI content generation. The current
-navigation exposes content creation, image chat, and the asset library.
+navigation exposes content creation, a content planner, image chat, and the
+asset library.
 This doc tracks what's built, what's wired, what's known-broken, and what's
 deferred.
 
@@ -15,13 +16,14 @@ deferred.
 | Route | Tab | Purpose |
 |---|---|---|
 | `/studio` | Create | Form-driven content generation, image attachment, and video coming soon card |
+| `/studio/planner` | Planner | Editable drafts, duplication, filters, and a manual posting calendar |
 | `/studio/chat` | Image chat | Conversational image generation with the Studio Agent |
 | `/studio/storyboard` | Storyboard | Brief → scene-by-scene video planning (not linked in current navigation) |
-| `/studio/library` | Library | Grid of all generated assets with download/delete |
+| `/studio/library` | Library | Generated and uploaded assets with download/delete |
 
 Layout + tab nav: `src/routes/_authed.studio.tsx` (mirrors the CRM layout
-pattern with `<Outlet />`). The active navigation exposes Create, Image chat,
-and Library. Video is labelled Coming soon. The Custom plan's video feature
+pattern with `<Outlet />`). The active navigation exposes Create, Planner,
+Image chat, and Library. Video is labelled Coming soon. The Custom plan's video feature
 flag remains configured, while the public video submit endpoint refuses new
 jobs and the Studio Agent has no video tool until monthly metering is ready.
 
@@ -96,7 +98,15 @@ jobs and the Studio Agent has no video tool until monthly metering is ready.
 
 ### Library ✅
 - `src/routes/_authed.studio.library.tsx` — filterable grid, status badges,
-  failed-row error surfacing + delete
+  failed-row error surfacing, upload, and delete. Images attached to posts
+  cannot be deleted until detached.
+
+### Content planner ✅
+- `src/routes/_authed.studio.planner.tsx` and
+  `src/components/studio/content-planner.tsx` — list/calendar views, filters,
+  saved post editing, and duplication.
+- The Create preview is editable and can attach generated, uploaded, or saved
+  library images. Planned dates are for manual publishing only.
 
 ### Polish (Phase 4) ✅
 - Sample prompt starters in chat empty state (one-click → new chat + send)

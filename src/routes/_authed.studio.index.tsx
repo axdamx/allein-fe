@@ -2,7 +2,6 @@ import { useState } from 'react'
 import {
   Calendar,
   Copy,
-  Hash,
   Loader2,
   Save,
   Sparkles,
@@ -34,7 +33,6 @@ import {
 } from '@/components/ui/select'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Textarea } from '@/components/ui/textarea'
-import { Badge } from '@/components/ui/badge'
 import {
   usePosts,
   useGeneratePost,
@@ -43,6 +41,8 @@ import {
 } from '@/hooks/use-marketing'
 import { usePlan } from '@/hooks/use-plan'
 import { UsageIndicator } from '@/components/billing/usage-indicator'
+import { useAssets } from '@/hooks/use-media'
+import { ImageUploadButton } from '@/components/studio/image-upload-button'
 import type { PostPlatform, GeneratedPost } from '@/hooks/use-marketing'
 import { cn } from '@/lib/utils'
 
@@ -84,11 +84,16 @@ const StudioCreatePage = () => {
     e.preventDefault()
     if (!prompt.trim()) return
     setStep('generating')
-    const result = await generatePost.mutateAsync({ prompt, platform, tone })
-    if (!('error' in result)) {
-      setGenerated(result)
-      setStep('preview')
-    } else {
+    try {
+      const result = await generatePost.mutateAsync({ prompt, platform, tone })
+      if (!('error' in result)) {
+        setGenerated(result)
+        setStep('preview')
+      } else {
+        setStep('form')
+      }
+    } catch {
+      // The mutation displays the error toast.
       setStep('form')
     }
   }
@@ -197,18 +202,20 @@ const StudioCreatePage = () => {
           <PostPreview
             generated={generated}
             platform={platform}
-            onSave={async (scheduledFor, mediaAssetId) => {
-              const result = await createPost.mutateAsync({
-                title: generated.title,
-                caption: generated.caption,
-                hashtags: generated.hashtags,
-                platform,
-                scheduledFor,
-                prompt,
-                mediaAssetId,
-              })
-              if (!('error' in result)) {
-                handleReset()
+            onSave={async (draft) => {
+              try {
+                const result = await createPost.mutateAsync({
+                  title: draft.title,
+                  caption: draft.caption,
+                  hashtags: draft.hashtags,
+                  platform,
+                  scheduledFor: draft.scheduledFor,
+                  prompt,
+                  mediaAssetId: draft.mediaAssetId,
+                })
+                if (!('error' in result)) handleReset()
+              } catch {
+                // The mutation displays the error toast.
               }
             }}
             onReset={handleReset}
@@ -272,18 +279,23 @@ const PostPreview = ({
 }: {
   generated: GeneratedPost
   platform: PostPlatform
-  onSave: (scheduledFor?: string, mediaAssetId?: string) => void
+  onSave: (draft: GeneratedPost & { scheduledFor?: string; mediaAssetId?: string }) => void
   onReset: () => void
   saving: boolean
 }) => {
   const [scheduleEnable, setScheduleEnable] = useState(false)
   const [scheduledFor, setScheduledFor] = useState('')
   const [copied, setCopied] = useState(false)
+  const [draft, setDraft] = useState(generated)
+  const [hashtagsText, setHashtagsText] = useState(generated.hashtags.join(', '))
   const [mediaAssetId, setMediaAssetId] = useState<string | null>(null)
+  const [selectedImageUrl, setSelectedImageUrl] = useState<string | null>(null)
+  const { data: library } = useAssets('image')
+  const savedImages = (library ?? []).filter((asset) => asset.status === 'ready' && asset.url && asset.storage_path)
   const platformInfo = PLATFORMS.find((p) => p.value === platform)
 
   const handleCopy = () => {
-    const text = `${generated.title}\n\n${generated.caption}\n\n${generated.hashtags.map((h) => `#${h}`).join(' ')}`
+    const text = `${draft.title}\n\n${draft.caption}\n\n${hashtagsText.split(/[\s,]+/).filter(Boolean).map((h) => `#${h.replace(/^#/, '')}`).join(' ')}`
     navigator.clipboard.writeText(text)
     setCopied(true)
     setTimeout(() => setCopied(false), 2000)
@@ -304,24 +316,19 @@ const PostPreview = ({
       </CardHeader>
       <CardContent className="space-y-4">
         <div className="space-y-3 rounded-2xl border border-black/[0.06] bg-white/45 p-4 dark:border-white/10 dark:bg-black/10">
-          <div>
-            <p className="text-xs font-medium text-muted-foreground">Title</p>
-            <p className="font-semibold">{generated.title}</p>
+          <p className="text-xs text-muted-foreground">Edit the AI draft before saving.</p>
+          <div className="space-y-1.5">
+            <Label htmlFor="post-title">Title</Label>
+            <Input id="post-title" value={draft.title} onChange={(e) => setDraft({ ...draft, title: e.target.value })} maxLength={100} />
           </div>
-          <div>
-            <p className="text-xs font-medium text-muted-foreground">Caption</p>
-            <p className="whitespace-pre-wrap text-sm">{generated.caption}</p>
+          <div className="space-y-1.5">
+            <Label htmlFor="post-caption">Caption</Label>
+            <Textarea id="post-caption" rows={5} value={draft.caption} onChange={(e) => setDraft({ ...draft, caption: e.target.value })} />
           </div>
-          {generated.hashtags.length > 0 && (
-            <div className="flex flex-wrap gap-1">
-              {generated.hashtags.map((tag) => (
-                <Badge key={tag} variant="secondary" className="text-xs">
-                  <Hash className="mr-0.5 size-2.5" />
-                  {tag}
-                </Badge>
-              ))}
-            </div>
-          )}
+          <div className="space-y-1.5">
+            <Label htmlFor="post-tags">Hashtags</Label>
+            <Input id="post-tags" value={hashtagsText} onChange={(e) => setHashtagsText(e.target.value)} placeholder="property, malaysia" />
+          </div>
         </div>
 
         <div className="flex gap-2">
@@ -351,20 +358,35 @@ const PostPreview = ({
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <MediaGenerator
               mediaType="image"
-              caption={generated.caption}
-              onMediaGenerated={(assetId) => setMediaAssetId(assetId)}
-              onMediaReset={() => setMediaAssetId(null)}
+              caption={draft.caption}
+              onMediaGenerated={(assetId, url) => { setMediaAssetId(assetId); setSelectedImageUrl(url) }}
+              onMediaReset={() => { setMediaAssetId(null); setSelectedImageUrl(null) }}
             />
             <MediaGenerator
               mediaType="video"
-              caption={generated.caption}
+              caption={draft.caption}
               onMediaGenerated={() => {}}
             />
           </div>
+          {savedImages.length > 0 && (
+            <div className="space-y-2">
+              <p className="text-xs font-medium text-muted-foreground">Or choose an image from your Studio library</p>
+              <div className="grid max-h-28 grid-cols-6 gap-2 overflow-y-auto">
+                {savedImages.map((image) => (
+                  <button key={image.id} type="button" aria-label={`Use image: ${image.prompt}`} onClick={() => { setMediaAssetId(image.id); setSelectedImageUrl(image.url) }} className={cn('overflow-hidden rounded-lg border-2', mediaAssetId === image.id ? 'border-primary' : 'border-transparent')}>
+                    <img src={image.url!} alt={image.prompt} className="aspect-square w-full object-cover" />
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+          <ImageUploadButton onUploaded={(asset) => { setMediaAssetId(asset.id); setSelectedImageUrl(asset.url) }} />
           {mediaAssetId && (
-            <p className="text-xs text-muted-foreground">
-              Your image will be attached when you save this post.
-            </p>
+            <div className="flex items-center gap-3 text-xs text-muted-foreground">
+              {selectedImageUrl && <img src={selectedImageUrl} alt="Selected image" className="size-12 rounded-lg object-cover" />}
+              Image selected for this post.
+              <Button type="button" variant="ghost" size="sm" onClick={() => { setMediaAssetId(null); setSelectedImageUrl(null) }}>Remove</Button>
+            </div>
           )}
         </div>
 
@@ -396,12 +418,15 @@ const PostPreview = ({
         <div className="flex gap-2">
           <Button
             onClick={() =>
-              onSave(
-                scheduleEnable && scheduledFor ? new Date(scheduledFor).toISOString() : undefined,
-                mediaAssetId ?? undefined,
-              )
+              onSave({
+                title: draft.title.trim(),
+                caption: draft.caption.trim(),
+                hashtags: hashtagsText.split(/[\s,]+/).map((tag) => tag.replace(/^#/, '').trim()).filter(Boolean).slice(0, 15),
+                scheduledFor: scheduleEnable && scheduledFor ? new Date(scheduledFor).toISOString() : undefined,
+                mediaAssetId: mediaAssetId ?? undefined,
+              })
             }
-            disabled={saving || (scheduleEnable && !scheduledFor)}
+            disabled={saving || !draft.title.trim() || !draft.caption.trim() || (scheduleEnable && !scheduledFor)}
             className="flex-1"
           >
             {saving ? (
