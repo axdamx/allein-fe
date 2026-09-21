@@ -244,7 +244,7 @@ const StudioCreatePage = () => {
               </div>
             ) : (
               <div className="py-8 text-center text-sm text-muted-foreground">
-                Your content queue is empty. Generate a first draft to begin.
+                No saved content yet. Generate a first draft to begin.
               </div>
             )}
           </CardContent>
@@ -377,15 +377,19 @@ const PostPreview = ({
               className="size-4 rounded border-input"
             />
             <Clock className="size-3.5" />
-            Schedule for later
+            Add to content plan
           </label>
           {scheduleEnable && (
-            <Input
-              type="datetime-local"
-              value={scheduledFor}
-              onChange={(e) => setScheduledFor(e.target.value)}
-              className="mt-2"
-            />
+            <div className="mt-2 space-y-2">
+              <Input
+                type="datetime-local"
+                value={scheduledFor}
+                onChange={(e) => setScheduledFor(e.target.value)}
+              />
+              <p className="text-xs text-muted-foreground">
+                This saves a planned date. You will still need to publish the post yourself.
+              </p>
+            </div>
           )}
         </div>
 
@@ -405,7 +409,7 @@ const PostPreview = ({
             ) : (
               <Save className="size-4" />
             )}
-            {scheduleEnable ? 'Schedule post' : 'Save post'}
+            {scheduleEnable ? 'Save to plan' : 'Save post'}
           </Button>
         </div>
       </CardContent>
@@ -425,6 +429,7 @@ const PostCard = ({ post }: { post: import('@/server/marketing').PostRow }) => {
     draft: 'bg-muted text-muted-foreground',
     ready: 'bg-blue-500/10 text-blue-600 dark:text-blue-400',
     scheduled: 'bg-amber-500/10 text-amber-600 dark:text-amber-400',
+    planned: 'bg-amber-500/10 text-amber-600 dark:text-amber-400',
     published: 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400',
     failed: 'bg-red-500/10 text-red-600 dark:text-red-400',
   }
@@ -467,10 +472,10 @@ const PostCard = ({ post }: { post: import('@/server/marketing').PostRow }) => {
             <span
               className={cn(
                 'rounded-full px-2 py-0.5 text-[10px] font-medium capitalize',
-                statusColors[post.status] ?? statusColors.draft,
+                statusColors[(post.status === 'ready' && post.scheduled_for) || post.status === 'scheduled' ? 'planned' : post.status] ?? statusColors.draft,
               )}
             >
-              {post.status}
+              {(post.status === 'ready' && post.scheduled_for) || post.status === 'scheduled' ? 'Planned' : post.status}
             </span>
             {post.scheduled_for && (
               <span className="text-[10px] text-muted-foreground">

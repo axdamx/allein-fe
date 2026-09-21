@@ -232,16 +232,20 @@ export async function createPostImpl(
   if (input.mediaAssetId) {
     const { data: asset, error: assetError } = await supabase
       .from('studio_assets')
-      .select('url')
+      .select('url, storage_path')
       .eq('id', input.mediaAssetId)
       .eq('owner_id', user.id)
       .eq('kind', 'image')
       .eq('status', 'ready')
       .maybeSingle()
-    if (assetError || !asset?.url) {
-      return { error: 'The selected image is no longer available.' }
+    if (assetError || !asset?.url || !asset.storage_path) {
+      return { error: 'This image is not saved permanently. Generate a new image before attaching it.' }
     }
     mediaUrl = asset.url
+  }
+
+  if (input.scheduledFor && (!Number.isFinite(Date.parse(input.scheduledFor)) || Date.parse(input.scheduledFor) <= Date.now())) {
+    return { error: 'Choose a future date for your content plan.' }
   }
 
   // ── Daily quota gate ────────────────────────────────────────────────
@@ -267,7 +271,7 @@ export async function createPostImpl(
       caption: input.caption,
       hashtags: input.hashtags,
       platform: input.platform,
-      status: input.scheduledFor ? 'scheduled' : 'ready',
+      status: 'ready',
       scheduled_for: input.scheduledFor ?? null,
       prompt: input.prompt ?? null,
       media_url: mediaUrl,
@@ -304,7 +308,16 @@ export async function updatePostImpl(input: {
   if (input.hashtags !== undefined) updates.hashtags = input.hashtags
   if (input.scheduledFor !== undefined)
     updates.scheduled_for = input.scheduledFor
-  if (input.status !== undefined) updates.status = input.status
+  if (input.scheduledFor && (!Number.isFinite(Date.parse(input.scheduledFor)) || Date.parse(input.scheduledFor) <= Date.now())) {
+    return { error: 'Choose a future date for your content plan.' }
+  }
+  // Publishing states belong to a future provider-backed delivery workflow.
+  if (input.status !== undefined) {
+    if (input.status !== 'draft' && input.status !== 'ready') {
+      return { error: 'Publishing is not available yet.' }
+    }
+    updates.status = input.status
+  }
 
   const { error } = await supabase
     .from('posts')

@@ -62,9 +62,10 @@ export const MediaGenerator = ({
   onMediaGenerated: (assetId: string, url: string, type: MediaType) => void
   onMediaReset?: () => void
 }) => {
-  const { hasFeature, tier } = usePlan()
+  const { hasFeature, tier, remaining, usage, config, canDo } = usePlan()
   const featureKey = mediaType === 'image' ? 'aiImageGen' : 'aiVideoGen'
   const hasAccess = hasFeature(featureKey)
+  const atImageLimit = mediaType === 'image' && !canDo('imageGen')
 
   const [upgradeOpen, setUpgradeOpen] = useState(false)
   const [prompt, setPrompt] = useState('')
@@ -112,6 +113,10 @@ export const MediaGenerator = ({
   const handleGenerate = async () => {
     if (mediaType === 'video') return
     if (!hasAccess) {
+      setUpgradeOpen(true)
+      return
+    }
+    if (atImageLimit) {
       setUpgradeOpen(true)
       return
     }
@@ -200,7 +205,9 @@ export const MediaGenerator = ({
           <Icon className="size-4 text-primary" />
           {label} Generation
           <Badge variant="secondary" className="ml-auto text-xs">
-            AI
+            {mediaType === 'image' && remaining.imageGen !== null
+              ? `${remaining.imageGen} images left this month`
+              : 'AI'}
           </Badge>
         </CardTitle>
         <CardDescription>
@@ -261,8 +268,17 @@ export const MediaGenerator = ({
             size="sm"
           >
             <Icon className="size-4" />
-            Generate {label}
+            {atImageLimit ? 'Monthly image limit reached' : `Generate ${label}`}
           </Button>
+        )}
+
+        {atImageLimit && (
+          <UpgradeModal
+            open={upgradeOpen}
+            onOpenChange={setUpgradeOpen}
+            currentTier={tier}
+            reason={{ kind: 'limit', metric: 'imageGen', used: usage.imageGen, max: config.limits.imageGen.max ?? 0 }}
+          />
         )}
 
         {/* Generating state */}

@@ -6,6 +6,7 @@ const LABELS: Record<LimitMetric, string> = {
   conversations: 'Conversations',
   messages: 'Messages',
   posts: 'Posts',
+  imageGen: 'AI images',
   documents: 'Documents',
   leads: 'Leads',
   whatsappMessages: 'WhatsApp messages',

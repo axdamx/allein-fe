@@ -17,6 +17,7 @@ const METRIC_LABELS: Record<LimitMetric, { singular: string; plural: string }> =
     },
     messages: { singular: 'message', plural: 'messages' },
     posts: { singular: 'post', plural: 'posts' },
+    imageGen: { singular: 'AI image', plural: 'AI images' },
     documents: { singular: 'document', plural: 'documents' },
     leads: { singular: 'lead', plural: 'leads' },
     whatsappMessages: { singular: 'WhatsApp message', plural: 'WhatsApp messages' },

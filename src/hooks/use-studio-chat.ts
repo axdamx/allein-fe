@@ -249,6 +249,7 @@ export const useStudioChatStream = (chatId: string | null) => {
               toast.success(tc.message)
               if (tc.name === 'generate_image' || tc.name === 'generate_video') {
                 qc.invalidateQueries({ queryKey: ['media', 'assets'] })
+                qc.invalidateQueries({ queryKey: ['plan-state'] })
               }
             } else {
               toast.error(tc.message)

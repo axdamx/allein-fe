@@ -21,24 +21,30 @@ import { submitCogVideoXJob } from '@/lib/media/cogvideox'
 import { getDefaultModel } from '@/lib/ai-provider'
 import { generateText } from 'ai'
 import { assertSafeUrl } from '@/lib/url-guard'
+import { consumeQuota } from '@/server/profile.server'
+import { mirrorToStorage } from '@/server/media.server'
+import { PLAN_CONFIGS, type PlanTier } from '@/lib/plans'
 
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
 
-async function ownerHasFeature(
+async function getOwnerMediaAccess(
   ownerId: string,
   feature: 'aiImageGen' | 'aiVideoGen',
-): Promise<boolean> {
+): Promise<{ allowed: boolean; plan: PlanTier; role: string }> {
   const supabase = getSupabaseServiceClient()
   const { data: profile } = await supabase
     .from('profiles')
-    .select('plan')
+    .select('plan, role')
     .eq('id', ownerId)
     .single()
-  const { PLAN_CONFIGS } = await import('@/lib/plans')
-  const tier = (profile?.plan ?? 'free') as keyof typeof PLAN_CONFIGS
-  return PLAN_CONFIGS[tier]?.features?.[feature] ?? false
+  const plan = (profile?.plan ?? 'free') as PlanTier
+  return {
+    allowed: PLAN_CONFIGS[plan]?.features?.[feature] ?? false,
+    plan,
+    role: profile?.role ?? 'user',
+  }
 }
 
 /** Insert a studio_assets row on the owner's behalf (service-role bypasses RLS). */
@@ -51,6 +57,8 @@ async function insertAssetRow(
     status: 'processing' | 'ready' | 'failed'
     aspect_ratio?: string | null
     url?: string | null
+    storage_path?: string | null
+    meta?: Record<string, string>
     provider_id?: string | null
     error?: string | null
   },
@@ -67,6 +75,8 @@ async function insertAssetRow(
       status: fields.status,
       aspect_ratio: fields.aspect_ratio ?? null,
       url: fields.url ?? null,
+      storage_path: fields.storage_path ?? null,
+      meta: fields.meta ?? {},
       provider_id: fields.provider_id ?? null,
       error: fields.error ?? null,
     })
@@ -97,12 +107,31 @@ export const generateImageTool = createTool({
     const ownerId = context?.agent?.resourceId
     if (!ownerId) return { success: false, error: 'No owner context' }
 
-    const allowed = await ownerHasFeature(ownerId, 'aiImageGen')
-    if (!allowed) {
+    const access = await getOwnerMediaAccess(ownerId, 'aiImageGen')
+    if (!access.allowed) {
       return {
         success: false,
         error:
           'Image generation requires the Pro plan or above. Ask the user to upgrade.',
+      }
+    }
+
+    let quota
+    try {
+      quota = await consumeQuota('imageGen', {
+        userId: ownerId,
+        plan: access.plan,
+        role: access.role,
+        supabase: getSupabaseServiceClient(),
+      })
+    } catch (err) {
+      console.warn('[studio-tools] image quota unavailable:', err)
+      return { success: false, error: 'Image generation is temporarily unavailable. Please try again later.' }
+    }
+    if (!quota.allowed) {
+      return {
+        success: false,
+        error: `Monthly image limit reached (${quota.max}). Please wait until next month or upgrade your plan.`,
       }
     }
 
@@ -112,19 +141,29 @@ export const generateImageTool = createTool({
         aspectRatio: aspect_ratio ?? '1:1',
       })
 
+      let mirrored: { storagePath: string; publicUrl: string }
+      try {
+        mirrored = await mirrorToStorage(ownerId, result.remoteUrl, 'png', getSupabaseServiceClient())
+      } catch (err) {
+        console.warn('[studio-tools] image mirror failed:', err)
+        throw new Error('Image was generated but could not be saved to permanent storage', { cause: err })
+      }
+
       const row = await insertAssetRow(ownerId, {
         kind: 'image',
         prompt,
         provider_model: 'cogview-4-250304',
         status: 'ready',
         aspect_ratio: aspect_ratio ?? '1:1',
-        url: result.remoteUrl,
+        url: mirrored.publicUrl,
+        storage_path: mirrored.storagePath,
+        meta: { size: result.size, remote_url: result.remoteUrl },
       })
 
       return {
         success: true,
         assetId: row.id,
-        url: result.remoteUrl,
+        url: mirrored.publicUrl,
         message: 'Image generated.',
       }
     } catch (err) {
@@ -138,7 +177,9 @@ export const generateImageTool = createTool({
         aspect_ratio: aspect_ratio ?? '1:1',
         error: msg,
       }).catch(() => null)
-      return { success: false, error: getImageGenerationUserMessage(err) }
+      return { success: false, error: err instanceof Error && err.message === 'Image was generated but could not be saved to permanent storage'
+        ? 'Image was generated but could not be saved. Please try again.'
+        : getImageGenerationUserMessage(err) }
     }
   },
 })
@@ -179,8 +220,8 @@ export const generateVideoTool = createTool({
     const ownerId = context?.agent?.resourceId
     if (!ownerId) return { success: false, error: 'No owner context' }
 
-    const allowed = await ownerHasFeature(ownerId, 'aiVideoGen')
-    if (!allowed) {
+    const access = await getOwnerMediaAccess(ownerId, 'aiVideoGen')
+    if (!access.allowed) {
       return {
         success: false,
         error:

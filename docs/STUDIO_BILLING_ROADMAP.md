@@ -2,7 +2,13 @@
 
 > Created: 2026-07-08
 > Updated: 2026-07-08 (added two-layer model + iteration-tax analysis)
-> Status: **Deferred — UI/UX is in place, metering is not**
+> Status: **Image quota implemented on the Studio content centre branch;
+> video metering remains deferred**
+
+2026-09-21 update: the `imageGen` quota uses a monthly key in `usage_windows`
+with Pro 100 and Custom 500 attempts. Both form and agent image paths consume
+it before contacting Z.AI. Migration 0029 is required before deployment.
+The historical proposal below remains for future video billing work.
 > Priority: **HIGH before scaling past ~10 paying users on video-enabled tiers**
 
 This doc captures the billing architecture decision, the cost math, and the

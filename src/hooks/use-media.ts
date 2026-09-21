@@ -71,6 +71,9 @@ export const useGenerateImage = () => {
         toast.error(msg)
       }
     },
+    onSettled: () => {
+      qc.invalidateQueries({ queryKey: ['plan-state'] })
+    },
   })
 }
 

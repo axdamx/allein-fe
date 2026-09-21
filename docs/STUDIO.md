@@ -1,7 +1,7 @@
 # Marketing Studio — Implementation Status
 
 > Last updated: 2026-09-21
-> Status: **Content and image workflows open; video generation coming soon**
+> Status: **Content planning and image workflows open; video generation coming soon**
 
 The Studio is a creative workspace for AI content generation. The current
 navigation exposes content creation, image chat, and the asset library.
@@ -66,7 +66,8 @@ jobs and the Studio Agent has no video tool until monthly metering is ready.
 - Valid model names: `cogview-4-250304` (image), `cogvideox-3` (video)
 - Valid request shapes: `size` (not aspect_ratio), `image_url` as array,
   `quality: 'speed' | 'quality'`
-- Every asset is mirrored from ZAI's ephemeral URL → `media` Storage bucket
+- Image assets become ready only after mirroring from ZAI's ephemeral URL to
+  the `media` Storage bucket. Video remains disabled.
 - `src/server/media.{ts,server.ts}` — `generateImage`, `submitVideo`,
   `pollVideo`, `listAssets`, `getAsset`, `deleteAsset`
 - `src/hooks/use-media.ts` — TanStack Query hooks
@@ -132,7 +133,10 @@ Current tier access (from `src/lib/plans.ts`):
 - Pro: image ✅, no video
 - Custom: image ✅, video ✅
 
-**⚠️ KNOWN GAP — no metering.** See `docs/STUDIO_BILLING_ROADMAP.md`.
+Image attempts now have a monthly quota (Pro 100, Custom 500) shared by the
+form and Studio chat paths. The migration in `0029_studio_image_quota_and_planned_posts.sql`
+must be applied before deployment. Video metering remains deferred; see
+`docs/STUDIO_BILLING_ROADMAP.md`.
 
 **Key insight from billing analysis (2026-07-08):** metering must split into
 two layers — a *cheap layer* (chat, image gen at ~$0.01) that's metered

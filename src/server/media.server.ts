@@ -1,9 +1,10 @@
 /**
  * Server-only implementation for AI media generation (image + video).
  *
- * Each generated asset is mirrored to the `media` Supabase Storage bucket and
- * tracked in `studio_assets` so users get a persistent library and the chat
- * agent / storyboard can reference prior outputs later.
+ * Generated images must be mirrored to the `media` Supabase Storage bucket
+ * before they become ready. Assets are tracked in `studio_assets` for the
+ * library and Studio chat. Video generation remains disabled at the public
+ * boundary until its quota and publishing workflow are ready.
  *
  * Plan gating is enforced in the public wrapper (`src/server/media.ts`) before
  * these implementations run, so we don't re-check the feature flag here.
@@ -16,6 +17,9 @@ import {
 } from '@/lib/media/cogvideox'
 import { requireUserId } from '@/server/_auth'
 import { safeError, sanitizeSupabaseMessage } from '@/server/_errors'
+import { consumeQuota } from '@/server/profile.server'
+import type { SupabaseClient } from '@supabase/supabase-js'
+import { assertSafeUrl } from '@/lib/url-guard'
 
 // ---------------------------------------------------------------------------
 // Types
@@ -66,26 +70,31 @@ async function getCurrentUserId(): Promise<string> {
  * available even after ZAI's ephemeral URLs expire. Returns the public URL
  * and storage path.
  */
-async function mirrorToStorage(
+export async function mirrorToStorage(
   userId: string,
   remoteUrl: string,
   ext: 'png' | 'jpg' | 'webp' | 'mp4' | 'webm',
+  supabase: SupabaseClient = getSupabaseServerClient(),
 ): Promise<{ storagePath: string; publicUrl: string }> {
-  const supabase = getSupabaseServerClient()
-  const filename = `${crypto.randomUUID()}.${ext}`
-  const storagePath = `${userId}/${filename}`
-
-  const bufRes = await fetch(remoteUrl)
+  const bufRes = await fetch(assertSafeUrl(remoteUrl))
   if (!bufRes.ok) {
     throw new Error(`Failed to download asset (${bufRes.status})`)
   }
   const buffer = Buffer.from(await bufRes.arrayBuffer())
+  const remoteType = bufRes.headers.get('content-type')?.split(';')[0]?.trim().toLowerCase()
+  const imageExt = remoteType === 'image/jpeg' ? 'jpg'
+    : remoteType === 'image/webp' ? 'webp'
+      : remoteType === 'image/png' ? 'png' : null
+  const storedExt = ext === 'mp4' || ext === 'webm' ? ext : imageExt ?? ext
+  const storagePath = `${userId}/${crypto.randomUUID()}.${storedExt}`
 
   const { error: upErr } = await supabase.storage
     .from('media')
     .upload(storagePath, buffer, {
       contentType:
-        ext === 'mp4' ? 'video/mp4' : ext === 'webm' ? 'video/webm' : `image/${ext}`,
+        storedExt === 'mp4' ? 'video/mp4'
+          : storedExt === 'webm' ? 'video/webm'
+            : storedExt === 'jpg' ? 'image/jpeg' : `image/${storedExt}`,
       cacheControl: '3600',
       upsert: false,
     })
@@ -110,6 +119,13 @@ export async function generateImageImpl(
   try {
     const userId = await getCurrentUserId()
     const supabase = getSupabaseServerClient()
+
+    // Charge for attempts before calling the paid provider. Both form and
+    // agent generation use this same monthly counter.
+    const quota = await consumeQuota('imageGen')
+    if (!quota.allowed) {
+      return { error: `Monthly image limit reached (${quota.max}). Resets ${new Date(quota.resetAt).toLocaleDateString('en-MY', { timeZone: 'Asia/Kuala_Lumpur' })}.` }
+    }
 
     // Create a pending row first so we always have a handle even on failure.
     const { data: row, error: rowErr } = await supabase
@@ -144,24 +160,21 @@ export async function generateImageImpl(
     }
 
     // Mirror to our bucket so the URL is durable.
-    let publicUrl = result.remoteUrl
-    let storagePath: string | null = null
+    let mirrored: { storagePath: string; publicUrl: string }
     try {
-      const ext = (result.b64 ? 'png' : 'png') as 'png' | 'jpg' | 'webp'
-      const mirrored = await mirrorToStorage(userId, result.remoteUrl, ext)
-      publicUrl = mirrored.publicUrl
-      storagePath = mirrored.storagePath
+      mirrored = await mirrorToStorage(userId, result.remoteUrl, 'png', supabase)
     } catch (err) {
-      // Non-fatal — fall back to the remote URL.
-      console.warn('[media.server] mirror failed, using remote URL:', err)
+      console.warn('[media.server] image mirror failed:', err)
+      await supabase.from('studio_assets').update({ status: 'failed', error: 'Could not save image to permanent storage' }).eq('id', row.id)
+      return { error: 'Image was generated but could not be saved. Please try again.' }
     }
 
     const { data: updated, error: updErr } = await supabase
       .from('studio_assets')
       .update({
         status: 'ready',
-        url: publicUrl,
-        storage_path: storagePath,
+        url: mirrored.publicUrl,
+        storage_path: mirrored.storagePath,
         meta: { size: result.size, remote_url: result.remoteUrl },
       })
       .eq('id', row.id)
