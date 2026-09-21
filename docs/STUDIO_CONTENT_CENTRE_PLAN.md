@@ -43,8 +43,11 @@ entitlement stays configured.
   starter or saved template, and post generation uses the saved brand voice.
 - [x] Apply migration `0030_studio_brand_kit_and_templates.sql` to the target
   Supabase project (confirmed by the user on 2026-09-22).
-- [ ] Separate one content idea from channel-specific versions so Instagram,
-  Facebook, LinkedIn, and other destinations can have tailored captions.
+- [x] Separate one content idea from channel-specific versions. Existing posts
+  become single-version ideas; the Planner groups versions, edits the shared
+  brief, and generates an editable draft for another channel.
+- [ ] Apply migration `0032_studio_content_ideas.sql` after 0031 and before
+  deploying channel versions.
 
 ## Step 3 — actual publishing
 
@@ -74,5 +77,6 @@ entitlement stays configured.
 4. Planning: a future date is shown as Planned, never as published or queued
    for automatic delivery.
 
-Migrations 0029 and 0030 are applied. Migration 0031 must precede this branch's
-next deployment; post image selection and library folders depend on its schema.
+Migrations 0029 and 0030 are applied. Migrations 0031 and 0032 must precede
+this branch's next deployment; folders, carousels, and channel versions depend
+on their schema.

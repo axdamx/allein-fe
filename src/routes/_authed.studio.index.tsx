@@ -133,7 +133,7 @@ const StudioCreatePage = () => {
                 Create a campaign post
               </CardTitle>
               <CardDescription className="leading-5">
-                Start with the idea. Your agent will shape the hook, caption, hashtags, and optional media.
+                Start with one idea. Save its first channel draft here, then add tailored versions in the Planner.
               </CardDescription>
             </CardHeader>
             <CardContent>

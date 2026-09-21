@@ -10,7 +10,7 @@ import {
   startOfMonth,
   startOfWeek,
 } from 'date-fns'
-import { CalendarDays, ChevronLeft, ChevronRight, Copy, List, Pencil, Plus } from 'lucide-react'
+import { CalendarDays, ChevronLeft, ChevronRight, Copy, List, Loader2, Pencil, Plus, Sparkles } from 'lucide-react'
 import { Link } from '@tanstack/react-router'
 import { toast } from 'sonner'
 
@@ -38,8 +38,11 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { Textarea } from '@/components/ui/textarea'
 import { UsageIndicator } from '@/components/billing/usage-indicator'
 import { PostImagePicker } from '@/components/studio/post-image-picker'
-import { useDuplicatePost, usePosts, useUpdatePost } from '@/hooks/use-marketing'
-import type { PostPlatform, PostRow } from '@/server/marketing'
+import { useCreatePost, useDuplicatePost, useGeneratePost, usePosts, useUpdatePost } from '@/hooks/use-marketing'
+import { useStudioContentIdeas, useUpdateStudioContentIdea } from '@/hooks/use-studio-ideas'
+import { usePlan } from '@/hooks/use-plan'
+import type { GeneratedPost, PostPlatform, PostRow } from '@/server/marketing'
+import type { StudioContentIdea } from '@/server/studio-ideas'
 import { cn } from '@/lib/utils'
 
 const PLATFORMS: { value: PostPlatform; label: string }[] = [
@@ -106,8 +109,8 @@ function PostSummary({
           {(status === 'draft' || status === 'ready' || status === 'planned') && (
             <Button size="sm" variant="outline" onClick={onEdit}><Pencil className="size-3.5" /> Edit</Button>
           )}
-          <Button size="sm" variant="outline" onClick={onDuplicate} disabled={duplicating}>
-            <Copy className="size-3.5" /> Duplicate
+          <Button size="sm" variant="outline" onClick={onDuplicate} disabled={duplicating} title="Copy this post into a separate content idea">
+            <Copy className="size-3.5" /> Duplicate post
           </Button>
           <Button size="sm" variant="ghost" onClick={copy}>Copy text</Button>
         </div>
@@ -194,8 +197,104 @@ function PostEditor({ post, onClose }: { post: PostRow; onClose: () => void }) {
   )
 }
 
+function IdeaEditor({ idea, onClose }: { idea: StudioContentIdea; onClose: () => void }) {
+  const update = useUpdateStudioContentIdea()
+  const [title, setTitle] = useState(idea.title)
+  const [brief, setBrief] = useState(idea.brief)
+  return <Dialog open onOpenChange={(open) => { if (!open) onClose() }}>
+    <DialogContent className="sm:max-w-xl">
+      <DialogHeader><DialogTitle>Edit content idea</DialogTitle><DialogDescription>Keep the source facts and angle here. Channel versions have separate captions.</DialogDescription></DialogHeader>
+      <form className="space-y-4" onSubmit={async (event) => {
+        event.preventDefault()
+        const result = await update.mutateAsync({ id: idea.id, title, brief })
+        if (!('error' in result)) onClose()
+      }}>
+        <div className="space-y-2"><Label htmlFor="idea-title">Idea title</Label><Input id="idea-title" required maxLength={120} value={title} onChange={(event) => setTitle(event.target.value)} /></div>
+        <div className="space-y-2"><Label htmlFor="idea-brief">Source brief</Label><Textarea id="idea-brief" rows={6} maxLength={4000} value={brief} onChange={(event) => setBrief(event.target.value)} placeholder="Add verified details, audience, and intended message." /></div>
+        <DialogFooter><Button type="button" variant="outline" onClick={onClose}>Cancel</Button><Button type="submit" disabled={update.isPending || !title.trim()}>{update.isPending ? 'Saving…' : 'Save idea'}</Button></DialogFooter>
+      </form>
+    </DialogContent>
+  </Dialog>
+}
+
+function VariantComposer({
+  idea, source, usedPlatforms, onClose,
+}: {
+  idea: StudioContentIdea
+  source: PostRow
+  usedPlatforms: PostPlatform[]
+  onClose: () => void
+}) {
+  const available = PLATFORMS.filter((channel) => !usedPlatforms.includes(channel.value))
+  const [platform, setPlatform] = useState<PostPlatform>(available[0]?.value ?? 'instagram')
+  const [tone, setTone] = useState('Brand voice')
+  const [extraAngle, setExtraAngle] = useState('')
+  const [draft, setDraft] = useState<GeneratedPost | null>(null)
+  const [hashtags, setHashtags] = useState('')
+  const [mediaAssetIds, setMediaAssetIds] = useState<string[]>(source.media_asset_ids ?? [])
+  const generate = useGeneratePost()
+  const create = useCreatePost()
+  const { canDo } = usePlan()
+  const prompt = [idea.brief.trim(), extraAngle.trim() && `Channel angle: ${extraAngle.trim()}`].filter(Boolean).join('\n\n')
+
+  const handleGenerate = async () => {
+    if (!prompt) return
+    try {
+      const result = await generate.mutateAsync({ prompt, platform, tone })
+      if (!('error' in result)) {
+        setDraft(result)
+        setHashtags(result.hashtags.join(', '))
+      }
+    } catch {
+      // The hook displays the error toast.
+    }
+  }
+  const handleSave = async () => {
+    if (!draft || !canDo('posts')) return
+    try {
+      const result = await create.mutateAsync({
+        ideaId: idea.id,
+        title: draft.title.trim(),
+        caption: draft.caption.trim(),
+        hashtags: hashtags.split(/[\s,]+/).map((tag) => tag.replace(/^#/, '').trim()).filter(Boolean).slice(0, 15),
+        platform,
+        prompt,
+        mediaAssetIds,
+        status: 'draft',
+      })
+      if (!('error' in result)) onClose()
+    } catch {
+      // The hook displays the error toast.
+    }
+  }
+
+  return <Dialog open onOpenChange={(open) => { if (!open) onClose() }}>
+    <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-2xl">
+      <DialogHeader><DialogTitle>Add channel version</DialogTitle><DialogDescription>Generate a new caption from “{idea.title}”. Review and edit it before saving a draft. Publishing remains manual.</DialogDescription></DialogHeader>
+      <div className="space-y-4">
+        <div className="rounded-xl border bg-muted/30 p-3"><p className="text-xs font-medium">Source brief</p><p className="mt-1 whitespace-pre-wrap text-sm text-muted-foreground">{idea.brief || 'Add a brief to this idea before generating a version.'}</p></div>
+        <div className="grid gap-3 sm:grid-cols-2">
+          <div className="space-y-2"><Label>Channel</Label><Select value={platform} onValueChange={(value) => { setPlatform(value as PostPlatform); setDraft(null) }}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent>{available.map((channel) => <SelectItem key={channel.value} value={channel.value}>{channel.label}</SelectItem>)}</SelectContent></Select></div>
+          <div className="space-y-2"><Label htmlFor="variant-tone">Tone</Label><Input id="variant-tone" maxLength={80} value={tone} onChange={(event) => { setTone(event.target.value); setDraft(null) }} /></div>
+        </div>
+        <div className="space-y-2"><Label htmlFor="variant-angle">Extra angle for this channel</Label><Textarea id="variant-angle" rows={2} maxLength={500} value={extraAngle} onChange={(event) => { setExtraAngle(event.target.value); setDraft(null) }} placeholder="Optional details or emphasis for this channel" /></div>
+        <Button type="button" variant="outline" onClick={handleGenerate} disabled={!prompt || generate.isPending || available.length === 0}>{generate.isPending ? <Loader2 className="size-4 animate-spin" /> : <Sparkles className="size-4" />} Generate version</Button>
+        {draft && <div className="space-y-3 border-t pt-4">
+          <div className="space-y-2"><Label htmlFor="variant-title">Title</Label><Input id="variant-title" maxLength={100} value={draft.title} onChange={(event) => setDraft({ ...draft, title: event.target.value })} /></div>
+          <div className="space-y-2"><Label htmlFor="variant-caption">Caption</Label><Textarea id="variant-caption" rows={6} value={draft.caption} onChange={(event) => setDraft({ ...draft, caption: event.target.value })} /></div>
+          <div className="space-y-2"><Label htmlFor="variant-hashtags">Hashtags</Label><Input id="variant-hashtags" value={hashtags} onChange={(event) => setHashtags(event.target.value)} /></div>
+          <PostImagePicker selectedIds={mediaAssetIds} onChange={setMediaAssetIds} />
+          <p className="text-xs text-muted-foreground">Images start from the source version. You can change or reorder them for this channel.</p>
+          <DialogFooter><Button type="button" variant="outline" onClick={onClose}>Cancel</Button><Button type="button" onClick={handleSave} disabled={create.isPending || !canDo('posts') || !draft.title.trim() || !draft.caption.trim()}>{create.isPending ? 'Saving…' : 'Save channel draft'}</Button></DialogFooter>
+        </div>}
+      </div>
+    </DialogContent>
+  </Dialog>
+}
+
 export function ContentPlanner() {
   const { data: posts, isLoading } = usePosts()
+  const { data: ideas, error: ideasError } = useStudioContentIdeas()
   const duplicate = useDuplicatePost()
   const [platform, setPlatform] = useState<PostPlatform | 'all'>('all')
   const [status, setStatus] = useState<StatusFilter>('all')
@@ -206,11 +305,16 @@ export function ContentPlanner() {
   const [month, setMonth] = useState(startOfMonth(new Date()))
   const [day, setDay] = useState<Date | null>(null)
   const [editing, setEditing] = useState<PostRow | null>(null)
+  const [editingIdea, setEditingIdea] = useState<StudioContentIdea | null>(null)
+  const [variant, setVariant] = useState<{ idea: StudioContentIdea; source: PostRow; usedPlatforms: PostPlatform[] } | null>(null)
+
+  const ideaMap = new Map((ideas ?? []).map((idea) => [idea.id, idea]))
 
   const filtered = (posts ?? []).filter((post) => {
     if (platform !== 'all' && post.platform !== platform) return false
     if (status !== 'all' && visibleStatus(post) !== status) return false
-    if (query.trim() && !`${post.title ?? ''} ${post.caption ?? ''}`.toLowerCase().includes(query.trim().toLowerCase())) return false
+    const idea = ideaMap.get(post.idea_id)
+    if (query.trim() && !`${post.title ?? ''} ${post.caption ?? ''} ${idea?.title ?? ''} ${idea?.brief ?? ''}`.toLowerCase().includes(query.trim().toLowerCase())) return false
     const postDay = format(new Date(post.scheduled_for ?? post.created_at), 'yyyy-MM-dd')
     return (!from || postDay >= from) && (!to || postDay <= to)
   })
@@ -220,6 +324,11 @@ export function ContentPlanner() {
     end: endOfWeek(endOfMonth(month), { weekStartsOn: 1 }),
   })
   const dayPosts = day ? plannedPosts.filter((post) => isSameDay(new Date(post.scheduled_for!), day)) : []
+  const grouped = new Map<string, PostRow[]>()
+  for (const post of filtered) {
+    const id = post.idea_id || post.id
+    grouped.set(id, [...(grouped.get(id) ?? []), post])
+  }
 
   const renderPost = (post: PostRow) => (
     <PostSummary
@@ -235,7 +344,7 @@ export function ContentPlanner() {
     <div className="space-y-5">
       <UsageIndicator metric="posts" label="posts" windowSuffix="/day" />
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <div><h2 className="text-xl font-semibold">Content planner</h2><p className="text-sm text-muted-foreground">Edit drafts, plan dates, and copy content when you are ready to post.</p></div>
+        <div><h2 className="text-xl font-semibold">Content planner</h2><p className="text-sm text-muted-foreground">Keep channel drafts together under one idea, plan dates, and copy content when you are ready to post.</p></div>
         <Button asChild><Link to="/studio"><Plus className="size-4" /> Create post</Link></Button>
       </div>
       <Card>
@@ -253,6 +362,7 @@ export function ContentPlanner() {
           <Input type="date" aria-label="To date" value={to} onChange={(e) => setTo(e.target.value)} />
         </CardContent>
       </Card>
+      {ideasError && <p role="alert" className="text-sm text-destructive">Could not load content ideas. Apply migration 0032 before using channel versions.</p>}
       <div className="flex items-center justify-between gap-3">
         <p className="text-sm text-muted-foreground">{filtered.length} post{filtered.length === 1 ? '' : 's'} found</p>
         <div className="flex gap-1 rounded-xl border p-1">
@@ -262,7 +372,21 @@ export function ContentPlanner() {
       </div>
       {isLoading ? <div className="space-y-3">{Array.from({ length: 3 }, (_, index) => <Skeleton key={index} className="h-28 w-full" />)}</div>
         : view === 'list' ? (
-          filtered.length > 0 ? <div className="space-y-3">{filtered.map(renderPost)}</div>
+          filtered.length > 0 ? <div className="space-y-4">{[...grouped.entries()].map(([id, versions]) => {
+            const allVersions = (posts ?? []).filter((post) => (post.idea_id || post.id) === id)
+            const source = allVersions[allVersions.length - 1] ?? versions[0]
+            const idea = ideaMap.get(id) ?? { id, title: source.title || 'Untitled idea', brief: source.prompt || source.caption || '', createdAt: source.created_at }
+            const usedPlatforms = allVersions.map((post) => post.platform)
+            return <Card key={id} className="gap-0 overflow-hidden py-0">
+              <CardHeader className="border-b bg-muted/20 py-4">
+                <div className="flex flex-wrap items-start justify-between gap-3">
+                  <div className="min-w-0"><CardTitle className="text-base">{idea.title}</CardTitle><p className="mt-1 line-clamp-2 whitespace-pre-wrap text-xs text-muted-foreground">{idea.brief || 'No brief yet. Add verified facts before creating another channel version.'}</p><p className="mt-1 text-xs text-muted-foreground">{allVersions.length} channel version{allVersions.length === 1 ? '' : 's'}</p></div>
+                  <div className="flex gap-2"><Button type="button" size="sm" variant="ghost" onClick={() => setEditingIdea(idea)}><Pencil className="size-3.5" /> Edit idea</Button><Button type="button" size="sm" variant="outline" disabled={usedPlatforms.length >= PLATFORMS.length} onClick={() => setVariant({ idea, source, usedPlatforms })}><Plus className="size-3.5" /> Add channel version</Button></div>
+                </div>
+              </CardHeader>
+              <CardContent className="space-y-2 py-3">{versions.map(renderPost)}</CardContent>
+            </Card>
+          })}</div>
             : <p className="rounded-2xl border p-8 text-center text-sm text-muted-foreground">No posts match these filters.</p>
         ) : (
           <Card>
@@ -289,6 +413,8 @@ export function ContentPlanner() {
           </Card>
         )}
       {editing && <PostEditor key={editing.id} post={editing} onClose={() => setEditing(null)} />}
+      {editingIdea && <IdeaEditor key={editingIdea.id} idea={editingIdea} onClose={() => setEditingIdea(null)} />}
+      {variant && <VariantComposer key={variant.idea.id} {...variant} onClose={() => setVariant(null)} />}
     </div>
   )
 }

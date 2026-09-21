@@ -42,6 +42,7 @@ export type PostStatus =
 export interface PostRow {
   id: string
   owner_id: string
+  idea_id: string
   campaign_id: string | null
   agent_id: string | null
   title: string | null
@@ -242,6 +243,7 @@ export interface CreatePostInput {
   scheduledFor?: string
   prompt?: string
   mediaAssetIds?: string[]
+  ideaId?: string
   status?: 'draft' | 'ready'
 }
 
@@ -274,6 +276,17 @@ export async function createPostImpl(
   const mediaError = await validatePostImageIds(input.mediaAssetIds ?? [], user.id)
   if (mediaError) return { error: mediaError }
 
+  if (input.ideaId) {
+    const { data: idea, error: ideaError } = await supabase.from('studio_content_ideas')
+      .select('id').eq('id', input.ideaId).eq('owner_id', user.id).maybeSingle()
+    if (ideaError || !idea) return { error: 'Content idea not found.' }
+    const { data: existing, error: existingError } = await supabase.from('posts')
+      .select('id').eq('owner_id', user.id).eq('idea_id', input.ideaId)
+      .eq('platform', input.platform).maybeSingle()
+    if (existingError) return { error: 'Could not check channel versions.' }
+    if (existing) return { error: 'This idea already has a version for that channel.' }
+  }
+
   if (input.scheduledFor && (!Number.isFinite(Date.parse(input.scheduledFor)) || Date.parse(input.scheduledFor) <= Date.now())) {
     return { error: 'Choose a future date for your content plan.' }
   }
@@ -305,11 +318,14 @@ export async function createPostImpl(
       scheduled_for: input.scheduledFor ?? null,
       prompt: input.prompt ?? null,
       media_asset_ids: input.mediaAssetIds ?? [],
+      idea_id: input.ideaId ?? null,
     })
     .select('id')
     .single()
 
-  if (error) return { error: sanitizeSupabaseMessage(error.message, 'Operation failed') }
+  if (error) return { error: error.code === '23505'
+    ? 'This idea already has a version for that channel.'
+    : sanitizeSupabaseMessage(error.message, 'Operation failed') }
 
   // Increment usage counter
   await supabase.rpc('increment_usage', {
@@ -372,7 +388,9 @@ export async function updatePostImpl(input: {
     .in('status', ['draft', 'ready', 'scheduled'])
     .select('id')
 
-  if (error) return { error: sanitizeSupabaseMessage(error.message, 'Operation failed') }
+  if (error) return { error: error.code === '23505'
+    ? 'This idea already has a version for that channel.'
+    : sanitizeSupabaseMessage(error.message, 'Operation failed') }
   if (!data?.length) return { error: 'Post not found or cannot be edited.' }
   return null
 }

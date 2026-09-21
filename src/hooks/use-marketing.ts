@@ -74,6 +74,7 @@ export const useCreatePost = () => {
       }
       toast.success('Post saved')
       qc.invalidateQueries({ queryKey: ['marketing', 'posts'] })
+      qc.invalidateQueries({ queryKey: ['studio', 'content-ideas'] })
       qc.invalidateQueries({ queryKey: ['plan-state'] })
     },
     onError: (error: unknown) => toast.error(error instanceof Error ? error.message : 'Could not save post'),
@@ -108,6 +109,7 @@ export const useDuplicatePost = () => {
       }
       toast.success('Draft duplicated')
       qc.invalidateQueries({ queryKey: ['marketing', 'posts'] })
+      qc.invalidateQueries({ queryKey: ['studio', 'content-ideas'] })
       qc.invalidateQueries({ queryKey: ['plan-state'] })
     },
     onError: (error: unknown) => toast.error(error instanceof Error ? error.message : 'Could not duplicate post'),

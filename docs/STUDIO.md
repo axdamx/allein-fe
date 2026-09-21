@@ -48,7 +48,7 @@ jobs and the Studio Agent has no video tool until monthly metering is ready.
    │
    └──► Supabase (Postgres + Storage)
            tables: studio_assets, studio_chats, studio_messages,
-                   studio_storyboards, studio_scenes
+                   studio_storyboards, studio_scenes, studio_content_ideas
            bucket: media (public-read, per-user write)
 ```
 
@@ -105,7 +105,8 @@ jobs and the Studio Agent has no video tool until monthly metering is ready.
 ### Content planner ✅
 - `src/routes/_authed.studio.planner.tsx` and
   `src/components/studio/content-planner.tsx` — list/calendar views, filters,
-  saved post editing, and duplication.
+  saved post editing, duplication, and channel versions grouped under a shared
+  idea. Users can edit the shared brief and generate a new channel draft from it.
 - The Create preview is editable and can attach generated, uploaded, or saved
   library images. It can hold up to 10 ordered images for manual carousel
   preparation, with the first image as the cover. Planned dates are for manual
@@ -146,6 +147,8 @@ Core Studio migrations, applied in order:
 - `0031_studio_asset_folders_and_post_images.sql` — folders, post image arrays,
   ownership and durability checks, and a backfill of saved legacy images
   (pending application)
+- `0032_studio_content_ideas.sql` — shared content ideas, backfill of existing
+  posts, ownership checks, and one post per channel per idea (pending application)
 
 All tables have RLS scoped to `owner_id = auth.uid()`. Messages/scenes access
 via join-through-ownership policies.
