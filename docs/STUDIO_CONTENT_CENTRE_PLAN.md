@@ -36,8 +36,8 @@ entitlement stays configured.
   library. Keep AI output editable before saving.
 - [x] Organize assets into folders and support up to 10 ordered images per post
   for manual carousel preparation. The first image is the cover.
-- [ ] Apply migration `0031_studio_asset_folders_and_post_images.sql` to the
-  target Supabase project before deploying folders and carousels.
+- [x] Apply migration `0031_studio_asset_folders_and_post_images.sql` to the
+  target Supabase project (confirmed by the user on 2026-09-22).
 - [x] Add a brand kit (voice, audience, colors, logo, default hashtags, and
   disclaimer) and reusable post templates. The Create form can start from a
   starter or saved template, and post generation uses the saved brand voice.
@@ -46,10 +46,19 @@ entitlement stays configured.
 - [x] Separate one content idea from channel-specific versions. Existing posts
   become single-version ideas; the Planner groups versions, edits the shared
   brief, and generates an editable draft for another channel.
-- [ ] Apply migration `0032_studio_content_ideas.sql` after 0031 and before
-  deploying channel versions.
+- [x] Apply migration `0032_studio_content_ideas.sql` after 0031 (confirmed by
+  the user on 2026-09-22).
 
-## Step 3 — actual publishing
+## Next without connected publishing
+
+- [ ] Add a manual posting pack for each channel version: copy-ready caption
+  and hashtags, ordered image downloads, and the planned date in one place.
+- [ ] Ground generated drafts in approved listings, CRM records, and knowledge
+  sources, then show the source material for review before saving.
+- [ ] Choose an operations notification destination and alert on Z.AI balance
+  exhaustion (`1113`).
+
+## Step 3 — actual publishing (deferred by user on 2026-09-22)
 
 - [ ] Choose and integrate a publishing path: a supported provider such as
   Buffer for a pilot, or direct platform APIs starting with Meta. Complete
@@ -77,6 +86,6 @@ entitlement stays configured.
 4. Planning: a future date is shown as Planned, never as published or queued
    for automatic delivery.
 
-Migrations 0029 and 0030 are applied. Migrations 0031 and 0032 must precede
-this branch's next deployment; folders, carousels, and channel versions depend
-on their schema.
+Migrations 0029–0032 are applied according to the user's confirmations.
+Connected publishing and video remain deferred; planned dates still require
+manual posting.
