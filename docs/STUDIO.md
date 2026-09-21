@@ -5,7 +5,7 @@
 
 The Studio is a creative workspace for AI content generation. The current
 navigation exposes content creation, a content planner, image chat, the asset
-library, and a brand kit with reusable post templates.
+library, a brand kit with reusable post templates, and approved source facts.
 This doc tracks what's built, what's wired, what's known-broken, and what's
 deferred.
 
@@ -21,10 +21,11 @@ deferred.
 | `/studio/storyboard` | Storyboard | Brief → scene-by-scene video planning (not linked in current navigation) |
 | `/studio/library` | Library | Generated and uploaded assets with folders, search, download/delete |
 | `/studio/brand` | Brand kit | Account voice, colors, logo, hashtags, and post templates |
+| `/studio/sources` | Sources | Curated public facts for grounded post drafts |
 
 Layout + tab nav: `src/routes/_authed.studio.tsx` (mirrors the CRM layout
 pattern with `<Outlet />`). The active navigation exposes Create, Planner,
-Image chat, Library, and Brand kit. Video is labelled Coming soon. The Custom plan's video feature
+Image chat, Library, Brand kit, and Sources. Video is labelled Coming soon. The Custom plan's video feature
 flag remains configured, while the public video submit endpoint refuses new
 jobs and the Studio Agent has no video tool until monthly metering is ready.
 
@@ -127,6 +128,19 @@ jobs and the Studio Agent has no video tool until monthly metering is ready.
   deploying this feature. The logo guides the user visually; image generation
   does not place it automatically.
 
+### Approved sources ✅
+- `src/routes/_authed.studio.sources.tsx` and
+  `src/components/studio/source-studio.tsx` — curate listing, CRM, and knowledge
+  facts for public posts, with explicit approval. CRM contact details and raw
+  knowledge documents are not imported automatically.
+- The Create form and Planner's channel composer can select up to five approved
+  cards. Generation receives only those selected facts. The preview shows their
+  full text before saving; a source snapshot is saved in each post's metadata.
+  Editing a source requires reviewing it again. Source changes between
+  generation and save cause a regenerate prompt.
+- Migration `0033_studio_approved_sources.sql` is required before this feature
+  is used. Direct links to original records remain a later integration step.
+
 ### Polish (Phase 4) ✅
 - Sample prompt starters in chat empty state (one-click → new chat + send)
 - Quota pill + locked-state UX in studio composer (parity with CRM ChatInput)
@@ -149,9 +163,11 @@ Core Studio migrations, applied in order:
   post templates
 - `0031_studio_asset_folders_and_post_images.sql` — folders, post image arrays,
   ownership and durability checks, and a backfill of saved legacy images
-  (pending application)
+  (applied)
 - `0032_studio_content_ideas.sql` — shared content ideas, backfill of existing
-  posts, ownership checks, and one post per channel per idea (pending application)
+  posts, ownership checks, and one post per channel per idea (applied)
+- `0033_studio_approved_sources.sql` — owner-scoped approved source cards
+  (pending application)
 
 All tables have RLS scoped to `owner_id = auth.uid()`. Messages/scenes access
 via join-through-ownership policies.

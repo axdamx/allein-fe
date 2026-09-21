@@ -38,6 +38,7 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { Textarea } from '@/components/ui/textarea'
 import { UsageIndicator } from '@/components/billing/usage-indicator'
 import { PostImagePicker } from '@/components/studio/post-image-picker'
+import { StudioSourcePicker, StudioSourceReview } from '@/components/studio/source-review'
 import { PostingPackButton } from '@/components/studio/posting-pack'
 import { useCreatePost, useDuplicatePost, useGeneratePost, usePosts, useUpdatePost } from '@/hooks/use-marketing'
 import { useStudioContentIdeas, useUpdateStudioContentIdea } from '@/hooks/use-studio-ideas'
@@ -101,6 +102,7 @@ function PostSummary({
           <Badge variant={status === 'failed' ? 'destructive' : 'outline'} className="capitalize">{status}</Badge>
         </div>
         <p className="mt-1 line-clamp-2 whitespace-pre-wrap text-sm text-muted-foreground">{post.caption}</p>
+        {!!post.metadata?.studio_sources?.length && <p className="mt-1 text-xs text-muted-foreground">Sources: {post.metadata.studio_sources.map((source) => source.title).join(', ')}</p>}
         {post.scheduled_for && (
           <p className="mt-2 text-xs text-muted-foreground">
             Planned for {format(new Date(post.scheduled_for), 'MMM d, yyyy · h:mm a')} · publish manually
@@ -231,6 +233,7 @@ function VariantComposer({
   const [platform, setPlatform] = useState<PostPlatform>(available[0]?.value ?? 'instagram')
   const [tone, setTone] = useState('Brand voice')
   const [extraAngle, setExtraAngle] = useState('')
+  const [sourceIds, setSourceIds] = useState<string[]>(source.metadata?.studio_sources?.map((item) => item.id) ?? [])
   const [draft, setDraft] = useState<GeneratedPost | null>(null)
   const [hashtags, setHashtags] = useState('')
   const [mediaAssetIds, setMediaAssetIds] = useState<string[]>(source.media_asset_ids ?? [])
@@ -242,7 +245,7 @@ function VariantComposer({
   const handleGenerate = async () => {
     if (!prompt) return
     try {
-      const result = await generate.mutateAsync({ prompt, platform, tone })
+      const result = await generate.mutateAsync({ prompt, platform, tone, sourceIds })
       if (!('error' in result)) {
         setDraft(result)
         setHashtags(result.hashtags.join(', '))
@@ -263,6 +266,7 @@ function VariantComposer({
         prompt,
         mediaAssetIds,
         status: 'draft',
+        sources: draft.sources,
       })
       if (!('error' in result)) onClose()
     } catch {
@@ -275,6 +279,7 @@ function VariantComposer({
       <DialogHeader><DialogTitle>Add channel version</DialogTitle><DialogDescription>Generate a new caption from “{idea.title}”. Review and edit it before saving a draft. Publishing remains manual.</DialogDescription></DialogHeader>
       <div className="space-y-4">
         <div className="rounded-xl border bg-muted/30 p-3"><p className="text-xs font-medium">Source brief</p><p className="mt-1 whitespace-pre-wrap text-sm text-muted-foreground">{idea.brief || 'Add a brief to this idea before generating a version.'}</p></div>
+        <StudioSourcePicker selectedIds={sourceIds} onChange={(ids) => { setSourceIds(ids); setDraft(null) }} />
         <div className="grid gap-3 sm:grid-cols-2">
           <div className="space-y-2"><Label>Channel</Label><Select value={platform} onValueChange={(value) => { setPlatform(value as PostPlatform); setDraft(null) }}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent>{available.map((channel) => <SelectItem key={channel.value} value={channel.value}>{channel.label}</SelectItem>)}</SelectContent></Select></div>
           <div className="space-y-2"><Label htmlFor="variant-tone">Tone</Label><Input id="variant-tone" maxLength={80} value={tone} onChange={(event) => { setTone(event.target.value); setDraft(null) }} /></div>
@@ -282,6 +287,7 @@ function VariantComposer({
         <div className="space-y-2"><Label htmlFor="variant-angle">Extra angle for this channel</Label><Textarea id="variant-angle" rows={2} maxLength={500} value={extraAngle} onChange={(event) => { setExtraAngle(event.target.value); setDraft(null) }} placeholder="Optional details or emphasis for this channel" /></div>
         <Button type="button" variant="outline" onClick={handleGenerate} disabled={!prompt || generate.isPending || available.length === 0}>{generate.isPending ? <Loader2 className="size-4 animate-spin" /> : <Sparkles className="size-4" />} Generate version</Button>
         {draft && <div className="space-y-3 border-t pt-4">
+          <StudioSourceReview sources={draft.sources} />
           <div className="space-y-2"><Label htmlFor="variant-title">Title</Label><Input id="variant-title" maxLength={100} value={draft.title} onChange={(event) => setDraft({ ...draft, title: event.target.value })} /></div>
           <div className="space-y-2"><Label htmlFor="variant-caption">Caption</Label><Textarea id="variant-caption" rows={6} value={draft.caption} onChange={(event) => setDraft({ ...draft, caption: event.target.value })} /></div>
           <div className="space-y-2"><Label htmlFor="variant-hashtags">Hashtags</Label><Input id="variant-hashtags" value={hashtags} onChange={(event) => setHashtags(event.target.value)} /></div>

@@ -11,6 +11,7 @@ const TABS = [
   { label: 'Image chat', to: '/studio/chat' },
   { label: 'Library', to: '/studio/library' },
   { label: 'Brand kit', to: '/studio/brand' },
+  { label: 'Sources', to: '/studio/sources' },
 ] as const
 
 const StudioLayout = () => {

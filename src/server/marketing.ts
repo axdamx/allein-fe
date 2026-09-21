@@ -44,6 +44,7 @@ export const generatePost = createServerFn({ method: 'POST' })
       platform: PostPlatform
       tone?: string
       agentId?: string
+      sourceIds?: string[]
     }) => d,
   )
   .handler(async ({ data }) => {

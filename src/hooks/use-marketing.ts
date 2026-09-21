@@ -29,6 +29,7 @@ export const useGeneratePost = () => {
       platform: PostPlatform
       tone?: string
       agentId?: string
+      sourceIds?: string[]
     }) => generatePost({ data: input }),
     onSuccess: (result) => {
       if ('error' in result) toast.error(result.error)

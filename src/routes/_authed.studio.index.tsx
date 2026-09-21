@@ -42,6 +42,7 @@ import {
 import { usePlan } from '@/hooks/use-plan'
 import { UsageIndicator } from '@/components/billing/usage-indicator'
 import { PostImagePicker } from '@/components/studio/post-image-picker'
+import { StudioSourcePicker, StudioSourceReview } from '@/components/studio/source-review'
 import { PostingPackButton } from '@/components/studio/posting-pack'
 import type { PostPlatform, GeneratedPost } from '@/hooks/use-marketing'
 import { cn } from '@/lib/utils'
@@ -84,6 +85,7 @@ const StudioCreatePage = () => {
   const [platform, setPlatform] = useState<PostPlatform>('instagram')
   const [tone, setTone] = useState('Brand voice')
   const [generated, setGenerated] = useState<GeneratedPost | null>(null)
+  const [sourceIds, setSourceIds] = useState<string[]>([])
 
   const selectTemplate = (templateId: string) => {
     const template: StudioPostTemplate | undefined = [...STARTER_POST_TEMPLATES, ...(customTemplates ?? [])]
@@ -99,7 +101,7 @@ const StudioCreatePage = () => {
     if (!prompt.trim()) return
     setStep('generating')
     try {
-      const result = await generatePost.mutateAsync({ prompt, platform, tone })
+      const result = await generatePost.mutateAsync({ prompt, platform, tone, sourceIds })
       if (!('error' in result)) {
         setGenerated(result)
         setStep('preview')
@@ -116,6 +118,7 @@ const StudioCreatePage = () => {
     setStep('form')
     setGenerated(null)
     setPrompt('')
+    setSourceIds([])
   }
 
   return (
@@ -160,6 +163,8 @@ const StudioCreatePage = () => {
                     autoFocus
                   />
                 </div>
+
+                <StudioSourcePicker selectedIds={sourceIds} onChange={setSourceIds} />
 
                 <div className="grid grid-cols-2 gap-3">
                   <div className="space-y-2">
@@ -236,6 +241,7 @@ const StudioCreatePage = () => {
                   scheduledFor: draft.scheduledFor,
                   prompt,
                   mediaAssetIds: draft.mediaAssetIds,
+                  sources: generated.sources,
                 })
                 if (!('error' in result)) handleReset()
               } catch {
@@ -303,7 +309,7 @@ const PostPreview = ({
 }: {
   generated: GeneratedPost
   platform: PostPlatform
-  onSave: (draft: GeneratedPost & { scheduledFor?: string; mediaAssetIds: string[] }) => void
+  onSave: (draft: Pick<GeneratedPost, 'title' | 'caption' | 'hashtags'> & { scheduledFor?: string; mediaAssetIds: string[] }) => void
   onReset: () => void
   saving: boolean
 }) => {
@@ -337,6 +343,7 @@ const PostPreview = ({
         </div>
       </CardHeader>
       <CardContent className="space-y-4">
+        <StudioSourceReview sources={generated.sources} />
         <div className="space-y-3 rounded-2xl border border-black/[0.06] bg-white/45 p-4 dark:border-white/10 dark:bg-black/10">
           <p className="text-xs text-muted-foreground">Edit the AI draft before saving.</p>
           <div className="space-y-1.5">

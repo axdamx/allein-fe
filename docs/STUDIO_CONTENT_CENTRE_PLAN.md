@@ -53,8 +53,12 @@ entitlement stays configured.
 
 - [x] Add a manual posting pack for each channel version: copy-ready caption
   and hashtags, ordered image downloads, and the planned date in one place.
-- [ ] Ground generated drafts in approved listings, CRM records, and knowledge
-  sources, then show the source material for review before saving.
+- [x] Ground generated drafts in owner-approved source cards for listings, CRM,
+  and knowledge facts. The user selects up to five cards; Create and Planner
+  show the exact facts before saving, and posts retain a source snapshot.
+  Raw CRM contacts and knowledge documents are not sent to the generator.
+- [ ] Apply migration `0033_studio_approved_sources.sql` to the target Supabase
+  project. This is required before using the Sources tab or source selection.
 - [ ] Choose an operations notification destination and alert on Z.AI balance
   exhaustion (`1113`).
 
@@ -72,8 +76,9 @@ entitlement stays configured.
 
 ## Step 4 — lead-generating workflows
 
-- [ ] Ground drafts in approved knowledge-base content, listings, and CRM
-  context, with source review before publishing.
+- [ ] Link approved source cards to their original knowledge documents, CRM
+  records, or listing system when a listing model exists. Keep explicit review
+  before publishing.
 - [ ] Add trackable links and connect campaign activity to CRM leads and
   conversions. Add approvals and analytics after reliable publishing exists.
 
@@ -87,5 +92,6 @@ entitlement stays configured.
    for automatic delivery.
 
 Migrations 0029–0032 are applied according to the user's confirmations.
+Migration 0033 is pending application.
 Connected publishing and video remain deferred; planned dates still require
 manual posting.
