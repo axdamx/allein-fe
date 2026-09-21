@@ -183,7 +183,7 @@ const StudioLibraryPage = () => {
           <div>
             <p className="font-medium">No media yet</p>
             <p className="max-w-sm text-sm text-muted-foreground">
-              Generate images or videos from the Create tab or by chatting with
+              Generate images from the Create tab or by chatting with
               the Studio agent.
             </p>
           </div>

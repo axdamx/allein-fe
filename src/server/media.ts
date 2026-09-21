@@ -3,9 +3,9 @@
  *
  * Client-callable via RPC. Implementations live in media.server.ts.
  *
- * Plan gating: image generation requires `aiImageGen`, video requires
- * `aiVideoGen`. Both are enforced here (the public boundary) before the
- * implementation runs.
+ * Plan gating: image generation requires `aiImageGen`. Video submissions
+ * currently return a coming soon response before any provider call. The
+ * Custom tier's `aiVideoGen` entitlement remains configured for launch.
  */
 import { createServerFn } from '@tanstack/react-start'
 
@@ -92,11 +92,10 @@ export const submitVideo = createServerFn({ method: 'POST' })
       quality?: 'speed' | 'quality'
     }) => d,
   )
-  .handler(async ({ data }) => {
-    const profile = await enforceFeature('aiVideoGen')
-    enforceGenerationRate(profile.id, 'video')
-    const { submitVideoImpl } = await import('./media.server')
-    return submitVideoImpl(data)
+  .handler(async () => {
+    // Keep the Custom tier entitlement configured, but do not start paid video
+    // jobs until the generator is released with its monthly quota controls.
+    return { error: 'Video generation is coming soon.' }
   })
 
 export const pollVideo = createServerFn({ method: 'GET' })

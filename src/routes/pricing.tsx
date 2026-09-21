@@ -22,7 +22,7 @@ const ALL_FEATURES: { key: string; label: string }[] = [
   { key: 'ragDocuments', label: 'RAG knowledge base' },
   { key: 'scheduledPosts', label: 'Scheduled posts' },
   { key: 'aiImageGen', label: 'AI image generation' },
-  { key: 'aiVideoGen', label: 'AI video generation' },
+  { key: 'aiVideoGen', label: 'AI video generation (coming soon)' },
   { key: 'teamSeats', label: 'Team seats' },
   { key: 'apiAccess', label: 'API access' },
   { key: 'whiteLabel', label: 'White-label' },

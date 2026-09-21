@@ -44,9 +44,9 @@ const ActivityLink = ({ activity }: { activity: RecentActivity }) => {
     )
   }
   return (
-    <div className="min-w-0 flex-1" title="Marketing Studio is coming soon">
+    <Link to="/studio" className="min-w-0 flex-1 hover:underline">
       {content}
-    </div>
+    </Link>
   )
 }
 

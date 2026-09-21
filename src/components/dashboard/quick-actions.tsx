@@ -17,8 +17,8 @@ const ACTIONS = [
     description: 'Start a post or campaign',
     to: '/studio' as const,
     color: 'bg-[#E9D8F5] text-[#734F8D]',
-    disabled: true,
-    badge: 'Coming soon',
+    disabled: false,
+    badge: null,
   },
   {
     icon: Calendar,
@@ -72,7 +72,7 @@ export const QuickActions = () => (
           <div
             key={action.label}
             aria-disabled="true"
-            title="Marketing Studio is coming soon"
+            title={`${action.label} is coming soon`}
             className="flex min-h-24 cursor-not-allowed items-center gap-3 rounded-2xl border border-dashed border-black/[0.07] bg-black/[0.015] p-3 opacity-65 dark:border-white/[0.08] dark:bg-white/[0.02]"
           >
             {content}

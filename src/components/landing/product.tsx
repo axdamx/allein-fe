@@ -78,8 +78,8 @@ export const Product = () => (
               </span>
               <h3 className="mt-6 text-2xl font-semibold tracking-[-0.03em] sm:text-3xl">AI Marketing Studio</h3>
               <p className="mt-3 max-w-md text-sm leading-6 text-white/50">
-                Turn one simple brief into a campaign—copy, visual direction,
-                storyboard, and publish-ready assets in one creative flow.
+                Turn one simple brief into campaign copy and images, then keep
+                drafts and assets together in one creative workspace.
               </p>
             </div>
             <span className="hidden rounded-full border border-white/10 px-3 py-1.5 text-[10px] uppercase tracking-[0.18em] text-white/40 sm:block">

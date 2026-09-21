@@ -1,13 +1,10 @@
 /**
  * AI media generator card — image OR video.
  *
- * Wired to real generation hooks (ZAI CogView for images, CogVideoX for video).
- * Image generation is a one-shot mutation. Video generation is async; this
- * component renders the polling state and stays correct if the user navigates
- * away (the asset row persists server-side and can be reattached from the
- * library later).
+ * Images use ZAI CogView. The video card displays a coming soon state while
+ * video generation is held for a later release.
  *
- * Plan-gated: image requires `aiImageGen`, video requires `aiVideoGen`.
+ * Plan-gated: image requires `aiImageGen`.
  * Locked tiers see an upgrade prompt instead of the form.
  */
 import { useState } from 'react'
@@ -56,12 +53,14 @@ export const MediaGenerator = ({
   mediaType,
   caption,
   onMediaGenerated,
+  onMediaReset,
 }: {
   mediaType: MediaType
   /** The generated caption — used to auto-derive the image prompt */
   caption: string
-  /** Called with the media URL when generation completes */
-  onMediaGenerated: (url: string, type: MediaType) => void
+  /** Called with the saved asset when generation completes. */
+  onMediaGenerated: (assetId: string, url: string, type: MediaType) => void
+  onMediaReset?: () => void
 }) => {
   const { hasFeature, tier } = usePlan()
   const featureKey = mediaType === 'image' ? 'aiImageGen' : 'aiVideoGen'
@@ -111,6 +110,7 @@ export const MediaGenerator = ({
   }
 
   const handleGenerate = async () => {
+    if (mediaType === 'video') return
     if (!hasAccess) {
       setUpgradeOpen(true)
       return
@@ -120,7 +120,7 @@ export const MediaGenerator = ({
     if (mediaType === 'image') {
       const result = await imageGen.mutateAsync({ prompt, aspectRatio })
       if (result && 'id' in result && result.url) {
-        onMediaGenerated(result.url, 'image')
+        onMediaGenerated(result.id, result.url, 'image')
       }
     } else {
       const result = await videoGen.submit({
@@ -129,18 +129,36 @@ export const MediaGenerator = ({
         durationSeconds: 5,
       })
       if (result && 'id' in result && result.status === 'ready' && result.url) {
-        onMediaGenerated(result.url, 'video')
+        onMediaGenerated(result.id, result.url, 'video')
       }
     }
   }
 
   const handleRegenerate = () => {
+    onMediaReset?.()
     if (mediaType === 'image') {
       imageGen.reset()
     } else {
       videoGen.reset()
     }
     handleGenerate()
+  }
+
+  if (mediaType === 'video') {
+    return (
+      <Card className="border-dashed">
+        <CardContent className="flex flex-col items-center justify-center gap-3 py-8 text-center">
+          <div className="flex size-12 items-center justify-center rounded-full bg-muted">
+            <Video className="size-5 text-muted-foreground" />
+          </div>
+          <p className="font-medium">Video generation</p>
+          <Badge variant="secondary">Coming soon</Badge>
+          <p className="text-sm text-muted-foreground">
+            Video creation is in development. You can generate an image for this post now.
+          </p>
+        </CardContent>
+      </Card>
+    )
   }
 
   // --- Locked state (tier-gated) ---
@@ -252,20 +270,8 @@ export const MediaGenerator = ({
           <div className="space-y-2">
             <div className="flex items-center gap-2 text-sm">
               <Loader2 className="size-4 animate-spin text-primary" />
-              <span>
-                {mediaType === 'image'
-                  ? 'Generating image…'
-                  : videoGen.state.status === 'submitting'
-                    ? 'Submitting video job…'
-                    : 'Generating video… this takes ~2-5 min'}
-              </span>
+              <span>Generating image…</span>
             </div>
-            {mediaType === 'video' && (
-              <p className="text-xs text-muted-foreground">
-                You can keep using the app — we'll show the result here when
-                ready.
-              </p>
-            )}
           </div>
         )}
 

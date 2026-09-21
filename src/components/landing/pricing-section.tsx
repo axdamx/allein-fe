@@ -17,7 +17,7 @@ const planFeatures = (plan: PlanConfig) => {
     messages === null ? 'Unlimited AI messages' : `${messages} AI messages / day`,
     leads === null ? 'Unlimited leads' : `${leads} active leads`,
     plan.features.aiVideoGen
-      ? 'AI image + video generation'
+      ? 'AI images · video coming soon'
       : plan.features.aiImageGen
         ? 'AI image generation'
         : plan.features.scheduledPosts

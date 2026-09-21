@@ -1,10 +1,11 @@
 # Marketing Studio — Implementation Status
 
-> Last updated: 2026-07-08
-> Status: **Phase 1–4 complete, billing/metering deferred**
+> Last updated: 2026-09-21
+> Status: **Content and image workflows open; video generation coming soon**
 
-The Studio is a four-tab creative workspace for AI content generation. This
-doc tracks what's built, what's wired, what's known-broken, and what's
+The Studio is a creative workspace for AI content generation. The current
+navigation exposes content creation, image chat, and the asset library.
+This doc tracks what's built, what's wired, what's known-broken, and what's
 deferred.
 
 ---
@@ -13,13 +14,16 @@ deferred.
 
 | Route | Tab | Purpose |
 |---|---|---|
-| `/studio` | Create | Form-driven content + image/video generator (original flow) |
-| `/studio/chat` | Chat | Conversational image/video generation with the Studio Agent |
-| `/studio/storyboard` | Storyboard | Brief → scene-by-scene video planning with drag-reorder |
+| `/studio` | Create | Form-driven content generation, image attachment, and video coming soon card |
+| `/studio/chat` | Image chat | Conversational image generation with the Studio Agent |
+| `/studio/storyboard` | Storyboard | Brief → scene-by-scene video planning (not linked in current navigation) |
 | `/studio/library` | Library | Grid of all generated assets with download/delete |
 
 Layout + tab nav: `src/routes/_authed.studio.tsx` (mirrors the CRM layout
-pattern with `<Outlet />`).
+pattern with `<Outlet />`). The active navigation exposes Create, Image chat,
+and Library. Video is labelled Coming soon. The Custom plan's video feature
+flag remains configured, while the public video submit endpoint refuses new
+jobs and the Studio Agent has no video tool until monthly metering is ready.
 
 ---
 

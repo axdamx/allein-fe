@@ -212,6 +212,7 @@ export interface CreatePostInput {
   platform: PostPlatform
   scheduledFor?: string
   prompt?: string
+  mediaAssetId?: string
 }
 
 export async function createPostImpl(
@@ -226,6 +227,22 @@ export async function createPostImpl(
     data: { user },
   } = await supabase.auth.getUser()
   if (!user) return { error: 'Not authenticated' }
+
+  let mediaUrl: string | null = null
+  if (input.mediaAssetId) {
+    const { data: asset, error: assetError } = await supabase
+      .from('studio_assets')
+      .select('url')
+      .eq('id', input.mediaAssetId)
+      .eq('owner_id', user.id)
+      .eq('kind', 'image')
+      .eq('status', 'ready')
+      .maybeSingle()
+    if (assetError || !asset?.url) {
+      return { error: 'The selected image is no longer available.' }
+    }
+    mediaUrl = asset.url
+  }
 
   // ── Daily quota gate ────────────────────────────────────────────────
   // Atomically consumes one post credit via the race-proof try_consume RPC.
@@ -253,6 +270,8 @@ export async function createPostImpl(
       status: input.scheduledFor ? 'scheduled' : 'ready',
       scheduled_for: input.scheduledFor ?? null,
       prompt: input.prompt ?? null,
+      media_url: mediaUrl,
+      media_type: mediaUrl ? 'image' : null,
     })
     .select('id')
     .single()

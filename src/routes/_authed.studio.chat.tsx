@@ -280,7 +280,7 @@ const StudioChatPage = () => {
               disabled={messagesLoading || !activeChatId}
               pendingAttachment={pendingAttachment}
               onAttachmentChange={setPendingAttachment}
-              placeholder="Describe an image or video, or attach a file…"
+              placeholder="Describe an image, or attach a file…"
             />
           </>
         ) : (
@@ -291,7 +291,7 @@ const StudioChatPage = () => {
             <div>
               <p className="font-medium">Conversational Studio</p>
               <p className="mx-auto max-w-sm text-sm text-muted-foreground">
-                Chat with the Studio agent to generate images and video.
+                Chat with the Studio agent to generate images.
                 Describe what you want, attach an image to remix, or start from
                 a prompt below.
               </p>
@@ -350,7 +350,7 @@ const StudioChatPage = () => {
           ) : (
             <div className="flex h-full flex-col items-center justify-center gap-2 text-center text-sm text-muted-foreground">
               <ImageIcon className="size-8 opacity-30" />
-              <p>Generated images & videos will appear here at a larger size.</p>
+              <p>Generated images will appear here at a larger size.</p>
             </div>
           )}
         </div>

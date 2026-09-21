@@ -279,6 +279,5 @@ export const analyzeImageTool = createTool({
 
 export const studioTools = {
   generate_image: generateImageTool,
-  generate_video: generateVideoTool,
   analyze_image: analyzeImageTool,
 }

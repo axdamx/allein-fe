@@ -25,7 +25,7 @@ export async function getAgentByType(type: string) {
   }
 }
 
-/** The built-in Studio agent (conversational image/video generation). */
+/** The built-in Studio agent (conversational image generation). */
 export async function getStudioAgent() {
   return (await import('./agents/studio-agent')).studioAgent
 }

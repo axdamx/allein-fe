@@ -197,7 +197,7 @@ const StudioCreatePage = () => {
           <PostPreview
             generated={generated}
             platform={platform}
-            onSave={async (scheduledFor) => {
+            onSave={async (scheduledFor, mediaAssetId) => {
               const result = await createPost.mutateAsync({
                 title: generated.title,
                 caption: generated.caption,
@@ -205,6 +205,7 @@ const StudioCreatePage = () => {
                 platform,
                 scheduledFor,
                 prompt,
+                mediaAssetId,
               })
               if (!('error' in result)) {
                 handleReset()
@@ -271,13 +272,14 @@ const PostPreview = ({
 }: {
   generated: GeneratedPost
   platform: PostPlatform
-  onSave: (scheduledFor?: string) => void
+  onSave: (scheduledFor?: string, mediaAssetId?: string) => void
   onReset: () => void
   saving: boolean
 }) => {
   const [scheduleEnable, setScheduleEnable] = useState(false)
   const [scheduledFor, setScheduledFor] = useState('')
   const [copied, setCopied] = useState(false)
+  const [mediaAssetId, setMediaAssetId] = useState<string | null>(null)
   const platformInfo = PLATFORMS.find((p) => p.value === platform)
 
   const handleCopy = () => {
@@ -350,7 +352,8 @@ const PostPreview = ({
             <MediaGenerator
               mediaType="image"
               caption={generated.caption}
-              onMediaGenerated={() => {}}
+              onMediaGenerated={(assetId) => setMediaAssetId(assetId)}
+              onMediaReset={() => setMediaAssetId(null)}
             />
             <MediaGenerator
               mediaType="video"
@@ -358,6 +361,11 @@ const PostPreview = ({
               onMediaGenerated={() => {}}
             />
           </div>
+          {mediaAssetId && (
+            <p className="text-xs text-muted-foreground">
+              Your image will be attached when you save this post.
+            </p>
+          )}
         </div>
 
         <div className="border-t pt-3">
@@ -384,7 +392,10 @@ const PostPreview = ({
         <div className="flex gap-2">
           <Button
             onClick={() =>
-              onSave(scheduleEnable && scheduledFor ? new Date(scheduledFor).toISOString() : undefined)
+              onSave(
+                scheduleEnable && scheduledFor ? new Date(scheduledFor).toISOString() : undefined,
+                mediaAssetId ?? undefined,
+              )
             }
             disabled={saving || (scheduleEnable && !scheduledFor)}
             className="flex-1"
@@ -431,6 +442,13 @@ const PostCard = ({ post }: { post: import('@/server/marketing').PostRow }) => {
           <p className="mt-1 line-clamp-2 text-xs text-muted-foreground">
             {post.caption}
           </p>
+          {post.media_type === 'image' && post.media_url && (
+            <img
+              src={post.media_url}
+              alt={post.title ?? 'Post image'}
+              className="mt-2 h-24 w-full rounded-lg object-cover"
+            />
+          )}
           {post.hashtags.length > 0 && (
             <div className="mt-1 flex flex-wrap gap-0.5">
               {post.hashtags.slice(0, 3).map((tag) => (

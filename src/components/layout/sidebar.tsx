@@ -56,7 +56,7 @@ const navGroups: NavGroup[] = [
   {
     label: 'Create',
     items: [
-      { label: 'Studio', icon: Sparkles, to: '/studio', disabled: true, badge: 'Coming soon' },
+      { label: 'Studio', icon: Sparkles, to: '/studio' },
       { label: 'Knowledge', icon: Brain, to: '/knowledge-base' },
       { label: 'Analytics', icon: BarChart3, to: '/analytics' },
     ],
