@@ -9,7 +9,7 @@
  * these implementations run, so we don't re-check the feature flag here.
  */
 import { getSupabaseServerClient } from '@/lib/supabase/server.server'
-import { generateCogViewImage, ZaiMediaError } from '@/lib/media/cogview'
+import { generateCogViewImage, getImageGenerationUserMessage, ZaiMediaError } from '@/lib/media/cogview'
 import {
   submitCogVideoXJob,
   pollCogVideoXJob,
@@ -140,8 +140,7 @@ export async function generateImageImpl(
         .from('studio_assets')
         .update({ status: 'failed', error: msg })
         .eq('id', row.id)
-      // Return a generic message to the client; surface the detail via the asset row.
-      return { error: 'Image generation failed. Check the asset for details.' }
+      return { error: getImageGenerationUserMessage(err) }
     }
 
     // Mirror to our bucket so the URL is durable.

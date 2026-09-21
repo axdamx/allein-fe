@@ -53,4 +53,13 @@ export async function generateCogViewImage(
   }
 }
 
+/** Safe client-facing message for image provider failures. */
+export function getImageGenerationUserMessage(err: unknown): string {
+  // Z.AI code 1113 means the account needs credit or an image resource package.
+  if (err instanceof ZaiMediaError && err.message.includes('(code: 1113)')) {
+    return 'Image generation is temporarily unavailable. Please contact support.'
+  }
+  return 'Image generation failed. Please try again or check the Library for details.'
+}
+
 export { ZaiMediaError }

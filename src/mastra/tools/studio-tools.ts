@@ -16,7 +16,7 @@
 import { createTool } from '@mastra/core/tools'
 import { z } from 'zod'
 import { getSupabaseServiceClient } from '@/lib/supabase/service.server'
-import { generateCogViewImage, ZaiMediaError } from '@/lib/media/cogview'
+import { generateCogViewImage, getImageGenerationUserMessage, ZaiMediaError } from '@/lib/media/cogview'
 import { submitCogVideoXJob } from '@/lib/media/cogvideox'
 import { getDefaultModel } from '@/lib/ai-provider'
 import { generateText } from 'ai'
@@ -138,7 +138,7 @@ export const generateImageTool = createTool({
         aspect_ratio: aspect_ratio ?? '1:1',
         error: msg,
       }).catch(() => null)
-      return { success: false, error: msg }
+      return { success: false, error: getImageGenerationUserMessage(err) }
     }
   },
 })
