@@ -50,6 +50,7 @@ export interface StudioAssetRow {
     [key: string]: string | number | boolean | null | undefined
   }
   reference_id: string | null
+  collection_id: string | null
   created_at: string
   updated_at: string
 }
@@ -473,9 +474,13 @@ export async function deleteAssetImpl(
     if (count && count > 0) return { error: 'This image is attached to a post. Remove it from the post before deleting.' }
   }
 
-  if (row.storage_path) {
-    await supabase.storage.from('media').remove([row.storage_path])
-  }
+  const { count: carouselCount, error: carouselError } = await supabase
+    .from('posts')
+    .select('id', { count: 'exact', head: true })
+    .eq('owner_id', userId)
+    .contains('media_asset_ids', [assetId])
+  if (carouselError) return { error: 'Could not check whether this image is used in a post.' }
+  if (carouselCount && carouselCount > 0) return { error: 'This image is in a post. Remove it before deleting.' }
 
   const { error } = await supabase
     .from('studio_assets')
@@ -483,5 +488,8 @@ export async function deleteAssetImpl(
     .eq('id', assetId)
     .eq('owner_id', userId)
   if (error) return { error: 'Failed to delete asset' }
+  if (row.storage_path) {
+    await supabase.storage.from('media').remove([row.storage_path])
+  }
   return null
 }

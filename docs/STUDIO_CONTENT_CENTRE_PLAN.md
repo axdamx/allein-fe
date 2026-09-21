@@ -34,12 +34,15 @@ entitlement stays configured.
   platform, planned date, and status.
 - [x] Let users upload and attach existing images and select from the Studio
   library. Keep AI output editable before saving.
-- [ ] Organize assets and support several assets per post for carousels.
+- [x] Organize assets into folders and support up to 10 ordered images per post
+  for manual carousel preparation. The first image is the cover.
+- [ ] Apply migration `0031_studio_asset_folders_and_post_images.sql` to the
+  target Supabase project before deploying folders and carousels.
 - [x] Add a brand kit (voice, audience, colors, logo, default hashtags, and
   disclaimer) and reusable post templates. The Create form can start from a
   starter or saved template, and post generation uses the saved brand voice.
-- [ ] Apply migration `0030_studio_brand_kit_and_templates.sql` to the target
-  Supabase project before deploying the brand kit code.
+- [x] Apply migration `0030_studio_brand_kit_and_templates.sql` to the target
+  Supabase project (confirmed by the user on 2026-09-22).
 - [ ] Separate one content idea from channel-specific versions so Instagram,
   Facebook, LinkedIn, and other destinations can have tailored captions.
 
@@ -71,5 +74,5 @@ entitlement stays configured.
 4. Planning: a future date is shown as Planned, never as published or queued
    for automatic delivery.
 
-Migration 0029 is applied. Migration 0030 must precede this branch's next
-deployment; the new brand kit and template RPCs depend on its tables.
+Migrations 0029 and 0030 are applied. Migration 0031 must precede this branch's
+next deployment; post image selection and library folders depend on its schema.

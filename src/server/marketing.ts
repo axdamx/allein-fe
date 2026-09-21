@@ -25,7 +25,7 @@ export interface UpdatePostInput {
   caption?: string
   hashtags?: string[]
   platform?: PostPlatform
-  mediaAssetId?: string | null
+  mediaAssetIds?: string[]
   scheduledFor?: string | null
   status?: PostStatus
 }

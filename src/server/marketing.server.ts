@@ -52,6 +52,7 @@ export interface PostRow {
   status: PostStatus
   media_url: string | null
   media_type: string | null
+  media_asset_ids: string[]
   scheduled_for: string | null
   published_at: string | null
   prompt: string | null
@@ -240,8 +241,21 @@ export interface CreatePostInput {
   platform: PostPlatform
   scheduledFor?: string
   prompt?: string
-  mediaAssetId?: string
+  mediaAssetIds?: string[]
   status?: 'draft' | 'ready'
+}
+
+async function validatePostImageIds(ids: string[], ownerId: string): Promise<string | null> {
+  if (!Array.isArray(ids) || ids.length > 10 || new Set(ids).size !== ids.length ||
+    ids.some((id) => typeof id !== 'string' || !/^[0-9a-f-]{36}$/i.test(id))) {
+    return 'Choose up to 10 different saved images.'
+  }
+  if (ids.length === 0) return null
+  const { data, error } = await getSupabaseServerClient().from('studio_assets')
+    .select('id').eq('owner_id', ownerId).eq('kind', 'image').eq('status', 'ready')
+    .not('storage_path', 'is', null).not('url', 'is', null).in('id', ids)
+  if (error || data?.length !== ids.length) return 'Choose images saved permanently in your Studio library.'
+  return null
 }
 
 export async function createPostImpl(
@@ -257,21 +271,8 @@ export async function createPostImpl(
   } = await supabase.auth.getUser()
   if (!user) return { error: 'Not authenticated' }
 
-  let mediaUrl: string | null = null
-  if (input.mediaAssetId) {
-    const { data: asset, error: assetError } = await supabase
-      .from('studio_assets')
-      .select('url, storage_path')
-      .eq('id', input.mediaAssetId)
-      .eq('owner_id', user.id)
-      .eq('kind', 'image')
-      .eq('status', 'ready')
-      .maybeSingle()
-    if (assetError || !asset?.url || !asset.storage_path) {
-      return { error: 'This image is not saved permanently. Generate a new image before attaching it.' }
-    }
-    mediaUrl = asset.url
-  }
+  const mediaError = await validatePostImageIds(input.mediaAssetIds ?? [], user.id)
+  if (mediaError) return { error: mediaError }
 
   if (input.scheduledFor && (!Number.isFinite(Date.parse(input.scheduledFor)) || Date.parse(input.scheduledFor) <= Date.now())) {
     return { error: 'Choose a future date for your content plan.' }
@@ -303,8 +304,7 @@ export async function createPostImpl(
       status: input.status === 'draft' ? 'draft' : 'ready',
       scheduled_for: input.scheduledFor ?? null,
       prompt: input.prompt ?? null,
-      media_url: mediaUrl,
-      media_type: mediaUrl ? 'image' : null,
+      media_asset_ids: input.mediaAssetIds ?? [],
     })
     .select('id')
     .single()
@@ -327,7 +327,7 @@ export async function updatePostImpl(input: {
   caption?: string
   hashtags?: string[]
   platform?: PostPlatform
-  mediaAssetId?: string | null
+  mediaAssetIds?: string[]
   scheduledFor?: string | null
   status?: PostStatus
 }): Promise<{ error: string } | null> {
@@ -340,25 +340,10 @@ export async function updatePostImpl(input: {
   if (input.caption !== undefined) updates.caption = input.caption.trim()
   if (input.hashtags !== undefined) updates.hashtags = input.hashtags
   if (input.platform !== undefined) updates.platform = input.platform
-  if (input.mediaAssetId !== undefined) {
-    if (input.mediaAssetId === null) {
-      updates.media_url = null
-      updates.media_type = null
-    } else {
-      const { data: asset, error: assetError } = await supabase
-        .from('studio_assets')
-        .select('url, storage_path')
-        .eq('id', input.mediaAssetId)
-        .eq('owner_id', user.id)
-        .eq('kind', 'image')
-        .eq('status', 'ready')
-        .maybeSingle()
-      if (assetError || !asset?.url || !asset.storage_path) {
-        return { error: 'Choose an image saved permanently in your Studio library.' }
-      }
-      updates.media_url = asset.url
-      updates.media_type = 'image'
-    }
+  if (input.mediaAssetIds !== undefined) {
+    const mediaError = await validatePostImageIds(input.mediaAssetIds, user.id)
+    if (mediaError) return { error: mediaError }
+    updates.media_asset_ids = input.mediaAssetIds
   }
   if (input.scheduledFor !== undefined)
     updates.scheduled_for = input.scheduledFor
@@ -400,14 +385,14 @@ export async function duplicatePostImpl(postId: string) {
 
   const { data: source, error } = await supabase
     .from('posts')
-    .select('title, caption, hashtags, platform, prompt, media_url')
+    .select('title, caption, hashtags, platform, prompt, media_url, media_asset_ids')
     .eq('id', postId)
     .eq('owner_id', user.id)
     .maybeSingle()
   if (error || !source) return { error: 'Post not found.' }
 
-  let mediaAssetId: string | undefined
-  if (source.media_url) {
+  let mediaAssetIds: string[] = source.media_asset_ids ?? []
+  if (mediaAssetIds.length === 0 && source.media_url) {
     const { data: asset } = await supabase
       .from('studio_assets')
       .select('id, storage_path')
@@ -419,7 +404,7 @@ export async function duplicatePostImpl(postId: string) {
     if (!asset?.storage_path) {
       return { error: 'The original image is no longer saved permanently. Replace it before duplicating.' }
     }
-    mediaAssetId = asset.id
+    mediaAssetIds = [asset.id]
   }
 
   return createPostImpl({
@@ -428,7 +413,7 @@ export async function duplicatePostImpl(postId: string) {
     hashtags: source.hashtags ?? [],
     platform: source.platform as PostPlatform,
     prompt: source.prompt ?? undefined,
-    mediaAssetId,
+    mediaAssetIds,
     status: 'draft',
   })
 }
@@ -437,20 +422,19 @@ export async function deletePostImpl(
   postId: string,
 ): Promise<{ error: string } | null> {
   const supabase = getSupabaseServerClient()
-  const { error } = await supabase.from('posts').delete().eq('id', postId)
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { error: 'Not authenticated' }
+  const { data, error } = await supabase.from('posts').delete()
+    .eq('id', postId).eq('owner_id', user.id).select('id')
   if (error) return { error: sanitizeSupabaseMessage(error.message, 'Operation failed') }
+  if (!data?.length) return { error: 'Post not found.' }
 
   // Decrement usage
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
-  if (user) {
-    await supabase.rpc('decrement_usage', {
-      p_user_id: user.id,
-      p_metric: 'posts_count',
-      p_amount: 1,
-    })
-  }
+  await supabase.rpc('decrement_usage', {
+    p_user_id: user.id,
+    p_metric: 'posts_count',
+    p_amount: 1,
+  })
 
   return null
 }

@@ -19,7 +19,7 @@ deferred.
 | `/studio/planner` | Planner | Editable drafts, duplication, filters, and a manual posting calendar |
 | `/studio/chat` | Image chat | Conversational image generation with the Studio Agent |
 | `/studio/storyboard` | Storyboard | Brief → scene-by-scene video planning (not linked in current navigation) |
-| `/studio/library` | Library | Generated and uploaded assets with download/delete |
+| `/studio/library` | Library | Generated and uploaded assets with folders, search, download/delete |
 | `/studio/brand` | Brand kit | Account voice, colors, logo, hashtags, and post templates |
 
 Layout + tab nav: `src/routes/_authed.studio.tsx` (mirrors the CRM layout
@@ -98,16 +98,18 @@ jobs and the Studio Agent has no video tool until monthly metering is ready.
 - `src/routes/_authed.studio.storyboard.tsx` — list + brief form + editor
 
 ### Library ✅
-- `src/routes/_authed.studio.library.tsx` — filterable grid, status badges,
-  failed-row error surfacing, upload, and delete. Images attached to posts
-  cannot be deleted until detached.
+- `src/routes/_authed.studio.library.tsx` — filterable grid, folder management,
+  search, status badges, failed-row error surfacing, upload, and delete. Images
+  attached to posts or used as a brand logo cannot be deleted until detached.
 
 ### Content planner ✅
 - `src/routes/_authed.studio.planner.tsx` and
   `src/components/studio/content-planner.tsx` — list/calendar views, filters,
   saved post editing, and duplication.
 - The Create preview is editable and can attach generated, uploaded, or saved
-  library images. Planned dates are for manual publishing only.
+  library images. It can hold up to 10 ordered images for manual carousel
+  preparation, with the first image as the cover. Planned dates are for manual
+  publishing only.
 
 ### Brand kit and templates ✅
 - `src/routes/_authed.studio.brand.tsx` and
@@ -140,7 +142,10 @@ Core Studio migrations, applied in order:
 - `0029_studio_image_quota_and_planned_posts.sql` — monthly image quota RPC,
   planned post correction, and Telegram channel
 - `0030_studio_brand_kit_and_templates.sql` — per-account brand kit and saved
-  post templates (pending application)
+  post templates
+- `0031_studio_asset_folders_and_post_images.sql` — folders, post image arrays,
+  ownership and durability checks, and a backfill of saved legacy images
+  (pending application)
 
 All tables have RLS scoped to `owner_id = auth.uid()`. Messages/scenes access
 via join-through-ownership policies.

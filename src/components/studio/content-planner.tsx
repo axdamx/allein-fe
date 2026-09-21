@@ -37,8 +37,7 @@ import {
 import { Skeleton } from '@/components/ui/skeleton'
 import { Textarea } from '@/components/ui/textarea'
 import { UsageIndicator } from '@/components/billing/usage-indicator'
-import { useAssets } from '@/hooks/use-media'
-import { ImageUploadButton } from '@/components/studio/image-upload-button'
+import { PostImagePicker } from '@/components/studio/post-image-picker'
 import { useDuplicatePost, usePosts, useUpdatePost } from '@/hooks/use-marketing'
 import type { PostPlatform, PostRow } from '@/server/marketing'
 import { cn } from '@/lib/utils'
@@ -88,8 +87,8 @@ function PostSummary({
 
   return (
     <div className="flex gap-4 rounded-2xl border border-black/[0.06] bg-white/55 p-4 dark:border-white/10 dark:bg-white/[0.025]">
-      {post.media_type === 'image' && post.media_url && (
-        <img src={post.media_url} alt={post.title ?? 'Post image'} className="size-20 shrink-0 rounded-xl object-cover" />
+      {post.media_url && (post.media_type === 'image' || post.media_type === 'carousel') && (
+        <div className="relative shrink-0"><img src={post.media_url} alt={post.title ?? 'Post image'} className="size-20 rounded-xl object-cover" />{post.media_type === 'carousel' && <span className="absolute bottom-1 right-1 rounded bg-background/85 px-1 text-[10px] font-medium">{post.media_asset_ids?.length ?? 0} images</span>}</div>
       )}
       <div className="min-w-0 flex-1">
         <div className="flex flex-wrap items-center gap-2">
@@ -119,8 +118,6 @@ function PostSummary({
 
 function PostEditor({ post, onClose }: { post: PostRow; onClose: () => void }) {
   const update = useUpdatePost()
-  const { data: assets } = useAssets('image')
-  const images = (assets ?? []).filter((asset) => asset.status === 'ready' && asset.storage_path && asset.url)
   const [title, setTitle] = useState(post.title ?? '')
   const [caption, setCaption] = useState(post.caption ?? '')
   const [hashtags, setHashtags] = useState(post.hashtags.join(', '))
@@ -129,10 +126,7 @@ function PostEditor({ post, onClose }: { post: PostRow; onClose: () => void }) {
   const [planned, setPlanned] = useState(Boolean(post.scheduled_for))
   const initialPlannedFor = post.scheduled_for ? format(new Date(post.scheduled_for), "yyyy-MM-dd'T'HH:mm") : ''
   const [plannedFor, setPlannedFor] = useState(initialPlannedFor)
-  const [mediaAssetId, setMediaAssetId] = useState<string | null | undefined>(undefined)
-  const [uploadedImageUrl, setUploadedImageUrl] = useState<string | null>(null)
-  const selectedImage = mediaAssetId === undefined ? post.media_url
-    : mediaAssetId === null ? null : images.find((asset) => asset.id === mediaAssetId)?.url ?? uploadedImageUrl
+  const [mediaAssetIds, setMediaAssetIds] = useState<string[] | undefined>(undefined)
 
   const save = async (event: React.FormEvent) => {
     event.preventDefault()
@@ -148,7 +142,7 @@ function PostEditor({ post, onClose }: { post: PostRow; onClose: () => void }) {
         scheduledFor: planned
           ? plannedFor === initialPlannedFor ? undefined : new Date(plannedFor).toISOString()
           : post.scheduled_for ? null : undefined,
-        mediaAssetId,
+        mediaAssetIds,
       })
       if (!result?.error) {
         toast.success('Post updated')
@@ -189,20 +183,7 @@ function PostEditor({ post, onClose }: { post: PostRow; onClose: () => void }) {
             {planned && <Input aria-label="Planned date and time" type="datetime-local" value={plannedFor} onChange={(e) => setPlannedFor(e.target.value)} required />}
             <p className="text-xs text-muted-foreground">Planned dates do not publish automatically.</p>
           </div>
-          <div className="space-y-2">
-            <Label>Image</Label>
-            <ImageUploadButton onUploaded={(asset) => { setMediaAssetId(asset.id); setUploadedImageUrl(asset.url) }} />
-            {selectedImage && <div className="flex items-center gap-3"><img src={selectedImage} alt="Selected post image" className="size-20 rounded-lg object-cover" /><Button type="button" size="sm" variant="outline" onClick={() => setMediaAssetId(null)}>Remove image</Button></div>}
-            {images.length > 0 && (
-              <div className="grid max-h-32 grid-cols-5 gap-2 overflow-y-auto" aria-label="Studio library images">
-                {images.map((image) => (
-                  <button key={image.id} type="button" onClick={() => setMediaAssetId(image.id)} aria-label={`Use image: ${image.prompt}`} className={cn('overflow-hidden rounded-lg border-2', mediaAssetId === image.id ? 'border-primary' : 'border-transparent')}>
-                    <img src={image.url!} alt={image.prompt} className="aspect-square w-full object-cover" />
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
+          <PostImagePicker selectedIds={mediaAssetIds ?? post.media_asset_ids ?? []} onChange={setMediaAssetIds} legacyUrl={mediaAssetIds === undefined && !(post.media_asset_ids?.length) ? post.media_url : null} />
           <DialogFooter>
             <Button type="button" variant="outline" onClick={onClose}>Cancel</Button>
             <Button type="submit" disabled={update.isPending || !title.trim() || !caption.trim() || (planned && !plannedFor)}>{update.isPending ? 'Saving…' : 'Save changes'}</Button>

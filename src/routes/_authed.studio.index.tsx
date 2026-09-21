@@ -41,8 +41,7 @@ import {
 } from '@/hooks/use-marketing'
 import { usePlan } from '@/hooks/use-plan'
 import { UsageIndicator } from '@/components/billing/usage-indicator'
-import { useAssets } from '@/hooks/use-media'
-import { ImageUploadButton } from '@/components/studio/image-upload-button'
+import { PostImagePicker } from '@/components/studio/post-image-picker'
 import type { PostPlatform, GeneratedPost } from '@/hooks/use-marketing'
 import { cn } from '@/lib/utils'
 import { useStudioBrandKit, useStudioPostTemplates } from '@/hooks/use-studio-brand'
@@ -235,7 +234,7 @@ const StudioCreatePage = () => {
                   platform,
                   scheduledFor: draft.scheduledFor,
                   prompt,
-                  mediaAssetId: draft.mediaAssetId,
+                  mediaAssetIds: draft.mediaAssetIds,
                 })
                 if (!('error' in result)) handleReset()
               } catch {
@@ -303,7 +302,7 @@ const PostPreview = ({
 }: {
   generated: GeneratedPost
   platform: PostPlatform
-  onSave: (draft: GeneratedPost & { scheduledFor?: string; mediaAssetId?: string }) => void
+  onSave: (draft: GeneratedPost & { scheduledFor?: string; mediaAssetIds: string[] }) => void
   onReset: () => void
   saving: boolean
 }) => {
@@ -312,10 +311,8 @@ const PostPreview = ({
   const [copied, setCopied] = useState(false)
   const [draft, setDraft] = useState(generated)
   const [hashtagsText, setHashtagsText] = useState(generated.hashtags.join(', '))
-  const [mediaAssetId, setMediaAssetId] = useState<string | null>(null)
-  const [selectedImageUrl, setSelectedImageUrl] = useState<string | null>(null)
-  const { data: library } = useAssets('image')
-  const savedImages = (library ?? []).filter((asset) => asset.status === 'ready' && asset.url && asset.storage_path)
+  const [mediaAssetIds, setMediaAssetIds] = useState<string[]>([])
+  const [generatedImages, setGeneratedImages] = useState<{ id: string; url: string; prompt: string }[]>([])
   const platformInfo = PLATFORMS.find((p) => p.value === platform)
 
   const handleCopy = () => {
@@ -383,8 +380,10 @@ const PostPreview = ({
             <MediaGenerator
               mediaType="image"
               caption={draft.caption}
-              onMediaGenerated={(assetId, url) => { setMediaAssetId(assetId); setSelectedImageUrl(url) }}
-              onMediaReset={() => { setMediaAssetId(null); setSelectedImageUrl(null) }}
+              onMediaGenerated={(assetId, url) => {
+                setGeneratedImages((current) => [{ id: assetId, url, prompt: 'Generated post image' }, ...current])
+                setMediaAssetIds((current) => current.includes(assetId) || current.length >= 10 ? current : [...current, assetId])
+              }}
             />
             <MediaGenerator
               mediaType="video"
@@ -392,26 +391,7 @@ const PostPreview = ({
               onMediaGenerated={() => {}}
             />
           </div>
-          {savedImages.length > 0 && (
-            <div className="space-y-2">
-              <p className="text-xs font-medium text-muted-foreground">Or choose an image from your Studio library</p>
-              <div className="grid max-h-28 grid-cols-6 gap-2 overflow-y-auto">
-                {savedImages.map((image) => (
-                  <button key={image.id} type="button" aria-label={`Use image: ${image.prompt}`} onClick={() => { setMediaAssetId(image.id); setSelectedImageUrl(image.url) }} className={cn('overflow-hidden rounded-lg border-2', mediaAssetId === image.id ? 'border-primary' : 'border-transparent')}>
-                    <img src={image.url!} alt={image.prompt} className="aspect-square w-full object-cover" />
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
-          <ImageUploadButton onUploaded={(asset) => { setMediaAssetId(asset.id); setSelectedImageUrl(asset.url) }} />
-          {mediaAssetId && (
-            <div className="flex items-center gap-3 text-xs text-muted-foreground">
-              {selectedImageUrl && <img src={selectedImageUrl} alt="Selected image" className="size-12 rounded-lg object-cover" />}
-              Image selected for this post.
-              <Button type="button" variant="ghost" size="sm" onClick={() => { setMediaAssetId(null); setSelectedImageUrl(null) }}>Remove</Button>
-            </div>
-          )}
+          <PostImagePicker selectedIds={mediaAssetIds} onChange={setMediaAssetIds} extraImages={generatedImages} />
         </div>
 
         <div className="border-t pt-3">
@@ -447,7 +427,7 @@ const PostPreview = ({
                 caption: draft.caption.trim(),
                 hashtags: hashtagsText.split(/[\s,]+/).map((tag) => tag.replace(/^#/, '').trim()).filter(Boolean).slice(0, 15),
                 scheduledFor: scheduleEnable && scheduledFor ? new Date(scheduledFor).toISOString() : undefined,
-                mediaAssetId: mediaAssetId ?? undefined,
+                mediaAssetIds,
               })
             }
             disabled={saving || !draft.title.trim() || !draft.caption.trim() || (scheduleEnable && !scheduledFor)}
@@ -496,12 +476,8 @@ const PostCard = ({ post }: { post: import('@/server/marketing').PostRow }) => {
           <p className="mt-1 line-clamp-2 text-xs text-muted-foreground">
             {post.caption}
           </p>
-          {post.media_type === 'image' && post.media_url && (
-            <img
-              src={post.media_url}
-              alt={post.title ?? 'Post image'}
-              className="mt-2 h-24 w-full rounded-lg object-cover"
-            />
+          {post.media_url && (post.media_type === 'image' || post.media_type === 'carousel') && (
+            <div className="relative mt-2"><img src={post.media_url} alt={post.title ?? 'Post image'} className="h-24 w-full rounded-lg object-cover" />{post.media_type === 'carousel' && <span className="absolute bottom-1 right-1 rounded bg-background/85 px-1 text-[10px] font-medium">{post.media_asset_ids?.length ?? 0} images</span>}</div>
           )}
           {post.hashtags.length > 0 && (
             <div className="mt-1 flex flex-wrap gap-0.5">

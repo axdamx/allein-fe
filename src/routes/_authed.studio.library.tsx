@@ -6,6 +6,8 @@ import {
   ImageIcon,
   Video as VideoIcon,
   Filter,
+  FolderPlus,
+  Pencil,
 } from 'lucide-react'
 import { createFileRoute } from '@tanstack/react-router'
 
@@ -17,6 +19,11 @@ import { cn } from '@/lib/utils'
 import { useAssets, useDeleteAsset } from '@/hooks/use-media'
 import type { MediaKind } from '@/server/media'
 import { ImageUploadButton } from '@/components/studio/image-upload-button'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { useDeleteStudioAssetFolder, useMoveStudioAsset, useSaveStudioAssetFolder, useStudioAssetFolders } from '@/hooks/use-studio-library'
 
 type FilterKind = 'all' | MediaKind
 
@@ -36,10 +43,22 @@ const FILTERS: { value: FilterKind; label: string }[] = [
  */
 const StudioLibraryPage = () => {
   const [filter, setFilter] = useState<FilterKind>('all')
+  const [folderFilter, setFolderFilter] = useState('all')
+  const [search, setSearch] = useState('')
+  const [folderEditor, setFolderEditor] = useState<{ id?: string; name: string } | null>(null)
   const { data: assets, isLoading } = useAssets(
     filter === 'all' ? undefined : filter,
   )
   const deleteAsset = useDeleteAsset()
+  const { data: folders, error: foldersError } = useStudioAssetFolders()
+  const saveFolder = useSaveStudioAssetFolder()
+  const deleteFolder = useDeleteStudioAssetFolder()
+  const moveAsset = useMoveStudioAsset()
+  const visibleAssets = (assets ?? []).filter((asset) =>
+    (folderFilter === 'all' || (folderFilter === 'unfiled' ? !asset.collection_id : asset.collection_id === folderFilter)) &&
+    (!search.trim() || asset.prompt.toLowerCase().includes(search.trim().toLowerCase())),
+  )
+  const selectedFolder = folders?.find((folder) => folder.id === folderFilter)
 
   return (
     <div className="space-y-4">
@@ -64,11 +83,35 @@ const StudioLibraryPage = () => {
         </div>
         <div className="flex items-center gap-3">
           <span className="text-xs text-muted-foreground">
-            {assets?.length ?? 0} item{(assets?.length ?? 0) === 1 ? '' : 's'}
+            {visibleAssets.length} item{visibleAssets.length === 1 ? '' : 's'}
           </span>
           <ImageUploadButton />
         </div>
       </div>
+
+      <div className="flex flex-wrap items-center gap-2 rounded-[20px] border border-black/[0.05] bg-white/40 p-3 dark:border-white/10 dark:bg-white/[0.025]">
+        <Input value={search} onChange={(event) => setSearch(event.target.value)} aria-label="Search assets" placeholder="Search assets…" className="min-w-40 flex-1" />
+        <Select value={folderFilter} onValueChange={setFolderFilter}>
+          <SelectTrigger className="w-44" aria-label="Filter folder"><SelectValue /></SelectTrigger>
+          <SelectContent><SelectItem value="all">All folders</SelectItem><SelectItem value="unfiled">Unfiled</SelectItem>{(folders ?? []).map((folder) => <SelectItem key={folder.id} value={folder.id}>{folder.name}</SelectItem>)}</SelectContent>
+        </Select>
+        <Button type="button" size="sm" variant="outline" onClick={() => setFolderEditor({ name: '' })}><FolderPlus className="size-4" /> New folder</Button>
+        {selectedFolder && <>
+          <Button type="button" size="sm" variant="ghost" onClick={() => setFolderEditor({ id: selectedFolder.id, name: selectedFolder.name })}><Pencil className="size-4" /> Rename</Button>
+          <Button type="button" size="sm" variant="ghost" disabled={deleteFolder.isPending} onClick={async () => { const result = await deleteFolder.mutateAsync(selectedFolder.id); if (!result?.error) setFolderFilter('all') }}>Delete folder</Button>
+        </>}
+      </div>
+      {foldersError && <p role="alert" className="text-sm text-destructive">Could not load folders. Apply migration 0031 before using this library.</p>}
+
+      <Dialog open={folderEditor !== null} onOpenChange={(open) => { if (!open) setFolderEditor(null) }}>
+        <DialogContent>
+          <DialogHeader><DialogTitle>{folderEditor?.id ? 'Rename folder' : 'New folder'}</DialogTitle><DialogDescription>Folders group your Studio assets. Deleting a folder keeps its assets in the library.</DialogDescription></DialogHeader>
+          <form onSubmit={async (event) => { event.preventDefault(); if (!folderEditor) return; const result = await saveFolder.mutateAsync(folderEditor); if (!('error' in result)) setFolderEditor(null) }} className="space-y-4">
+            <div className="space-y-2"><Label htmlFor="folder-name">Name</Label><Input id="folder-name" autoFocus required maxLength={80} value={folderEditor?.name ?? ''} onChange={(event) => setFolderEditor((current) => current ? { ...current, name: event.target.value } : null)} /></div>
+            <DialogFooter><Button type="button" variant="outline" onClick={() => setFolderEditor(null)}>Cancel</Button><Button type="submit" disabled={saveFolder.isPending || !folderEditor?.name.trim()}>{saveFolder.isPending ? 'Saving…' : 'Save folder'}</Button></DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
 
       {/* Grid */}
       {isLoading ? (
@@ -77,9 +120,9 @@ const StudioLibraryPage = () => {
             <Skeleton key={i} className="aspect-square w-full" />
           ))}
         </div>
-      ) : assets && assets.length > 0 ? (
+      ) : visibleAssets.length > 0 ? (
         <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
-          {assets.map((asset) => {
+          {visibleAssets.map((asset) => {
             const isVideo = asset.kind === 'video'
             const isReady = asset.status === 'ready' && asset.url
             return (
@@ -174,6 +217,10 @@ const StudioLibraryPage = () => {
                       {asset.error}
                     </p>
                   )}
+                  <Select value={asset.collection_id ?? 'unfiled'} onValueChange={(value) => moveAsset.mutate({ assetId: asset.id, folderId: value === 'unfiled' ? null : value })}>
+                    <SelectTrigger className="mt-2 h-8 w-full text-xs" aria-label={`Folder for ${asset.prompt}`}><SelectValue /></SelectTrigger>
+                    <SelectContent><SelectItem value="unfiled">Unfiled</SelectItem>{(folders ?? []).map((folder) => <SelectItem key={folder.id} value={folder.id}>{folder.name}</SelectItem>)}</SelectContent>
+                  </Select>
                 </div>
               </Card>
             )
@@ -187,8 +234,7 @@ const StudioLibraryPage = () => {
           <div>
             <p className="font-medium">No media yet</p>
             <p className="max-w-sm text-sm text-muted-foreground">
-              Upload an image, generate one on the Create tab, or chat with
-              the Studio agent.
+              {assets?.length ? 'No assets match these filters.' : 'Upload an image, generate one on the Create tab, or chat with the Studio agent.'}
             </p>
           </div>
         </div>
