@@ -1,11 +1,23 @@
 import { createServerFn } from '@tanstack/react-start'
 
-export type { StudioSource, StudioSourceKind, StudioSourceSnapshot } from './studio-sources.server'
+export type { StudioSource, StudioSourceKind, StudioSourceSnapshot, StudioSourceCandidate, StudioSourceCandidatePreview } from './studio-sources.server'
 
 export const listStudioSources = createServerFn({ method: 'GET' }).handler(async () => {
   const { listStudioSourcesImpl } = await import('./studio-sources.server')
   return listStudioSourcesImpl()
 })
+
+export const listStudioSourceCandidates = createServerFn({ method: 'GET' }).handler(async () => {
+  const { listStudioSourceCandidatesImpl } = await import('./studio-sources.server')
+  return listStudioSourceCandidatesImpl()
+})
+
+export const previewStudioSourceCandidate = createServerFn({ method: 'POST' })
+  .validator((data: { id: string; kind: 'knowledge' | 'crm' }) => data)
+  .handler(async ({ data }) => {
+    const { previewStudioSourceCandidateImpl } = await import('./studio-sources.server')
+    return previewStudioSourceCandidateImpl(data)
+  })
 
 export const saveStudioSource = createServerFn({ method: 'POST' })
   .validator((data: { id?: string; kind: 'listing' | 'crm' | 'knowledge'; title: string; facts: string; referenceUrl?: string; approved: boolean }) => data)

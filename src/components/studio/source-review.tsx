@@ -4,7 +4,7 @@ import type { StudioSourceSnapshot } from '@/server/studio-sources'
 import { useStudioSources } from '@/hooks/use-studio-sources'
 
 export function StudioSourcePicker({ selectedIds, onChange }: { selectedIds: string[]; onChange: (ids: string[]) => void }) {
-  const { data: sources, isLoading } = useStudioSources()
+  const { data: sources, isLoading, error } = useStudioSources()
   const approved = sources?.filter((source) => source.approved_at) ?? []
   return <div className="space-y-2 rounded-xl border p-3">
     <div className="flex items-center justify-between gap-2">
@@ -12,7 +12,7 @@ export function StudioSourcePicker({ selectedIds, onChange }: { selectedIds: str
       <Link to="/studio/sources" className="text-xs text-primary underline-offset-4 hover:underline">Manage sources</Link>
     </div>
     <p className="text-xs text-muted-foreground">Select up to five facts to ground this draft. Only selected facts are sent to AI.</p>
-    {isLoading ? <p className="text-xs text-muted-foreground">Loading sources…</p> : approved.length === 0 ?
+    {error ? <p className="text-xs text-destructive">{error.message}</p> : isLoading ? <p className="text-xs text-muted-foreground">Loading sources…</p> : approved.length === 0 ?
       <p className="text-xs text-muted-foreground">No approved facts yet. Add and approve a source in the Sources tab.</p> :
       <div className="max-h-48 space-y-2 overflow-y-auto">
         {approved.map((source) => <label key={source.id} className="flex cursor-pointer items-start gap-2 rounded-lg border p-2 text-sm">

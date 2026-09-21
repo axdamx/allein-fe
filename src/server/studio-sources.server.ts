@@ -15,14 +15,81 @@ export interface StudioSource {
 }
 
 export type StudioSourceSnapshot = Pick<StudioSource, 'id' | 'kind' | 'title' | 'facts' | 'reference_url' | 'updated_at'>
+export interface StudioSourceCandidate {
+  id: string
+  kind: 'knowledge' | 'crm'
+  title: string
+}
+export interface StudioSourceCandidatePreview {
+  kind: 'knowledge' | 'crm'
+  title: string
+  facts: string
+  referenceUrl: string | null
+}
 
 export async function listStudioSourcesImpl(): Promise<StudioSource[]> {
   const supabase = getSupabaseServerClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return []
-  const { data } = await supabase.from('studio_approved_sources').select('*')
+  const { data, error } = await supabase.from('studio_approved_sources').select('*')
     .eq('owner_id', user.id).order('created_at', { ascending: false })
+  if (error) throw new Error('Studio sources are unavailable. Check that migration 0033 has been applied.')
   return (data ?? []) as StudioSource[]
+}
+
+export async function listStudioSourceCandidatesImpl(): Promise<StudioSourceCandidate[] | { error: string }> {
+  const supabase = getSupabaseServerClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { error: 'Not authenticated' }
+  const [documents, clients] = await Promise.all([
+    supabase.from('documents').select('id, name').eq('owner_id', user.id).eq('status', 'ready').order('created_at', { ascending: false }).limit(100),
+    supabase.from('clients').select('id, name, company').eq('owner_id', user.id).order('created_at', { ascending: false }).limit(100),
+  ])
+  if (documents.error || clients.error) return { error: 'Could not load knowledge documents or client profiles.' }
+  return [
+    ...(documents.data ?? []).map((doc) => ({ id: doc.id, kind: 'knowledge' as const, title: doc.name })),
+    ...(clients.data ?? []).map((client) => ({ id: client.id, kind: 'crm' as const, title: client.company || client.name })),
+  ]
+}
+
+export async function previewStudioSourceCandidateImpl(input: {
+  id: string; kind: 'knowledge' | 'crm'
+}): Promise<StudioSourceCandidatePreview | { error: string }> {
+  const supabase = getSupabaseServerClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { error: 'Not authenticated' }
+  if (!/^[0-9a-f-]{36}$/i.test(input.id)) return { error: 'Choose a valid source.' }
+
+  if (input.kind === 'knowledge') {
+    const { data: doc } = await supabase.from('documents').select('id, name')
+      .eq('id', input.id).eq('owner_id', user.id).eq('status', 'ready').maybeSingle()
+    if (!doc) return { error: 'Ready knowledge document not found.' }
+    const { data: chunks, error } = await supabase.from('document_chunks').select('content')
+      .eq('document_id', doc.id).eq('owner_id', user.id).order('chunk_index').limit(10)
+    if (error || !chunks?.length) return { error: 'No extracted text found in this document.' }
+    return {
+      kind: 'knowledge', title: doc.name.slice(0, 120),
+      facts: chunks.map((chunk) => chunk.content).join('\n\n').slice(0, 4000),
+      referenceUrl: null,
+    }
+  }
+
+  if (input.kind === 'crm') {
+    const { data: client } = await supabase.from('clients').select('id, company, industry, website')
+      .eq('id', input.id).eq('owner_id', user.id).maybeSingle()
+    if (!client) return { error: 'Client profile not found.' }
+    if (!client.company) return { error: 'This client has no company profile. Add verified public facts manually instead.' }
+    const facts = [
+      `Company: ${client.company}`,
+      client.industry && `Industry: ${client.industry}`,
+      client.website && `Website: ${client.website}`,
+    ].filter(Boolean).join('\n')
+    return {
+      kind: 'crm', title: client.company.slice(0, 120), facts: facts.slice(0, 4000),
+      referenceUrl: `/crm/clients/${client.id}`,
+    }
+  }
+  return { error: 'Choose a supported source type.' }
 }
 
 export async function loadApprovedSources(ownerId: string, ids: string[]): Promise<StudioSourceSnapshot[] | { error: string }> {
@@ -51,8 +118,9 @@ export async function saveStudioSourceImpl(input: {
   if (!['listing', 'crm', 'knowledge'].includes(input.kind) || !title || title.length > 120 || !facts || facts.length > 4000) {
     return { error: 'Add a title (up to 120 characters) and facts (up to 4,000 characters).' }
   }
-  if (referenceUrl && (referenceUrl.length > 500 || !/^https?:\/\//i.test(referenceUrl))) {
-    return { error: 'Use a valid http or https reference link.' }
+  if (referenceUrl && (referenceUrl.length > 500 ||
+    (!/^https?:\/\//i.test(referenceUrl) && !/^\/crm\/clients\/[0-9a-f-]{36}$/i.test(referenceUrl)))) {
+    return { error: 'Use a valid http or https link, or a client profile reference.' }
   }
   if (typeof input.approved !== 'boolean') return { error: 'Choose whether the facts are approved for public posts.' }
   const values = {

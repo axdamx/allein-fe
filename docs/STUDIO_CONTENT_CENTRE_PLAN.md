@@ -57,8 +57,10 @@ entitlement stays configured.
   and knowledge facts. The user selects up to five cards; Create and Planner
   show the exact facts before saving, and posts retain a source snapshot.
   Raw CRM contacts and knowledge documents are not sent to the generator.
-- [ ] Apply migration `0033_studio_approved_sources.sql` to the target Supabase
-  project. This is required before using the Sources tab or source selection.
+- [x] Apply migration `0033_studio_approved_sources.sql` to the target Supabase
+  project (confirmed by the user on 2026-09-22).
+- [x] Let owners start a source card from a ready knowledge document excerpt or
+  a client company profile. The imported facts remain unapproved until reviewed.
 - [ ] Choose an operations notification destination and alert on Z.AI balance
   exhaustion (`1113`).
 
@@ -91,7 +93,6 @@ entitlement stays configured.
 4. Planning: a future date is shown as Planned, never as published or queued
    for automatic delivery.
 
-Migrations 0029–0032 are applied according to the user's confirmations.
-Migration 0033 is pending application.
+Migrations 0029–0033 are applied according to the user's confirmations.
 Connected publishing and video remain deferred; planned dates still require
 manual posting.

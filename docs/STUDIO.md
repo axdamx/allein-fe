@@ -132,14 +132,18 @@ jobs and the Studio Agent has no video tool until monthly metering is ready.
 - `src/routes/_authed.studio.sources.tsx` and
   `src/components/studio/source-studio.tsx` — curate listing, CRM, and knowledge
   facts for public posts, with explicit approval. CRM contact details and raw
-  knowledge documents are not imported automatically.
+  knowledge documents are not sent to generation automatically. Owners may
+  copy a ready knowledge document excerpt or a client company profile into an
+  unapproved source card, trim it, and approve it for public drafts. Client
+  email, phone, and notes are never imported.
 - The Create form and Planner's channel composer can select up to five approved
   cards. Generation receives only those selected facts. The preview shows their
   full text before saving; a source snapshot is saved in each post's metadata.
   Editing a source requires reviewing it again. Source changes between
   generation and save cause a regenerate prompt.
-- Migration `0033_studio_approved_sources.sql` is required before this feature
-  is used. Direct links to original records remain a later integration step.
+- Migration `0033_studio_approved_sources.sql` is applied. Client profile
+  imports include a link back to the original record. Persistent document
+  links and source synchronization remain later integration steps.
 
 ### Polish (Phase 4) ✅
 - Sample prompt starters in chat empty state (one-click → new chat + send)
@@ -167,7 +171,7 @@ Core Studio migrations, applied in order:
 - `0032_studio_content_ideas.sql` — shared content ideas, backfill of existing
   posts, ownership checks, and one post per channel per idea (applied)
 - `0033_studio_approved_sources.sql` — owner-scoped approved source cards
-  (pending application)
+  (applied)
 
 All tables have RLS scoped to `owner_id = auth.uid()`. Messages/scenes access
 via join-through-ownership policies.
