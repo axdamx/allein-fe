@@ -455,6 +455,14 @@ export async function deleteAssetImpl(
 
   if (!row) return { error: 'Asset not found' }
 
+  const { count: logoCount, error: logoError } = await supabase
+    .from('studio_brand_kits')
+    .select('owner_id', { count: 'exact', head: true })
+    .eq('owner_id', userId)
+    .eq('logo_asset_id', assetId)
+  if (logoError) return { error: 'Could not check whether this image is your brand logo.' }
+  if (logoCount && logoCount > 0) return { error: 'This image is your brand logo. Remove it from the brand kit before deleting.' }
+
   if (row.url) {
     const { count, error: referencesError } = await supabase
       .from('posts')

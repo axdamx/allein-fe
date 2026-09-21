@@ -37,6 +37,7 @@ import { Route as AuthedStudioStoryboardRouteImport } from './routes/_authed.stu
 import { Route as AuthedStudioPlannerRouteImport } from './routes/_authed.studio.planner'
 import { Route as AuthedStudioLibraryRouteImport } from './routes/_authed.studio.library'
 import { Route as AuthedStudioChatRouteImport } from './routes/_authed.studio.chat'
+import { Route as AuthedStudioBrandRouteImport } from './routes/_authed.studio.brand'
 import { Route as AuthedCrmPipelineRouteImport } from './routes/_authed.crm.pipeline'
 import { Route as AuthedCrmLeadsRouteImport } from './routes/_authed.crm.leads'
 import { Route as AuthedCrmClientsRouteImport } from './routes/_authed.crm.clients'
@@ -184,6 +185,11 @@ const AuthedStudioChatRoute = AuthedStudioChatRouteImport.update({
   path: '/chat',
   getParentRoute: () => AuthedStudioRoute,
 } as any)
+const AuthedStudioBrandRoute = AuthedStudioBrandRouteImport.update({
+  id: '/brand',
+  path: '/brand',
+  getParentRoute: () => AuthedStudioRoute,
+} as any)
 const AuthedCrmPipelineRoute = AuthedCrmPipelineRouteImport.update({
   id: '/pipeline',
   path: '/pipeline',
@@ -243,6 +249,7 @@ export interface FileRoutesByFullPath {
   '/crm/clients': typeof AuthedCrmClientsRouteWithChildren
   '/crm/leads': typeof AuthedCrmLeadsRouteWithChildren
   '/crm/pipeline': typeof AuthedCrmPipelineRoute
+  '/studio/brand': typeof AuthedStudioBrandRoute
   '/studio/chat': typeof AuthedStudioChatRoute
   '/studio/library': typeof AuthedStudioLibraryRoute
   '/studio/planner': typeof AuthedStudioPlannerRoute
@@ -276,6 +283,7 @@ export interface FileRoutesByTo {
   '/auth/callback': typeof AuthCallbackRoute
   '/auth/google': typeof AuthGoogleRoute
   '/crm/pipeline': typeof AuthedCrmPipelineRoute
+  '/studio/brand': typeof AuthedStudioBrandRoute
   '/studio/chat': typeof AuthedStudioChatRoute
   '/studio/library': typeof AuthedStudioLibraryRoute
   '/studio/planner': typeof AuthedStudioPlannerRoute
@@ -314,6 +322,7 @@ export interface FileRoutesById {
   '/_authed/crm/clients': typeof AuthedCrmClientsRouteWithChildren
   '/_authed/crm/leads': typeof AuthedCrmLeadsRouteWithChildren
   '/_authed/crm/pipeline': typeof AuthedCrmPipelineRoute
+  '/_authed/studio/brand': typeof AuthedStudioBrandRoute
   '/_authed/studio/chat': typeof AuthedStudioChatRoute
   '/_authed/studio/library': typeof AuthedStudioLibraryRoute
   '/_authed/studio/planner': typeof AuthedStudioPlannerRoute
@@ -352,6 +361,7 @@ export interface FileRouteTypes {
     | '/crm/clients'
     | '/crm/leads'
     | '/crm/pipeline'
+    | '/studio/brand'
     | '/studio/chat'
     | '/studio/library'
     | '/studio/planner'
@@ -385,6 +395,7 @@ export interface FileRouteTypes {
     | '/auth/callback'
     | '/auth/google'
     | '/crm/pipeline'
+    | '/studio/brand'
     | '/studio/chat'
     | '/studio/library'
     | '/studio/planner'
@@ -422,6 +433,7 @@ export interface FileRouteTypes {
     | '/_authed/crm/clients'
     | '/_authed/crm/leads'
     | '/_authed/crm/pipeline'
+    | '/_authed/studio/brand'
     | '/_authed/studio/chat'
     | '/_authed/studio/library'
     | '/_authed/studio/planner'
@@ -649,6 +661,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthedStudioChatRouteImport
       parentRoute: typeof AuthedStudioRoute
     }
+    '/_authed/studio/brand': {
+      id: '/_authed/studio/brand'
+      path: '/brand'
+      fullPath: '/studio/brand'
+      preLoaderRoute: typeof AuthedStudioBrandRouteImport
+      parentRoute: typeof AuthedStudioRoute
+    }
     '/_authed/crm/pipeline': {
       id: '/_authed/crm/pipeline'
       path: '/pipeline'
@@ -745,6 +764,7 @@ const AuthedCrmRouteWithChildren = AuthedCrmRoute._addFileChildren(
 )
 
 interface AuthedStudioRouteChildren {
+  AuthedStudioBrandRoute: typeof AuthedStudioBrandRoute
   AuthedStudioChatRoute: typeof AuthedStudioChatRoute
   AuthedStudioLibraryRoute: typeof AuthedStudioLibraryRoute
   AuthedStudioPlannerRoute: typeof AuthedStudioPlannerRoute
@@ -753,6 +773,7 @@ interface AuthedStudioRouteChildren {
 }
 
 const AuthedStudioRouteChildren: AuthedStudioRouteChildren = {
+  AuthedStudioBrandRoute: AuthedStudioBrandRoute,
   AuthedStudioChatRoute: AuthedStudioChatRoute,
   AuthedStudioLibraryRoute: AuthedStudioLibraryRoute,
   AuthedStudioPlannerRoute: AuthedStudioPlannerRoute,

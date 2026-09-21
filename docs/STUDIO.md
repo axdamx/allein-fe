@@ -4,8 +4,8 @@
 > Status: **Content planning and image workflows open; video generation coming soon**
 
 The Studio is a creative workspace for AI content generation. The current
-navigation exposes content creation, a content planner, image chat, and the
-asset library.
+navigation exposes content creation, a content planner, image chat, the asset
+library, and a brand kit with reusable post templates.
 This doc tracks what's built, what's wired, what's known-broken, and what's
 deferred.
 
@@ -20,10 +20,11 @@ deferred.
 | `/studio/chat` | Image chat | Conversational image generation with the Studio Agent |
 | `/studio/storyboard` | Storyboard | Brief → scene-by-scene video planning (not linked in current navigation) |
 | `/studio/library` | Library | Generated and uploaded assets with download/delete |
+| `/studio/brand` | Brand kit | Account voice, colors, logo, hashtags, and post templates |
 
 Layout + tab nav: `src/routes/_authed.studio.tsx` (mirrors the CRM layout
 pattern with `<Outlet />`). The active navigation exposes Create, Planner,
-Image chat, and Library. Video is labelled Coming soon. The Custom plan's video feature
+Image chat, Library, and Brand kit. Video is labelled Coming soon. The Custom plan's video feature
 flag remains configured, while the public video submit endpoint refuses new
 jobs and the Studio Agent has no video tool until monthly metering is ready.
 
@@ -108,6 +109,18 @@ jobs and the Studio Agent has no video tool until monthly metering is ready.
 - The Create preview is editable and can attach generated, uploaded, or saved
   library images. Planned dates are for manual publishing only.
 
+### Brand kit and templates ✅
+- `src/routes/_authed.studio.brand.tsx` and
+  `src/components/studio/brand-studio.tsx` — edit the brand kit, select or upload
+  a logo from durable library images, and manage custom templates. Four starter
+  templates are available immediately.
+- `src/server/studio-brand.{ts,server.ts}` — account-scoped RPCs, field limits,
+  and logo ownership checks. Generation uses the brand voice and merges default
+  hashtags within each channel's limit. The Create form loads saved templates.
+- Migration `0030_studio_brand_kit_and_templates.sql` must be applied before
+  deploying this feature. The logo guides the user visually; image generation
+  does not place it automatically.
+
 ### Polish (Phase 4) ✅
 - Sample prompt starters in chat empty state (one-click → new chat + send)
 - Quota pill + locked-state UX in studio composer (parity with CRM ChatInput)
@@ -119,11 +132,15 @@ jobs and the Studio Agent has no video tool until monthly metering is ready.
 
 ## Database
 
-Three migrations, applied in order:
+Core Studio migrations, applied in order:
 - `0019_studio_assets.sql` — `studio_assets` table + `media` Storage bucket
 - `0020_studio_chats.sql` — `studio_chats` + `studio_messages`
 - `0021_studio_storyboards.sql` — `studio_storyboards` + `studio_scenes` +
   `reorder_studio_scenes` RPC
+- `0029_studio_image_quota_and_planned_posts.sql` — monthly image quota RPC,
+  planned post correction, and Telegram channel
+- `0030_studio_brand_kit_and_templates.sql` — per-account brand kit and saved
+  post templates (pending application)
 
 All tables have RLS scoped to `owner_id = auth.uid()`. Messages/scenes access
 via join-through-ownership policies.
@@ -144,8 +161,8 @@ Current tier access (from `src/lib/plans.ts`):
 - Custom: image ✅, video ✅
 
 Image attempts now have a monthly quota (Pro 100, Custom 500) shared by the
-form and Studio chat paths. The migration in `0029_studio_image_quota_and_planned_posts.sql`
-must be applied before deployment. Video metering remains deferred; see
+form and Studio chat paths. Migration `0029_studio_image_quota_and_planned_posts.sql`
+was applied on 2026-09-22. Video metering remains deferred; see
 `docs/STUDIO_BILLING_ROADMAP.md`.
 
 **Key insight from billing analysis (2026-07-08):** metering must split into

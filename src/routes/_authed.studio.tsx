@@ -10,6 +10,7 @@ const TABS = [
   { label: 'Planner', to: '/studio/planner' },
   { label: 'Image chat', to: '/studio/chat' },
   { label: 'Library', to: '/studio/library' },
+  { label: 'Brand kit', to: '/studio/brand' },
 ] as const
 
 const StudioLayout = () => {

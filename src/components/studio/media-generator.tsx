@@ -37,6 +37,7 @@ import {
   useGenerateVideo,
 } from '@/hooks/use-media'
 import { cn } from '@/lib/utils'
+import { useStudioBrandKit } from '@/hooks/use-studio-brand'
 
 type MediaType = 'image' | 'video'
 
@@ -63,6 +64,7 @@ export const MediaGenerator = ({
   onMediaReset?: () => void
 }) => {
   const { hasFeature, tier, remaining, usage, config, canDo } = usePlan()
+  const { data: brandKit } = useStudioBrandKit()
   const featureKey = mediaType === 'image' ? 'aiImageGen' : 'aiVideoGen'
   const hasAccess = hasFeature(featureKey)
   const atImageLimit = mediaType === 'image' && !canDo('imageGen')
@@ -106,7 +108,11 @@ export const MediaGenerator = ({
   // Auto-derive prompt from caption
   const derivePrompt = () => {
     if (!caption) return
-    const derived = `Visual content for social media post: "${caption.slice(0, 200)}". Professional, eye-catching, high quality.`
+    const brandDetails = [
+      brandKit?.brandName && `Brand: ${brandKit.brandName}.`,
+      brandKit?.colors.length && `Use these brand colors: ${brandKit.colors.join(', ')}.`,
+    ].filter(Boolean).join(' ')
+    const derived = `Visual content for social media post: "${caption.slice(0, 200)}". Professional, eye-catching, high quality. ${brandDetails}`.trim()
     setPrompt(derived)
   }
 

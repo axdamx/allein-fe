@@ -22,8 +22,8 @@ entitlement stays configured.
   agent: Pro 100, Custom 500, Free/Lite 0. Admin/owner accounts bypass the
   image quota for support and demos; the plan feature gate still applies.
 - [x] Show remaining images in the form and describe the quota on pricing.
-- [ ] Apply migration `0029_studio_image_quota_and_planned_posts.sql` to the
-  target Supabase project before deploying this branch.
+- [x] Apply migration `0029_studio_image_quota_and_planned_posts.sql` to the
+  target Supabase project (confirmed by the user on 2026-09-22).
 - [ ] Add a provider balance alert for Z.AI code 1113 once an operations
   notification destination is chosen. Image generation still requires funded
   Z.AI credit.
@@ -35,8 +35,11 @@ entitlement stays configured.
 - [x] Let users upload and attach existing images and select from the Studio
   library. Keep AI output editable before saving.
 - [ ] Organize assets and support several assets per post for carousels.
-- [ ] Add a brand kit (voice, colors, logo, default hashtags) and reusable
-  post templates.
+- [x] Add a brand kit (voice, audience, colors, logo, default hashtags, and
+  disclaimer) and reusable post templates. The Create form can start from a
+  starter or saved template, and post generation uses the saved brand voice.
+- [ ] Apply migration `0030_studio_brand_kit_and_templates.sql` to the target
+  Supabase project before deploying the brand kit code.
 - [ ] Separate one content idea from channel-specific versions so Instagram,
   Facebook, LinkedIn, and other destinations can have tailored captions.
 
@@ -68,5 +71,5 @@ entitlement stays configured.
 4. Planning: a future date is shown as Planned, never as published or queued
    for automatic delivery.
 
-Deployment of Step 1 requires the SQL migration before application code; until
-then, image generation will fail closed when it asks for the monthly quota RPC.
+Migration 0029 is applied. Migration 0030 must precede this branch's next
+deployment; the new brand kit and template RPCs depend on its tables.

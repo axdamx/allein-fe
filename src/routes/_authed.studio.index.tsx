@@ -11,7 +11,7 @@ import {
   Check,
 } from 'lucide-react'
 import { format } from 'date-fns'
-import { createFileRoute } from '@tanstack/react-router'
+import { createFileRoute, Link } from '@tanstack/react-router'
 
 import { MediaGenerator } from '@/components/studio/media-generator'
 import { Button } from '@/components/ui/button'
@@ -45,6 +45,9 @@ import { useAssets } from '@/hooks/use-media'
 import { ImageUploadButton } from '@/components/studio/image-upload-button'
 import type { PostPlatform, GeneratedPost } from '@/hooks/use-marketing'
 import { cn } from '@/lib/utils'
+import { useStudioBrandKit, useStudioPostTemplates } from '@/hooks/use-studio-brand'
+import { STARTER_POST_TEMPLATES } from '@/lib/studio-brand'
+import type { StudioPostTemplate } from '@/lib/studio-brand'
 
 /**
  * Studio → Create tab.
@@ -63,12 +66,14 @@ const PLATFORMS: { value: PostPlatform; label: string; emoji: string }[] = [
   { value: 'email', label: 'Email', emoji: '✉️' },
 ]
 
-const TONES = ['Professional', 'Casual', 'Funny', 'Inspirational', 'Bold']
+const TONES = ['Brand voice', 'Professional', 'Casual', 'Funny', 'Inspirational', 'Bold']
 
 type Step = 'form' | 'generating' | 'preview'
 
 const StudioCreatePage = () => {
   const { data: posts, isLoading } = usePosts()
+  const { data: brandKit } = useStudioBrandKit()
+  const { data: customTemplates } = useStudioPostTemplates()
   const generatePost = useGeneratePost()
   const createPost = useCreatePost()
   const { canDo } = usePlan()
@@ -77,8 +82,17 @@ const StudioCreatePage = () => {
   const [step, setStep] = useState<Step>('form')
   const [prompt, setPrompt] = useState('')
   const [platform, setPlatform] = useState<PostPlatform>('instagram')
-  const [tone, setTone] = useState('Professional')
+  const [tone, setTone] = useState('Brand voice')
   const [generated, setGenerated] = useState<GeneratedPost | null>(null)
+
+  const selectTemplate = (templateId: string) => {
+    const template: StudioPostTemplate | undefined = [...STARTER_POST_TEMPLATES, ...(customTemplates ?? [])]
+      .find((item) => item.id === templateId)
+    if (!template) return
+    setPrompt(template.prompt)
+    if (template.platform) setPlatform(template.platform)
+    if (template.tone) setTone(template.tone)
+  }
 
   const handleGenerate = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -126,6 +140,16 @@ const StudioCreatePage = () => {
             <CardContent>
               <form onSubmit={handleGenerate} className="space-y-4">
                 <div className="space-y-2">
+                  <div className="flex items-center justify-between gap-2"><Label>Start from a template</Label><Link to="/studio/brand" className="text-xs text-primary underline-offset-4 hover:underline">Manage brand kit and templates</Link></div>
+                  <Select onValueChange={selectTemplate}>
+                    <SelectTrigger><SelectValue placeholder="Choose a starter or saved template" /></SelectTrigger>
+                    <SelectContent>
+                      {[...STARTER_POST_TEMPLATES, ...(customTemplates ?? [])].map((template) => <SelectItem key={template.id} value={template.id}>{template.name}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                  {brandKit?.brandName && <p className="text-xs text-muted-foreground">Using {brandKit.brandName} brand guidance in new drafts.</p>}
+                </div>
+                <div className="space-y-2">
                   <Label htmlFor="prompt">What do you want to post?</Label>
                   <Textarea
                     id="prompt"
@@ -163,7 +187,7 @@ const StudioCreatePage = () => {
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
-                        {TONES.map((t) => (
+                        {[...new Set([...TONES, tone])].map((t) => (
                           <SelectItem key={t} value={t}>
                             {t}
                           </SelectItem>
