@@ -111,6 +111,9 @@ jobs and the Studio Agent has no video tool until monthly metering is ready.
   library images. It can hold up to 10 ordered images for manual carousel
   preparation, with the first image as the cover. Planned dates are for manual
   publishing only.
+- Saved posts have a posting pack in Planner and Create's recent list. It
+  collects the channel, planned date, copy-ready text and hashtags, and
+  individually downloadable images in their saved order.
 
 ### Brand kit and templates ✅
 - `src/routes/_authed.studio.brand.tsx` and

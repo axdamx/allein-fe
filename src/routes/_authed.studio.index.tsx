@@ -42,6 +42,7 @@ import {
 import { usePlan } from '@/hooks/use-plan'
 import { UsageIndicator } from '@/components/billing/usage-indicator'
 import { PostImagePicker } from '@/components/studio/post-image-picker'
+import { PostingPackButton } from '@/components/studio/posting-pack'
 import type { PostPlatform, GeneratedPost } from '@/hooks/use-marketing'
 import { cn } from '@/lib/utils'
 import { useStudioBrandKit, useStudioPostTemplates } from '@/hooks/use-studio-brand'
@@ -508,6 +509,7 @@ const PostCard = ({ post }: { post: import('@/server/marketing').PostRow }) => {
               </span>
             )}
           </div>
+          <div className="mt-2"><PostingPackButton post={post} /></div>
         </div>
         <Button
           variant="ghost"

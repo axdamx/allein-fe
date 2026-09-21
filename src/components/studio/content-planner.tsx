@@ -38,6 +38,7 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { Textarea } from '@/components/ui/textarea'
 import { UsageIndicator } from '@/components/billing/usage-indicator'
 import { PostImagePicker } from '@/components/studio/post-image-picker'
+import { PostingPackButton } from '@/components/studio/posting-pack'
 import { useCreatePost, useDuplicatePost, useGeneratePost, usePosts, useUpdatePost } from '@/hooks/use-marketing'
 import { useStudioContentIdeas, useUpdateStudioContentIdea } from '@/hooks/use-studio-ideas'
 import { usePlan } from '@/hooks/use-plan'
@@ -113,6 +114,7 @@ function PostSummary({
             <Copy className="size-3.5" /> Duplicate post
           </Button>
           <Button size="sm" variant="ghost" onClick={copy}>Copy text</Button>
+          <PostingPackButton post={post} />
         </div>
       </div>
     </div>

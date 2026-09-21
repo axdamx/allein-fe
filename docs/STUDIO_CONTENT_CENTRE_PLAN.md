@@ -51,7 +51,7 @@ entitlement stays configured.
 
 ## Next without connected publishing
 
-- [ ] Add a manual posting pack for each channel version: copy-ready caption
+- [x] Add a manual posting pack for each channel version: copy-ready caption
   and hashtags, ordered image downloads, and the planned date in one place.
 - [ ] Ground generated drafts in approved listings, CRM records, and knowledge
   sources, then show the source material for review before saving.
