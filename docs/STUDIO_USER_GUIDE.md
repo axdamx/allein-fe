@@ -26,21 +26,24 @@ reminder in the content calendar, not an automatic publishing job. Video shows
 
 **Only for the paid image-generation test, if the Z.AI API account has no
 available credit or applicable image package.** The app uses the same server
-`LLM_API_KEY` for GLM text and CogView-4 images; there is no separate “media
+`LLM_API_KEY` for GLM text and GLM-Image images; there is no separate “media
 token” configured in this project. Z.AI currently lists **GLM-4.5-Flash as
-free** and **CogView-4 at US$0.01 per image**. Check the account connected to
-that API key for its current balance or package before testing paid images.
+free** and **GLM-Image at US$0.015 per image**. The separate
+[GLM-Image website](https://image.z.ai/) is labelled free; its web access does
+not make API calls from Studio free. Check the account connected to that API
+key for its current balance or package before testing paid images.
 Z.AI defines API error **1113** as insufficient balance or no resource package.
 These prices and terms were checked on 2026-09-22; use Z.AI's current pages when
-you actually add credit: [official pricing](https://docs.z.ai/guides/overview/pricing)
+you actually add credit: [official pricing](https://docs.z.ai/guides/overview/pricing),
+[GLM-Image API guide](https://docs.z.ai/guides/image/glm-image),
 and [official error codes](https://docs.z.ai/api-reference/api-code).
 
 You can test brand settings, source curation, image uploads, the library,
 planning, and posting packs without a paid image call. Text post generation uses
 GLM-4.5-Flash through the configured API key; it still needs a working Z.AI API
 connection even though that model is listed as free. Asking **Image chat** to
-create an image calls CogView-4 and needs provider capacity. Uploading an image
-you already own does not call CogView-4.
+create an image calls GLM-Image and needs provider capacity. Uploading an image
+you already own does not call GLM-Image.
 
 Your **app plan** and **Z.AI provider balance** are separate controls. In this
 app, Free and Lite can use Studio content management but cannot generate AI
@@ -216,7 +219,7 @@ For the chat path, open **Image chat**, start a chat, and ask it to create an
 image. The Studio agent may create the image, show it in the conversation and
 canvas, and save it in Library. You can also attach an image and ask for
 analysis or a variation. Asking it to **generate** a variation is another
-CogView call. Image chat messages are subject to the app's message allowance
+GLM-Image call. Image chat messages are subject to the app's message allowance
 as well as the shared image-generation allowance when the image tool runs.
 
 If the provider has no usable balance or image package, Z.AI can return

@@ -54,7 +54,7 @@ where the strict quota lives.
 │  ───────────────────────────────────────────────────────     │
 │  • Studio Agent chat           → glm-4.5-flash (~free)       │
 │  • Storyboard brief planning   → glm-4.5-flash (~free)       │
-│  • Image generation            → CogView $0.01               │
+│  • Image generation            → GLM-Image $0.015            │
 │                                                              │
 │  Meter with: generous daily message quota (already exists)  │
 │  + generous monthly image quota                              │
@@ -80,9 +80,9 @@ where the strict quota lives.
 ### Why this split works
 - **Chat tokens** (`glm-4.5-flash` at ~$0.10/1M tokens) are essentially free.
   A full 50-message creative session costs ~$0.001. Let users iterate freely.
-- **Images** ($0.01 each via CogView) are cheap enough that even 100
-  iterations/mo = $1. Meter generously, don't worry about abuse.
-- **Video** ($0.70/clip via Kling) is 70× the cost of an image. This is
+- **Images** ($0.015 each via GLM-Image) are cheap enough that even 100
+  iterations/mo = $1.50. Meter generously, while keeping monthly caps.
+- **Video** ($0.70/clip via Kling) is about 47× the cost of an image. This is
   where strict metering + clear UX warnings matter most.
 
 ### "Should we charge for attempts or successes?"
@@ -124,7 +124,8 @@ A single user on a video-enabled tier can drain your entire Kling balance.
 
 ## The cost math (why metering is non-negotiable for video)
 
-Kling ~$0.70/video, CogView ~$0.01/image (as of 2026-07-06).
+Kling ~$0.70/video and CogView ~$0.01/image were planning estimates as of
+2026-07-06. Active GLM-Image API pricing is $0.015/image as of 2026-09-22.
 
 ```
 PRO PLAN (RM249/mo ≈ $55/mo) — UNMETERED VIDEO:

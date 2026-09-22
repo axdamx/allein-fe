@@ -1,7 +1,7 @@
 /**
  * AI media generator card — image OR video.
  *
- * Images use ZAI CogView. The video card displays a coming soon state while
+ * Images use ZAI GLM-Image. The video card displays a coming soon state while
  * video generation is held for a later release.
  *
  * Plan-gated: image requires `aiImageGen`.

@@ -16,7 +16,7 @@
 import { createTool } from '@mastra/core/tools'
 import { z } from 'zod'
 import { getSupabaseServiceClient } from '@/lib/supabase/service.server'
-import { generateCogViewImage, getImageGenerationUserMessage, ZaiMediaError } from '@/lib/media/cogview'
+import { generateZaiImage, getImageGenerationUserMessage, ZAI_IMAGE_MODEL, ZaiMediaError } from '@/lib/media/zai-image'
 import { submitCogVideoXJob } from '@/lib/media/cogvideox'
 import { getDefaultModel } from '@/lib/ai-provider'
 import { generateText } from 'ai'
@@ -93,7 +93,7 @@ async function insertAssetRow(
 export const generateImageTool = createTool({
   id: 'generate_image',
   description:
-    'Generate an image from a text prompt using CogView. Use this when the user asks to create, generate, make, or design an image, illustration, photo, or visual. Returns the image URL and asset id.',
+    'Generate an image from a text prompt using GLM-Image. Use this when the user asks to create, generate, make, or design an image, illustration, photo, or visual. Returns the image URL and asset id.',
   inputSchema: z.object({
     prompt: z
       .string()
@@ -136,7 +136,7 @@ export const generateImageTool = createTool({
     }
 
     try {
-      const result = await generateCogViewImage({
+      const result = await generateZaiImage({
         prompt,
         aspectRatio: aspect_ratio ?? '1:1',
       })
@@ -152,7 +152,7 @@ export const generateImageTool = createTool({
       const row = await insertAssetRow(ownerId, {
         kind: 'image',
         prompt,
-        provider_model: 'cogview-4-250304',
+        provider_model: ZAI_IMAGE_MODEL,
         status: 'ready',
         aspect_ratio: aspect_ratio ?? '1:1',
         url: mirrored.publicUrl,
@@ -172,7 +172,7 @@ export const generateImageTool = createTool({
       await insertAssetRow(ownerId, {
         kind: 'image',
         prompt,
-        provider_model: 'cogview-4-250304',
+        provider_model: ZAI_IMAGE_MODEL,
         status: 'failed',
         aspect_ratio: aspect_ratio ?? '1:1',
         error: msg,

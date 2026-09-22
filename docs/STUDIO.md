@@ -47,7 +47,7 @@ jobs and the Studio Agent has no video tool until monthly metering is ready.
    │
 [src/server/*.server.ts]       ← impl, talks to Supabase + providers
    │
-   ├──► [src/lib/media/*]      ← ZAI CogView/CogVideoX HTTP client
+   ├──► [src/lib/media/*]      ← ZAI GLM-Image/CogVideoX HTTP client
    │       └──► ZAI API (single LLM_API_KEY)
    │
    ├──► [src/mastra/agents/studio-agent.ts]  ← Studio Agent
@@ -60,7 +60,7 @@ jobs and the Studio Agent has no video tool until monthly metering is ready.
 ```
 
 **Single media provider**: ZAI for both LLM (glm-4.5-flash) and media
-(CogView-4 for images, CogVideoX-3 for video). Reuses `LLM_BASE_URL` +
+(GLM-Image for images, CogVideoX-3 for video). Reuses `LLM_BASE_URL` +
 `LLM_API_KEY` — one credential, one bill. Swappable behind
 `src/lib/media/*` (see "Provider swap" below).
 
@@ -71,9 +71,9 @@ jobs and the Studio Agent has no video tool until monthly metering is ready.
 ### Media backend (Phase 1) ✅
 - `src/lib/media/zai-client.ts` — hardened HTTP client with proper error
   extraction (handles ZAI's nested `{ error: { code, message } }` shape)
-- `src/lib/media/cogview.ts` — text→image, aspect-ratio → valid pixel size map
+- `src/lib/media/zai-image.ts` — text→image, aspect-ratio → valid GLM-Image size map
 - `src/lib/media/cogvideox.ts` — async submit + poll wrapper
-- Valid model names: `cogview-4-250304` (image), `cogvideox-3` (video)
+- Active model names: `glm-image` (image), `cogvideox-3` (video)
 - Valid request shapes: `size` (not aspect_ratio), `image_url` as array,
   `quality: 'speed' | 'quality'`
 - Image assets become ready only after mirroring from ZAI's ephemeral URL to
@@ -218,9 +218,9 @@ The media layer is abstracted so swapping providers is localized:
 
 **Swap image provider (e.g. ZAI → fal.ai Flux):**
 1. Add `src/lib/media/fal-client.ts` mirroring the `generateImage` signature
-2. Update `src/lib/media/cogview.ts` (or create `flux.ts`) to call the new
+2. Update `src/lib/media/zai-image.ts` (or create `flux.ts`) to call the new
    client
-3. Update model name in `src/lib/media/cogview.ts` default
+3. Update model name in `src/lib/media/zai-client.ts` default
 4. No changes to: hooks, server fns, UI, agent tools
 
 **Swap video provider (e.g. ZAI → Kling via fal.ai):**
@@ -256,7 +256,7 @@ The media layer is abstracted so swapping providers is localized:
 ```
 src/lib/media/
   zai-client.ts          # HTTP client + error extraction
-  cogview.ts             # image gen wrapper
+  zai-image.ts           # image gen wrapper
   cogvideox.ts           # video gen wrapper (async submit + poll)
 
 src/server/

@@ -10,7 +10,7 @@
  * these implementations run, so we don't re-check the feature flag here.
  */
 import { getSupabaseServerClient } from '@/lib/supabase/server.server'
-import { generateCogViewImage, getImageGenerationUserMessage, ZaiMediaError } from '@/lib/media/cogview'
+import { generateZaiImage, getImageGenerationUserMessage, ZAI_IMAGE_MODEL, ZaiMediaError } from '@/lib/media/zai-image'
 import {
   submitCogVideoXJob,
   pollCogVideoXJob,
@@ -185,7 +185,7 @@ export async function generateImageImpl(
         kind: 'image',
         prompt: input.prompt,
         provider: 'zai',
-        provider_model: 'cogview-4-250304',
+        provider_model: ZAI_IMAGE_MODEL,
         status: 'processing',
         aspect_ratio: input.aspectRatio ?? '1:1',
       })
@@ -195,7 +195,7 @@ export async function generateImageImpl(
 
     let result
     try {
-      result = await generateCogViewImage({
+      result = await generateZaiImage({
         prompt: input.prompt,
         aspectRatio: input.aspectRatio ?? '1:1',
       })
