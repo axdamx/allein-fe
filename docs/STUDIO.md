@@ -3,6 +3,9 @@
 > Last updated: 2026-09-22
 > Status: **Content planning and image workflows open; video generation coming soon**
 
+For a click-by-click owner walkthrough and test checklist, see
+[`STUDIO_USER_GUIDE.md`](STUDIO_USER_GUIDE.md).
+
 The Studio is a creative workspace for AI content generation. The current
 navigation exposes content creation, a content planner, image chat, the asset
 library, a brand kit with reusable post templates, and approved source facts.
