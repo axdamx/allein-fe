@@ -78,6 +78,10 @@ jobs and the Studio Agent has no video tool until monthly metering is ready.
   `quality: 'speed' | 'quality'`
 - Image assets become ready only after mirroring from ZAI's ephemeral URL to
   the `media` Storage bucket. Video remains disabled.
+- Image credits are reserved against a processing asset before the provider
+  call. If no ready Library image is saved, the credit is refunded once through
+  the private reservation ledger; successful generations count even when the
+  user does not attach them to a post.
 - `src/server/media.{ts,server.ts}` — `generateImage`, `submitVideo`,
   `pollVideo`, `listAssets`, `getAsset`, `deleteAsset`
 - `src/hooks/use-media.ts` — TanStack Query hooks
@@ -118,6 +122,10 @@ jobs and the Studio Agent has no video tool until monthly metering is ready.
   library images. It can hold up to 10 ordered images for manual carousel
   preparation, with the first image as the cover. Planned dates are for manual
   publishing only.
+- The image card shows the credit cost before generation, preserves earlier
+  results when regenerating, and lets users preview or compare two generated
+  images. Only the first generated image is added to the post automatically;
+  later results are saved in Library until chosen.
 - Saved posts have a posting pack in Planner. It
   collects the channel, planned date, copy-ready text and hashtags, and
   individually downloadable images in their saved order.
@@ -178,9 +186,12 @@ Core Studio migrations, applied in order:
   posts, ownership checks, and one post per channel per idea (applied)
 - `0033_studio_approved_sources.sql` — owner-scoped approved source cards
   (applied)
+- `0034_studio_image_credit_refunds.sql` — private image reservation ledger and
+  one-time failed-generation refund RPCs (apply before deploying this change)
 
-All tables have RLS scoped to `owner_id = auth.uid()`. Messages/scenes access
-via join-through-ownership policies.
+User-facing tables have RLS scoped to `owner_id = auth.uid()`. Messages/scenes
+access via join-through-ownership policies. The image reservation ledger is
+private to server-role RPCs.
 
 ---
 
@@ -199,7 +210,8 @@ Current tier access (from `src/lib/plans.ts`):
 
 Image attempts now have a monthly quota (Pro 100, Custom 500) shared by the
 form and Studio chat paths. Migration `0029_studio_image_quota_and_planned_posts.sql`
-was applied on 2026-09-22. Video metering remains deferred; see
+was applied on 2026-09-22. Migration 0034 adds one-time refunds when no ready
+image reaches Library. Video metering remains deferred; see
 `docs/STUDIO_BILLING_ROADMAP.md`.
 
 **Key insight from billing analysis (2026-07-08):** metering must split into

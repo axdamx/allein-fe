@@ -35,6 +35,7 @@ import { UpgradeModal } from '@/components/billing/upgrade-modal'
 import {
   useGenerateImage,
   useGenerateVideo,
+  useAssets,
 } from '@/hooks/use-media'
 import { cn } from '@/lib/utils'
 import { useStudioBrandKit } from '@/hooks/use-studio-brand'
@@ -54,14 +55,17 @@ export const MediaGenerator = ({
   mediaType,
   caption,
   onMediaGenerated,
-  onMediaReset,
+  onMediaSelected,
+  selectedAssetIds = [],
 }: {
   mediaType: MediaType
   /** The generated caption — used to auto-derive the image prompt */
   caption: string
   /** Called with the saved asset when generation completes. */
   onMediaGenerated: (assetId: string, url: string, type: MediaType) => void
-  onMediaReset?: () => void
+  /** Add a prior generated image to the current post. */
+  onMediaSelected?: (assetId: string) => void
+  selectedAssetIds?: string[]
 }) => {
   const { hasFeature, tier, remaining, usage, config, canDo } = usePlan()
   const { data: brandKit } = useStudioBrandKit()
@@ -72,9 +76,13 @@ export const MediaGenerator = ({
   const [upgradeOpen, setUpgradeOpen] = useState(false)
   const [prompt, setPrompt] = useState('')
   const [aspectRatio, setAspectRatio] = useState<AspectRatio>('1:1')
+  const [sessionImages, setSessionImages] = useState<{ id: string; url: string; prompt: string }[]>([])
+  const [focusedImageId, setFocusedImageId] = useState<string | null>(null)
+  const [comparisonIds, setComparisonIds] = useState<string[]>([])
 
   // Image hook (one-shot).
   const imageGen = useGenerateImage()
+  const { data: libraryImages } = useAssets('image')
 
   // Video hook (submit + auto-poll).
   const videoGen = useGenerateVideo()
@@ -83,11 +91,20 @@ export const MediaGenerator = ({
   const label = mediaType === 'image' ? 'Image' : 'Video'
 
   // Derive "ready" state from whichever hook is active.
-  const imageReady =
-    imageGen.data && 'id' in imageGen.data ? imageGen.data : null
+  const seenImageIds = new Set<string>()
+  const recentImages = [...sessionImages, ...(libraryImages ?? [])
+    .filter((asset) => asset.provider === 'zai' && asset.status === 'ready' && asset.url)
+    .map((asset) => ({ id: asset.id, url: asset.url!, prompt: asset.prompt }))]
+    .filter((asset) => {
+      if (seenImageIds.has(asset.id)) return false
+      seenImageIds.add(asset.id)
+      return true
+    })
+  const focusedImage = recentImages.find((asset) => asset.id === focusedImageId)
+  const comparison = comparisonIds.map((id) => recentImages.find((asset) => asset.id === id)).filter((asset) => asset !== undefined)
   const readyUrl =
     mediaType === 'image'
-      ? imageReady?.url ?? null
+      ? focusedImage?.url ?? null
       : videoGen.state.status === 'ready'
         ? videoGen.state.asset?.url
         : null
@@ -129,9 +146,15 @@ export const MediaGenerator = ({
     if (!prompt.trim()) return
 
     if (mediaType === 'image') {
-      const result = await imageGen.mutateAsync({ prompt, aspectRatio })
-      if (result && 'id' in result && result.url) {
-        onMediaGenerated(result.id, result.url, 'image')
+      try {
+        const result = await imageGen.mutateAsync({ prompt, aspectRatio })
+        if (result && 'id' in result && result.url) {
+          setSessionImages((current) => [{ id: result.id, url: result.url!, prompt }, ...current])
+          setFocusedImageId(result.id)
+          onMediaGenerated(result.id, result.url, 'image')
+        }
+      } catch {
+        // The mutation displays the error toast; keep earlier images visible.
       }
     } else {
       const result = await videoGen.submit({
@@ -145,14 +168,10 @@ export const MediaGenerator = ({
     }
   }
 
-  const handleRegenerate = () => {
-    onMediaReset?.()
-    if (mediaType === 'image') {
-      imageGen.reset()
-    } else {
-      videoGen.reset()
-    }
-    handleGenerate()
+  const toggleComparison = (assetId: string) => {
+    setComparisonIds((current) => current.includes(assetId)
+      ? current.filter((id) => id !== assetId)
+      : [...current.slice(-1), assetId])
   }
 
   if (mediaType === 'video') {
@@ -265,6 +284,13 @@ export const MediaGenerator = ({
           ))}
         </div>
 
+        <p className="text-xs text-muted-foreground">
+          {remaining.imageGen === null
+            ? 'Your app account has no image credit cap; Z.AI API charges still apply.'
+            : `Each generation or regeneration uses 1 image credit. ${remaining.imageGen} of ${config.limits.imageGen.max} left this month.`}
+          {' '}Discarded images still count. Failed generations with no saved image have their app credit returned.
+        </p>
+
         {/* Generate button */}
         {showForm && (
           <Button
@@ -305,7 +331,7 @@ export const MediaGenerator = ({
                 <img
                   src={readyUrl}
                   alt="Generated content"
-                  className="aspect-square w-full object-cover"
+                  className="aspect-square w-full object-contain"
                 />
               ) : (
                 <video
@@ -320,11 +346,11 @@ export const MediaGenerator = ({
                 variant="outline"
                 size="sm"
                 className="flex-1"
-                onClick={handleRegenerate}
+                onClick={handleGenerate}
                 disabled={isBusy}
               >
                 <RefreshCw className="size-3.5" />
-                Regenerate
+                {atImageLimit ? 'Monthly limit reached' : 'Regenerate · 1 credit'}
               </Button>
               <Button variant="outline" size="sm" asChild>
                 <a href={readyUrl} download target="_blank" rel="noopener">
@@ -332,6 +358,54 @@ export const MediaGenerator = ({
                 </a>
               </Button>
             </div>
+            {onMediaSelected && focusedImage && (
+              <Button
+                type="button"
+                size="sm"
+                variant="secondary"
+                className="w-full"
+                onClick={() => onMediaSelected(focusedImage.id)}
+                disabled={selectedAssetIds.includes(focusedImage.id) || selectedAssetIds.length >= 10}
+              >
+                {selectedAssetIds.includes(focusedImage.id) ? 'In post images' : 'Use this image in post'}
+              </Button>
+            )}
+          </div>
+        )}
+
+        {recentImages.length > 0 && (
+          <div className="space-y-2 border-t pt-3">
+            <div className="flex items-center justify-between gap-2">
+              <p className="text-xs font-medium">Generated images</p>
+              <p className="text-[11px] text-muted-foreground">Select two to compare · saved in Library</p>
+            </div>
+            <div className="grid max-h-52 grid-cols-4 gap-2 overflow-y-auto" aria-label="Generated images">
+              {recentImages.map((asset) => (
+                <div key={asset.id} className="space-y-1">
+                  <button
+                    type="button"
+                    aria-label={`Preview image: ${asset.prompt}`}
+                    onClick={() => { setFocusedImageId(asset.id); setPrompt(asset.prompt) }}
+                    className={cn('w-full overflow-hidden rounded-md border-2', focusedImageId === asset.id ? 'border-primary' : 'border-transparent hover:border-primary/50')}
+                  >
+                    <img src={asset.url} alt={asset.prompt} loading="lazy" className="aspect-square w-full object-cover" />
+                  </button>
+                  <button
+                    type="button"
+                    aria-label={`${comparisonIds.includes(asset.id) ? 'Remove from' : 'Add to'} comparison: ${asset.prompt}`}
+                    onClick={() => toggleComparison(asset.id)}
+                    className={cn('w-full rounded border px-1 py-0.5 text-[10px]', comparisonIds.includes(asset.id) ? 'border-primary text-primary' : 'text-muted-foreground')}
+                  >
+                    {comparisonIds.includes(asset.id) ? 'Comparing' : 'Compare'}
+                  </button>
+                </div>
+              ))}
+            </div>
+            {comparison.length === 2 && (
+              <div className="grid grid-cols-2 gap-2" aria-label="Side by side image comparison">
+                {comparison.map((asset) => <div key={asset.id} className="overflow-hidden rounded-md border bg-muted"><img src={asset.url} alt={asset.prompt} className="aspect-square w-full object-contain" /><p className="truncate px-2 py-1 text-[10px] text-muted-foreground" title={asset.prompt}>{asset.prompt}</p></div>)}
+              </div>
+            )}
           </div>
         )}
 

@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import {
   Copy,
   Loader2,
@@ -292,6 +292,7 @@ const PostPreview = ({
   const [hashtagsText, setHashtagsText] = useState(generated.hashtags.join(', '))
   const [mediaAssetIds, setMediaAssetIds] = useState<string[]>([])
   const [generatedImages, setGeneratedImages] = useState<{ id: string; url: string; prompt: string }[]>([])
+  const hasGeneratedImage = useRef(false)
   const platformInfo = PLATFORMS.find((p) => p.value === platform)
 
   const handleCopy = () => {
@@ -360,9 +361,18 @@ const PostPreview = ({
             <MediaGenerator
               mediaType="image"
               caption={draft.caption}
+              selectedAssetIds={mediaAssetIds}
+              onMediaSelected={(assetId) => {
+                setMediaAssetIds((current) => current.includes(assetId) || current.length >= 10 ? current : [...current, assetId])
+              }}
               onMediaGenerated={(assetId, url) => {
                 setGeneratedImages((current) => [{ id: assetId, url, prompt: 'Generated post image' }, ...current])
-                setMediaAssetIds((current) => current.includes(assetId) || current.length >= 10 ? current : [...current, assetId])
+                // Attach the first image automatically. Further generations
+                // stay in Library until the user chooses one for this post.
+                if (!hasGeneratedImage.current) {
+                  hasGeneratedImage.current = true
+                  setMediaAssetIds((current) => current.length === 0 ? [assetId] : current)
+                }
               }}
             />
             <MediaGenerator

@@ -49,8 +49,10 @@ Your **app plan** and **Z.AI provider balance** are separate controls. In this
 app, Free and Lite can use Studio content management but cannot generate AI
 images. Pro allows 100 image attempts per month; Custom allows 500. Both the
 Create image card and Image chat use the same monthly image counter. Attempts
-are counted before the provider call, including attempts that later fail. Pro
-and Custom access therefore does not replace funding for the Z.AI API account.
+reserve a credit before the provider call. Successful images count even when
+discarded; a failed generation with no ready Library asset returns one app
+credit. Pro and Custom access therefore does not replace funding for the Z.AI
+API account.
 Accounts with an `admin` or `owner` role bypass the app's monthly image count
 for support and demos when their plan includes image generation; the paid Z.AI
 provider call still occurs.
@@ -62,10 +64,12 @@ provider call still occurs.
 2. Confirm the deployment includes the current Studio branch. The navigation
    should show **Planner, Image chat, Library, Brand kit, Sources** and a
    **Video Coming soon** label. Create is an action button, not a tab.
-3. Confirm the Studio database migrations through `0033_studio_approved_sources.sql`
+3. Confirm the Studio database migrations through `0034_studio_image_credit_refunds.sql`
    have been applied. The project owner confirmed migrations 0029–0033 on
-   2026-09-22. A missing migration typically appears as a load or save error in
-   the related tab.
+   2026-09-22; 0034 is still required before testing image generation. A
+   missing 0034 migration makes image generation temporarily unavailable.
+   The server also needs `SUPABASE_SERVICE_ROLE_KEY` for credit reservation
+   and refund calls.
 4. Have one test image ready if you want to test uploads. PNG, JPEG, WebP, and
    GIF files up to 10 MB are accepted.
 5. Use test facts you are comfortable putting in a public post. Do not approve
@@ -207,9 +211,12 @@ behind `LLM_API_KEY` has usable image capacity:
    **Derive from caption** or enter a precise visual prompt.
 2. Choose an aspect ratio: square `1:1`, landscape `16:9`, portrait `9:16`, or
    classic `4:3`. Click **Generate Image** once.
-3. Expect a preview and a new ready image in **Library**. The generated image
-   should be attached to that Create preview automatically. You can reorder it
-   with other selected images before saving the post.
+3. Expect a preview and a new ready image in **Library**. The first generated
+   image is attached to the Create preview automatically. Regenerate once,
+   then use the generated-image strip to preview each result and select two
+   for a side-by-side comparison. Earlier results remain available. Click
+   **Use this image in post** to attach a later result, then reorder the
+   selected images before saving.
 4. In **Library**, verify the asset can be viewed, downloaded, moved to a
    folder, and found by prompt search. For a regular Pro or Custom user, the
    monthly image count should move by one. **Regenerate** is another paid
@@ -223,10 +230,11 @@ GLM-Image call. Image chat messages are subject to the app's message allowance
 as well as the shared image-generation allowance when the image tool runs.
 
 If the provider has no usable balance or image package, Z.AI can return
-`1113`. The app shows a generic temporary-unavailability message and leaves a
+`1113`. The app shows a temporary-unavailability message and leaves a
 **failed** asset in Library with the detailed provider error. Check that asset
-before retrying. A failed image attempt still counts toward the monthly app
-image limit for regular users. Funding the provider account and retrying is a separate action
+before retrying. If no ready image reached Library, the app returns the image
+credit once; the response confirms the refund or asks you to contact support
+if it cannot be confirmed. Funding the provider account and retrying is a separate action
 from changing the app user's subscription.
 
 ## What to verify while testing
@@ -244,7 +252,7 @@ from changing the app user's subscription.
 | Attach and reorder two uploaded images | The first is the cover; Posting pack lists both in that order |
 | Open Posting pack | Caption/hashtags copy and image downloads work; no channel delivery is claimed |
 | Generate an image after funding | Ready asset appears in Library; the monthly attempt count changes for a regular user |
-| Image request fails | User sees an error; failed asset retains the reason in Library |
+| Image request fails | User sees an error; failed asset retains the reason in Library; app credit is returned once if no ready image exists |
 
 ## Common questions and limits
 

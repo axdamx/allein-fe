@@ -21,7 +21,7 @@ import { submitCogVideoXJob } from '@/lib/media/cogvideox'
 import { getDefaultModel } from '@/lib/ai-provider'
 import { generateText } from 'ai'
 import { assertSafeUrl } from '@/lib/url-guard'
-import { consumeQuota } from '@/server/profile.server'
+import { reserveStudioImageCredit, refundStudioImageCredit } from '@/server/studio-image-credit.server'
 import { mirrorToStorage } from '@/server/media.server'
 import { PLAN_CONFIGS, type PlanTier } from '@/lib/plans'
 
@@ -116,19 +116,41 @@ export const generateImageTool = createTool({
       }
     }
 
+    let pending
+    try {
+      pending = await insertAssetRow(ownerId, {
+        kind: 'image',
+        prompt,
+        provider_model: ZAI_IMAGE_MODEL,
+        status: 'processing',
+        aspect_ratio: aspect_ratio ?? '1:1',
+      })
+    } catch (err) {
+      console.warn('[studio-tools] image asset creation failed:', err)
+      return { success: false, error: 'Image generation is temporarily unavailable. Please try again later.' }
+    }
+
     let quota
     try {
-      quota = await consumeQuota('imageGen', {
-        userId: ownerId,
+      quota = await reserveStudioImageCredit({
+        ownerId,
+        assetId: pending.id,
         plan: access.plan,
         role: access.role,
-        supabase: getSupabaseServiceClient(),
       })
     } catch (err) {
       console.warn('[studio-tools] image quota unavailable:', err)
+      await getSupabaseServiceClient().from('studio_assets')
+        .update({ status: 'failed', error: 'Could not reserve image credit' })
+        .eq('id', pending.id)
+      // The RPC may have committed even if its response was lost.
+      await refundStudioImageCredit(pending.id).catch((refundError) => {
+        console.warn('[studio-tools] uncertain reservation refund failed:', refundError)
+      })
       return { success: false, error: 'Image generation is temporarily unavailable. Please try again later.' }
     }
     if (!quota.allowed) {
+      await getSupabaseServiceClient().from('studio_assets').delete().eq('id', pending.id)
       return {
         success: false,
         error: `Monthly image limit reached (${quota.max}). Please wait until next month or upgrade your plan.`,
@@ -141,24 +163,19 @@ export const generateImageTool = createTool({
         aspectRatio: aspect_ratio ?? '1:1',
       })
 
-      let mirrored: { storagePath: string; publicUrl: string }
-      try {
-        mirrored = await mirrorToStorage(ownerId, result.remoteUrl, 'png', getSupabaseServiceClient())
-      } catch (err) {
-        console.warn('[studio-tools] image mirror failed:', err)
-        throw new Error('Image was generated but could not be saved to permanent storage', { cause: err })
-      }
-
-      const row = await insertAssetRow(ownerId, {
-        kind: 'image',
-        prompt,
-        provider_model: ZAI_IMAGE_MODEL,
-        status: 'ready',
-        aspect_ratio: aspect_ratio ?? '1:1',
-        url: mirrored.publicUrl,
-        storage_path: mirrored.storagePath,
-        meta: { size: result.size, remote_url: result.remoteUrl },
-      })
+      const mirrored = await mirrorToStorage(ownerId, result.remoteUrl, 'png', getSupabaseServiceClient())
+      const { data: row, error: updateError } = await getSupabaseServiceClient()
+        .from('studio_assets')
+        .update({
+          status: 'ready',
+          url: mirrored.publicUrl,
+          storage_path: mirrored.storagePath,
+          meta: { size: result.size, remote_url: result.remoteUrl },
+        })
+        .eq('id', pending.id)
+        .select('id')
+        .single()
+      if (updateError || !row) throw new Error('Image was generated but could not be saved to the Library')
 
       return {
         success: true,
@@ -167,19 +184,26 @@ export const generateImageTool = createTool({
         message: 'Image generated.',
       }
     } catch (err) {
-      const msg = err instanceof ZaiMediaError ? err.message : 'Image generation failed'
-      // Record the failure so the library shows it.
-      await insertAssetRow(ownerId, {
-        kind: 'image',
-        prompt,
-        provider_model: ZAI_IMAGE_MODEL,
-        status: 'failed',
-        aspect_ratio: aspect_ratio ?? '1:1',
-        error: msg,
-      }).catch(() => null)
-      return { success: false, error: err instanceof Error && err.message === 'Image was generated but could not be saved to permanent storage'
-        ? 'Image was generated but could not be saved. Please try again.'
-        : getImageGenerationUserMessage(err) }
+      const detail = err instanceof Error ? err.message : 'Image generation failed'
+      await getSupabaseServiceClient().from('studio_assets')
+        .update({ status: 'failed', error: detail })
+        .eq('id', pending.id)
+        .neq('status', 'ready')
+      let refunded = false
+      try {
+        refunded = await refundStudioImageCredit(pending.id)
+      } catch (refundError) {
+        console.warn('[studio-tools] image credit refund failed:', refundError)
+      }
+      const message = err instanceof ZaiMediaError
+        ? getImageGenerationUserMessage(err)
+        : 'Image was not saved to the Library. Please try again.'
+      const creditNote = access.role === 'admin' || access.role === 'owner'
+        ? ''
+        : refunded
+          ? ' Your image credit was restored.'
+          : ' Check the Library before retrying; contact support if your image credit was not restored.'
+      return { success: false, error: message + creditNote }
     }
   },
 })

@@ -8,6 +8,9 @@
 2026-09-21 update: the `imageGen` quota uses a monthly key in `usage_windows`
 with Pro 100 and Custom 500 attempts. Both form and agent image paths consume
 it before contacting Z.AI. Migration 0029 is required before deployment.
+2026-09-22 update: migration 0034 adds a private reservation ledger and
+one-time refunds when no ready Library image exists. Generated images still
+count even when a user discards them or removes them from a post.
 The historical proposal below remains for future video billing work.
 > Priority: **HIGH before scaling past ~10 paying users on video-enabled tiers**
 
@@ -86,7 +89,7 @@ where the strict quota lives.
   where strict metering + clear UX warnings matter most.
 
 ### "Should we charge for attempts or successes?"
-**Attempts. Always.** Reasons:
+**Count each generated image, whether or not the user keeps it.** Reasons:
 1. Defining "success" is impossible — what if they generate, sort-of-like-it,
    but don't explicitly save?
 2. Success-based pricing incentivizes users to declare every output "good"
@@ -94,8 +97,9 @@ where the strict quota lives.
 3. Every major creative tool (Midjourney, Runway, Pika, Kling's own app)
    charges per generation attempt, not per satisfaction.
 
-The UX fix is NOT to charge for successes — it's to make the quota generous
-enough that normal iteration fits within it, and to show cost upfront.
+The UX fix is to make the quota generous enough that normal iteration fits
+within it, and to show cost upfront. A failed request with no saved image
+returns its app credit once through the reservation ledger (migration 0034).
 
 ---
 

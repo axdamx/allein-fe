@@ -17,7 +17,9 @@ import {
 } from '@/lib/media/cogvideox'
 import { requireUserId } from '@/server/_auth'
 import { safeError, sanitizeSupabaseMessage } from '@/server/_errors'
-import { consumeQuota } from '@/server/profile.server'
+import { getCurrentUserProfile } from '@/server/profile.server'
+import { reserveStudioImageCredit, refundStudioImageCredit } from '@/server/studio-image-credit.server'
+import type { PlanTier } from '@/lib/plans'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { assertSafeUrl } from '@/lib/url-guard'
 import { validateUpload, uploadRejectionMessage, MAX_UPLOAD_BYTES } from '@/lib/media/upload-validate'
@@ -167,17 +169,13 @@ export async function generateImageImpl(
   input: GenerateImageInput,
 ): Promise<StudioAssetRow | { error: string }> {
   try {
-    const userId = await getCurrentUserId()
+    const profile = await getCurrentUserProfile()
+    if (!profile) return { error: 'Not authenticated' }
+    const userId = profile.id
     const supabase = getSupabaseServerClient()
 
-    // Charge for attempts before calling the paid provider. Both form and
-    // agent generation use this same monthly counter.
-    const quota = await consumeQuota('imageGen')
-    if (!quota.allowed) {
-      return { error: `Monthly image limit reached (${quota.max}). Resets ${new Date(quota.resetAt).toLocaleDateString('en-MY', { timeZone: 'Asia/Kuala_Lumpur' })}.` }
-    }
-
-    // Create a pending row first so we always have a handle even on failure.
+    // Create the asset before reserving a credit, so a failed insert cannot
+    // consume quota. The reservation is tied to this asset in the database.
     const { data: row, error: rowErr } = await supabase
       .from('studio_assets')
       .insert({
@@ -193,46 +191,73 @@ export async function generateImageImpl(
       .single()
     if (rowErr) return { error: sanitizeSupabaseMessage(rowErr.message, 'Failed to start image generation') }
 
-    let result
+    let quota
     try {
-      result = await generateZaiImage({
+      quota = await reserveStudioImageCredit({
+        ownerId: userId,
+        assetId: row.id,
+        plan: profile.plan as PlanTier,
+        role: profile.role,
+      })
+    } catch (err) {
+      console.warn('[media.server] image credit reservation failed:', err)
+      await supabase.from('studio_assets').update({ status: 'failed', error: 'Could not reserve image credit' }).eq('id', row.id)
+      // The RPC may have committed even if its response was lost.
+      await refundStudioImageCredit(row.id).catch((refundError) => {
+        console.warn('[media.server] uncertain reservation refund failed:', refundError)
+      })
+      return { error: 'Image generation is temporarily unavailable. Please try again later.' }
+    }
+    if (!quota.allowed) {
+      await supabase.from('studio_assets').delete().eq('id', row.id)
+      return { error: `Monthly image limit reached (${quota.max}). Resets ${new Date(quota.resetAt).toLocaleDateString('en-MY', { timeZone: 'Asia/Kuala_Lumpur' })}.` }
+    }
+
+    try {
+      const result = await generateZaiImage({
         prompt: input.prompt,
         aspectRatio: input.aspectRatio ?? '1:1',
       })
-    } catch (err) {
-      const msg = err instanceof ZaiMediaError ? err.message : 'Image generation failed'
-      // Persist the detailed reason on the asset row (internal, not returned).
-      await supabase
+
+      // Mirror to our bucket so the URL is durable before finalizing the asset.
+      const mirrored = await mirrorToStorage(userId, result.remoteUrl, 'png', supabase)
+      const { data: updated, error: updErr } = await supabase
         .from('studio_assets')
-        .update({ status: 'failed', error: msg })
+        .update({
+          status: 'ready',
+          url: mirrored.publicUrl,
+          storage_path: mirrored.storagePath,
+          meta: { size: result.size, remote_url: result.remoteUrl },
+        })
         .eq('id', row.id)
-      return { error: getImageGenerationUserMessage(err) }
-    }
+        .select('*')
+        .single()
+      if (updErr || !updated) throw new Error('Image was generated but could not be saved to the Library')
 
-    // Mirror to our bucket so the URL is durable.
-    let mirrored: { storagePath: string; publicUrl: string }
-    try {
-      mirrored = await mirrorToStorage(userId, result.remoteUrl, 'png', supabase)
+      return updated as unknown as StudioAssetRow
     } catch (err) {
-      console.warn('[media.server] image mirror failed:', err)
-      await supabase.from('studio_assets').update({ status: 'failed', error: 'Could not save image to permanent storage' }).eq('id', row.id)
-      return { error: 'Image was generated but could not be saved. Please try again.' }
+      const detail = err instanceof Error ? err.message : 'Image generation failed'
+      await supabase.from('studio_assets')
+        .update({ status: 'failed', error: detail })
+        .eq('id', row.id)
+        .neq('status', 'ready')
+
+      let refunded = false
+      try {
+        refunded = await refundStudioImageCredit(row.id)
+      } catch (refundError) {
+        console.warn('[media.server] image credit refund failed:', refundError)
+      }
+      const message = err instanceof ZaiMediaError
+        ? getImageGenerationUserMessage(err)
+        : 'Image was not saved to the Library. Please try again.'
+      const creditNote = profile.role === 'admin' || profile.role === 'owner'
+        ? ''
+        : refunded
+          ? ' Your image credit was restored.'
+          : ' Check the Library before retrying; contact support if your image credit was not restored.'
+      return { error: message + creditNote }
     }
-
-    const { data: updated, error: updErr } = await supabase
-      .from('studio_assets')
-      .update({
-        status: 'ready',
-        url: mirrored.publicUrl,
-        storage_path: mirrored.storagePath,
-        meta: { size: result.size, remote_url: result.remoteUrl },
-      })
-      .eq('id', row.id)
-      .select('*')
-      .single()
-    if (updErr) return { error: sanitizeSupabaseMessage(updErr.message, 'Failed to complete image generation') }
-
-    return updated as unknown as StudioAssetRow
   } catch (err) {
     return {
       error: safeError(err, 'Image generation failed'),
