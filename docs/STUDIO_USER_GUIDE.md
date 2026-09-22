@@ -13,9 +13,9 @@ LinkedIn, or other channels or publish on your behalf. A **Planned** date is a
 reminder in the content calendar, not an automatic publishing job. Video shows
 **Coming soon** and cannot be generated, including on the Custom tier.
 
-| Tab | What you do there | Why it matters |
+| Section | What you do there | Why it matters |
 | --- | --- | --- |
-| Create (`/studio`) | Generate and edit the first post for an idea; attach images; save a draft or planned post | Turns one brief into reviewable content |
+| Create action (`/studio/create`) | Generate and edit the first post for an idea; attach images; save a draft or planned post | Turns one brief into reviewable content; open it from Sources or Planner |
 | Planner (`/studio/planner`) | Edit ideas and posts, add channel versions, filter, view the calendar, open posting packs | Keeps one campaign idea and its channel copy together |
 | Image chat (`/studio/chat`) | Discuss an image, attach an image for analysis, or ask the Studio agent to generate one | An alternative, conversational image workflow |
 | Library (`/studio/library`) | Upload, find, download, organize, and delete images | Keeps reusable assets in one place |
@@ -57,8 +57,8 @@ provider call still occurs.
 1. Sign in to an account with access to Studio. The Studio tab should be in the
    app navigation.
 2. Confirm the deployment includes the current Studio branch. The navigation
-   should show **Create, Planner, Image chat, Library, Brand kit, Sources** and
-   a **Video Coming soon** label.
+   should show **Planner, Image chat, Library, Brand kit, Sources** and a
+   **Video Coming soon** label. Create is an action button, not a tab.
 3. Confirm the Studio database migrations through `0033_studio_approved_sources.sql`
    have been applied. The project owner confirmed migrations 0029–0033 on
    2026-09-22. A missing migration typically appears as a load or save error in
@@ -127,10 +127,12 @@ monthly AI image allowance.
 
 ### 4. Generate the first channel draft
 
-Open **Studio → Create**. Optionally choose a starter or saved template. Replace
-every `[bracketed detail]` with real facts. Write a short brief, select the
-approved source card (up to five), choose **Instagram**, and choose a tone.
-Click **Generate content**.
+From the approved card in **Studio → Sources**, click **Create post**. The
+full-page composer opens with that source selected and a starter brief. You
+can also click **Create post** from Planner for a post without a preselected
+source. Optionally choose a starter or saved template. Replace every
+`[bracketed detail]` with real facts, choose **Instagram** and a tone, then
+click **Generate content**.
 
 The preview should show the **source facts**, generated title, caption, and
 hashtags. Compare any price, date, availability, property feature, or claim in
@@ -151,8 +153,8 @@ controls to arrange the rest. Multiple images prepare a carousel for manual
 posting. You can leave images empty and make a text-only draft.
 
 Optionally check **Add to content plan** and choose a future date and time.
-Click **Save post** or **Save to plan**. The post appears in **Your Content**
-and in **Planner**. Saving a post uses the app's daily post allowance;
+Click **Save post** or **Save to plan**. The app returns to **Planner**, where
+the saved post appears. Saving a post uses the app's daily post allowance;
 generating and editing text does not consume a post credit. Create disables
 its **Generate content** button when the daily post limit is reached. Current
 daily save limits are Free 3, Lite 30, Pro 150, and Custom unlimited.
@@ -183,8 +185,8 @@ for that date, not that publishing is queued.
 
 ### 7. Prepare the manual posting pack
 
-On either a saved post in Planner or a recent post in Create, click **Posting
-pack**. Check the channel and local planned date. For email, the post title is
+On a saved post in Planner, click **Posting pack**. Check the channel and local
+planned date. For email, the post title is
 available as a subject. Use **Caption**, **Copy post text**, or **Copy hashtags
 only** as appropriate. Download each attached image in its displayed order;
 image 01 is the cover. Then open the social channel yourself and publish there.
@@ -197,8 +199,9 @@ without claiming an external channel has received them.
 After confirming your account is **Pro or Custom** and the Z.AI API account
 behind `LLM_API_KEY` has usable image capacity:
 
-1. Open a draft in **Create** and find **Image Generation** under **Enhance
-   with media**. Click **Derive from caption** or enter a precise visual prompt.
+1. Open **Create post** from Sources or Planner and generate a draft. In its
+   preview, find **Image Generation** under **Enhance with media**. Click
+   **Derive from caption** or enter a precise visual prompt.
 2. Choose an aspect ratio: square `1:1`, landscape `16:9`, portrait `9:16`, or
    classic `4:3`. Click **Generate Image** once.
 3. Expect a preview and a new ready image in **Library**. The generated image

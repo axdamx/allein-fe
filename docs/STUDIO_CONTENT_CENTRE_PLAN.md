@@ -46,6 +46,9 @@ entitlement stays configured.
 - [x] Separate one content idea from channel-specific versions. Existing posts
   become single-version ideas; the Planner groups versions, edits the shared
   brief, and generates an editable draft for another channel.
+- [x] Make Create a focused action page instead of a Studio tab. Planner opens
+  a blank composer; an approved source card opens it with that source selected.
+  `/studio` redirects to Planner for existing bookmarks.
 - [x] Apply migration `0032_studio_content_ideas.sql` after 0031 (confirmed by
   the user on 2026-09-22).
 

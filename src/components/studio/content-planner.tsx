@@ -10,7 +10,7 @@ import {
   startOfMonth,
   startOfWeek,
 } from 'date-fns'
-import { CalendarDays, ChevronLeft, ChevronRight, Copy, List, Loader2, Pencil, Plus, Sparkles } from 'lucide-react'
+import { CalendarDays, ChevronLeft, ChevronRight, Copy, List, Loader2, Pencil, Plus, Sparkles, Trash2 } from 'lucide-react'
 import { Link } from '@tanstack/react-router'
 import { toast } from 'sonner'
 
@@ -40,7 +40,7 @@ import { UsageIndicator } from '@/components/billing/usage-indicator'
 import { PostImagePicker } from '@/components/studio/post-image-picker'
 import { StudioSourcePicker, StudioSourceReview } from '@/components/studio/source-review'
 import { PostingPackButton } from '@/components/studio/posting-pack'
-import { useCreatePost, useDuplicatePost, useGeneratePost, usePosts, useUpdatePost } from '@/hooks/use-marketing'
+import { useCreatePost, useDeletePost, useDuplicatePost, useGeneratePost, usePosts, useUpdatePost } from '@/hooks/use-marketing'
 import { useStudioContentIdeas, useUpdateStudioContentIdea } from '@/hooks/use-studio-ideas'
 import { usePlan } from '@/hooks/use-plan'
 import type { GeneratedPost, PostPlatform, PostRow } from '@/server/marketing'
@@ -71,12 +71,16 @@ function PostSummary({
   post,
   onEdit,
   onDuplicate,
+  onDelete,
   duplicating,
+  deleting,
 }: {
   post: PostRow
   onEdit: () => void
   onDuplicate: () => void
+  onDelete: () => void
   duplicating: boolean
+  deleting: boolean
 }) {
   const status = visibleStatus(post)
   const copy = async () => {
@@ -117,6 +121,7 @@ function PostSummary({
           </Button>
           <Button size="sm" variant="ghost" onClick={copy}>Copy text</Button>
           <PostingPackButton post={post} />
+          <Button size="sm" variant="ghost" className="text-destructive hover:text-destructive" onClick={onDelete} disabled={deleting}><Trash2 className="size-3.5" /> Delete</Button>
         </div>
       </div>
     </div>
@@ -304,6 +309,7 @@ export function ContentPlanner() {
   const { data: posts, isLoading } = usePosts()
   const { data: ideas, error: ideasError } = useStudioContentIdeas()
   const duplicate = useDuplicatePost()
+  const remove = useDeletePost()
   const [platform, setPlatform] = useState<PostPlatform | 'all'>('all')
   const [status, setStatus] = useState<StatusFilter>('all')
   const [from, setFrom] = useState('')
@@ -344,7 +350,9 @@ export function ContentPlanner() {
       post={post}
       onEdit={() => setEditing(post)}
       onDuplicate={() => duplicate.mutate(post.id)}
+      onDelete={() => { if (window.confirm(`Delete “${post.title || 'Untitled'}”?`)) remove.mutate(post.id) }}
       duplicating={duplicate.isPending && duplicate.variables === post.id}
+      deleting={remove.isPending && remove.variables === post.id}
     />
   )
 
@@ -353,7 +361,7 @@ export function ContentPlanner() {
       <UsageIndicator metric="posts" label="posts" windowSuffix="/day" />
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div><h2 className="text-xl font-semibold">Content planner</h2><p className="text-sm text-muted-foreground">Keep channel drafts together under one idea, plan dates, and copy content when you are ready to post.</p></div>
-        <Button asChild><Link to="/studio"><Plus className="size-4" /> Create post</Link></Button>
+        <Button asChild><Link to="/studio/create"><Plus className="size-4" /> Create post</Link></Button>
       </div>
       <Card>
         <CardContent className="grid gap-3 pt-5 sm:grid-cols-2 lg:grid-cols-[1fr_150px_150px_145px_145px]">

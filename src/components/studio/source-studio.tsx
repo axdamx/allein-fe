@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { Link } from '@tanstack/react-router'
 import { Pencil, Plus, Trash2 } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -68,7 +69,7 @@ export function SourceStudio() {
     <Card><CardHeader><CardTitle className="text-base">Source library</CardTitle><CardDescription>Only approved entries can be selected in Create or Planner. Editing a source requires reviewing the draft again.</CardDescription></CardHeader><CardContent className="space-y-3">
       {sourcesError ? <p className="text-sm text-destructive">{sourcesError.message}</p> : isLoading ? <p className="text-sm text-muted-foreground">Loading sources…</p> : !sources?.length ? <p className="text-sm text-muted-foreground">No sources yet.</p> : sources.map((source) => <div key={source.id} className="rounded-xl border p-3">
         <div className="flex items-start justify-between gap-2"><div><p className="text-sm font-semibold">{source.title}</p><div className="mt-1 flex gap-1"><Badge variant="outline" className="capitalize">{source.kind}</Badge><Badge variant={source.approved_at ? 'secondary' : 'outline'}>{source.approved_at ? 'Approved' : 'Unapproved'}</Badge></div></div>
-          <div className="flex gap-1"><Button size="icon" variant="ghost" aria-label={`Edit ${source.title}`} onClick={() => edit(source)}><Pencil className="size-4" /></Button><Button size="icon" variant="ghost" aria-label={`Delete ${source.title}`} disabled={remove.isPending} onClick={() => { if (window.confirm(`Delete ${source.title}? Saved posts keep their source snapshot.`)) remove.mutate(source.id) }}><Trash2 className="size-4" /></Button></div></div>
+          <div className="flex flex-wrap justify-end gap-1">{source.approved_at && <Button size="sm" variant="outline" asChild><Link to="/studio/create" search={{ sourceId: source.id }}>Create post</Link></Button>}<Button size="icon" variant="ghost" aria-label={`Edit ${source.title}`} onClick={() => edit(source)}><Pencil className="size-4" /></Button><Button size="icon" variant="ghost" aria-label={`Delete ${source.title}`} disabled={remove.isPending} onClick={() => { if (window.confirm(`Delete ${source.title}? Saved posts keep their source snapshot.`)) remove.mutate(source.id) }}><Trash2 className="size-4" /></Button></div></div>
         <p className="mt-2 whitespace-pre-wrap text-xs text-muted-foreground">{source.facts}</p>
         {source.reference_url && <a href={source.reference_url} target="_blank" rel="noreferrer" className="mt-2 inline-block text-xs text-primary underline">Open reference</a>}
       </div>)}

@@ -37,6 +37,7 @@ import { Route as AuthedStudioStoryboardRouteImport } from './routes/_authed.stu
 import { Route as AuthedStudioSourcesRouteImport } from './routes/_authed.studio.sources'
 import { Route as AuthedStudioPlannerRouteImport } from './routes/_authed.studio.planner'
 import { Route as AuthedStudioLibraryRouteImport } from './routes/_authed.studio.library'
+import { Route as AuthedStudioCreateRouteImport } from './routes/_authed.studio.create'
 import { Route as AuthedStudioChatRouteImport } from './routes/_authed.studio.chat'
 import { Route as AuthedStudioBrandRouteImport } from './routes/_authed.studio.brand'
 import { Route as AuthedCrmPipelineRouteImport } from './routes/_authed.crm.pipeline'
@@ -186,6 +187,11 @@ const AuthedStudioLibraryRoute = AuthedStudioLibraryRouteImport.update({
   path: '/library',
   getParentRoute: () => AuthedStudioRoute,
 } as any)
+const AuthedStudioCreateRoute = AuthedStudioCreateRouteImport.update({
+  id: '/create',
+  path: '/create',
+  getParentRoute: () => AuthedStudioRoute,
+} as any)
 const AuthedStudioChatRoute = AuthedStudioChatRouteImport.update({
   id: '/chat',
   path: '/chat',
@@ -257,6 +263,7 @@ export interface FileRoutesByFullPath {
   '/crm/pipeline': typeof AuthedCrmPipelineRoute
   '/studio/brand': typeof AuthedStudioBrandRoute
   '/studio/chat': typeof AuthedStudioChatRoute
+  '/studio/create': typeof AuthedStudioCreateRoute
   '/studio/library': typeof AuthedStudioLibraryRoute
   '/studio/planner': typeof AuthedStudioPlannerRoute
   '/studio/sources': typeof AuthedStudioSourcesRoute
@@ -292,6 +299,7 @@ export interface FileRoutesByTo {
   '/crm/pipeline': typeof AuthedCrmPipelineRoute
   '/studio/brand': typeof AuthedStudioBrandRoute
   '/studio/chat': typeof AuthedStudioChatRoute
+  '/studio/create': typeof AuthedStudioCreateRoute
   '/studio/library': typeof AuthedStudioLibraryRoute
   '/studio/planner': typeof AuthedStudioPlannerRoute
   '/studio/sources': typeof AuthedStudioSourcesRoute
@@ -332,6 +340,7 @@ export interface FileRoutesById {
   '/_authed/crm/pipeline': typeof AuthedCrmPipelineRoute
   '/_authed/studio/brand': typeof AuthedStudioBrandRoute
   '/_authed/studio/chat': typeof AuthedStudioChatRoute
+  '/_authed/studio/create': typeof AuthedStudioCreateRoute
   '/_authed/studio/library': typeof AuthedStudioLibraryRoute
   '/_authed/studio/planner': typeof AuthedStudioPlannerRoute
   '/_authed/studio/sources': typeof AuthedStudioSourcesRoute
@@ -372,6 +381,7 @@ export interface FileRouteTypes {
     | '/crm/pipeline'
     | '/studio/brand'
     | '/studio/chat'
+    | '/studio/create'
     | '/studio/library'
     | '/studio/planner'
     | '/studio/sources'
@@ -407,6 +417,7 @@ export interface FileRouteTypes {
     | '/crm/pipeline'
     | '/studio/brand'
     | '/studio/chat'
+    | '/studio/create'
     | '/studio/library'
     | '/studio/planner'
     | '/studio/sources'
@@ -446,6 +457,7 @@ export interface FileRouteTypes {
     | '/_authed/crm/pipeline'
     | '/_authed/studio/brand'
     | '/_authed/studio/chat'
+    | '/_authed/studio/create'
     | '/_authed/studio/library'
     | '/_authed/studio/planner'
     | '/_authed/studio/sources'
@@ -673,6 +685,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthedStudioLibraryRouteImport
       parentRoute: typeof AuthedStudioRoute
     }
+    '/_authed/studio/create': {
+      id: '/_authed/studio/create'
+      path: '/create'
+      fullPath: '/studio/create'
+      preLoaderRoute: typeof AuthedStudioCreateRouteImport
+      parentRoute: typeof AuthedStudioRoute
+    }
     '/_authed/studio/chat': {
       id: '/_authed/studio/chat'
       path: '/chat'
@@ -785,6 +804,7 @@ const AuthedCrmRouteWithChildren = AuthedCrmRoute._addFileChildren(
 interface AuthedStudioRouteChildren {
   AuthedStudioBrandRoute: typeof AuthedStudioBrandRoute
   AuthedStudioChatRoute: typeof AuthedStudioChatRoute
+  AuthedStudioCreateRoute: typeof AuthedStudioCreateRoute
   AuthedStudioLibraryRoute: typeof AuthedStudioLibraryRoute
   AuthedStudioPlannerRoute: typeof AuthedStudioPlannerRoute
   AuthedStudioSourcesRoute: typeof AuthedStudioSourcesRoute
@@ -795,6 +815,7 @@ interface AuthedStudioRouteChildren {
 const AuthedStudioRouteChildren: AuthedStudioRouteChildren = {
   AuthedStudioBrandRoute: AuthedStudioBrandRoute,
   AuthedStudioChatRoute: AuthedStudioChatRoute,
+  AuthedStudioCreateRoute: AuthedStudioCreateRoute,
   AuthedStudioLibraryRoute: AuthedStudioLibraryRoute,
   AuthedStudioPlannerRoute: AuthedStudioPlannerRoute,
   AuthedStudioSourcesRoute: AuthedStudioSourcesRoute,

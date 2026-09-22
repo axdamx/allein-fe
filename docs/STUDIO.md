@@ -14,11 +14,12 @@ deferred.
 
 ---
 
-## Tabs at a glance
+## Studio routes at a glance
 
-| Route | Tab | Purpose |
+| Route | Section | Purpose |
 |---|---|---|
-| `/studio` | Create | Form-driven content generation, image attachment, and video coming soon card |
+| `/studio` | Entry | Redirects to Planner |
+| `/studio/create` | Create action page | Form-driven content generation and image attachment; launched from Sources or Planner |
 | `/studio/planner` | Planner | Editable drafts, duplication, filters, and a manual posting calendar |
 | `/studio/chat` | Image chat | Conversational image generation with the Studio Agent |
 | `/studio/storyboard` | Storyboard | Brief → scene-by-scene video planning (not linked in current navigation) |
@@ -27,8 +28,10 @@ deferred.
 | `/studio/sources` | Sources | Curated public facts for grounded post drafts |
 
 Layout + tab nav: `src/routes/_authed.studio.tsx` (mirrors the CRM layout
-pattern with `<Outlet />`). The active navigation exposes Create, Planner,
-Image chat, Library, Brand kit, and Sources. Video is labelled Coming soon. The Custom plan's video feature
+pattern with `<Outlet />`). The active navigation exposes Planner, Image chat,
+Library, Brand kit, and Sources. Create is a focused action page reached from
+Planner or an approved source card, which is preselected in the composer.
+Video is labelled Coming soon. The Custom plan's video feature
 flag remains configured, while the public video submit endpoint refuses new
 jobs and the Studio Agent has no video tool until monthly metering is ready.
 
@@ -115,7 +118,7 @@ jobs and the Studio Agent has no video tool until monthly metering is ready.
   library images. It can hold up to 10 ordered images for manual carousel
   preparation, with the first image as the cover. Planned dates are for manual
   publishing only.
-- Saved posts have a posting pack in Planner and Create's recent list. It
+- Saved posts have a posting pack in Planner. It
   collects the channel, planned date, copy-ready text and hashtags, and
   individually downloadable images in their saved order.
 
@@ -282,7 +285,8 @@ src/components/studio/
 
 src/routes/
   _authed.studio.tsx              # layout + tab nav
-  _authed.studio.index.tsx        # Create tab (original generator)
+  _authed.studio.index.tsx        # Redirect to Planner
+  _authed.studio.create.tsx       # Focused contextual Create action page
   _authed.studio.chat.tsx         # Chat tab
   _authed.studio.storyboard.tsx   # Storyboard tab
   _authed.studio.library.tsx      # Library tab
