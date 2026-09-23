@@ -50,7 +50,122 @@ The main areas are:
 | Settings | Update your profile, plan, integrations, and API keys |
 | Studio | Marketing content centre; the revamped experience is coming soon |
 
-## 3. Complete the core test flow
+## 3. Upgrade through Stripe sandbox
+
+The beta environment uses Stripe sandbox checkout, so you can test a paid plan
+without making a real payment. For a complete beta pass, start on Free and
+upgrade the same account to **Lite** or **Pro**.
+
+1. Open **Settings → Plan & Billing**.
+2. Choose **Upgrade securely** for Lite or Pro. Custom is handled through
+   sales and is not a self-serve Stripe checkout option.
+3. On the Stripe-hosted sandbox page, use Stripe's successful test Visa:
+   - Card number: `4242 4242 4242 4242`
+   - Expiry: any future date, such as `12/34`
+   - CVC: any three digits
+   - Name, postcode, and other test fields: any valid-looking test values
+4. Complete checkout. Stripe should return you to **Settings → Plan &
+   Billing**.
+5. Wait for **Upgrade confirmed**. The success view may briefly show that it
+   is syncing while the Stripe webhook verifies the subscription.
+6. Confirm the current plan badge, new limits, and **Subscription active**
+   state. Refresh once and confirm the paid plan remains active.
+7. Open **Manage billing** to verify that the Stripe sandbox customer portal
+   loads. Return to Allein without changing the subscription unless your test
+   brief includes cancellation.
+
+Use only Stripe test details in the sandbox. Do not enter a real card. The
+official test values are listed in [Stripe's testing documentation](https://docs.stripe.com/testing).
+If the success page keeps waiting, report the checkout time, test account,
+selected plan, and whether Stripe showed a successful payment. Do not include
+secret keys or full payment details in the report.
+
+A manually assigned complimentary plan cannot start a new self-serve checkout.
+Use a Free beta account for this test or ask the beta coordinator to reset the
+account. Once a Stripe subscription is active, plan changes and cancellation
+are handled through **Manage billing**.
+
+## 4. Understand account limits
+
+The limits below are the current product configuration. They are enforced per
+account, not per agent or conversation.
+
+| Usage | Free | Lite | Pro | Custom | How it is counted |
+| --- | ---: | ---: | ---: | ---: | --- |
+| Price | RM0 forever | RM99/month | RM249/month | RM799+/month | Lite and Pro are available in sandbox checkout |
+| Agents | 1 | 3 | 10 | Unlimited | Each created agent uses one lifetime slot; archiving does not restore it |
+| Conversations | 10 | 100 | Unlimited | Unlimited | Each new conversation uses one lifetime slot; deleting it does not restore the slot |
+| AI messages | 10/day | 30/day | Unlimited | Unlimited | Each submitted request uses one unit; regular Chat and Studio Image chat share this allowance |
+| Saved marketing posts | 3/day | 30/day | 150/day | Unlimited | Saving a new post or duplicating one uses one unit; generating or editing copy does not |
+| Knowledge documents | 3 | 25 | 200 | Unlimited | Each stored document uses one slot; deleting it restores the slot |
+| CRM leads | 10 | 100 | Unlimited | Unlimited | Based on the current number of lead records; deleting a lead frees capacity |
+| AI image generations | 0 | 0 | 100/month | 500/month | Every successful Generate or Regenerate attempt uses one unit, whether or not the result is kept |
+| WhatsApp messages | 0/day | 50/day | Unlimited | Unlimited | Shared account allowance; access still depends on the WhatsApp feature flag |
+| Telegram messages | 0/day | 100/day | Unlimited | Unlimited | Shared account allowance; the Telegram bot starts on Lite |
+
+Daily allowances reset at midnight Malaysia time. Monthly image allowances
+reset on the first day of the next Malaysia calendar month. Lifetime limits do
+not reset automatically.
+
+For AI images, a failed provider attempt that creates no ready Library image is
+designed to return the reserved app credit. A successful result still counts
+when the user dislikes or discards it because the provider has already created
+the image. Admin and owner accounts can bypass the app image count for demos,
+but the server's GLM-Image provider capacity is still consumed.
+
+Deleting a saved marketing post does not return that day's post allowance.
+Deleting a conversation does not return a lifetime conversation slot. These
+are useful boundary cases to verify and report if the interface gives a
+different expectation.
+
+### Features by plan
+
+| Feature | Free | Lite | Pro | Custom |
+| --- | :---: | :---: | :---: | :---: |
+| CRM and clients | Yes | Yes | Yes | Yes |
+| Knowledge documents | Yes | Yes | Yes | Yes |
+| Marketing Studio content management | Yes | Yes | Yes | Yes |
+| Planned posts | No | Yes | Yes | Yes |
+| AI image generation | No | No | Yes | Yes |
+| Telegram bot | No | Yes | Yes | Yes |
+| WhatsApp broadcast | No | No | Yes | Yes |
+| Team seats | No | No | Yes | Yes |
+| API access | No | No | Yes | Yes |
+| Priority support | No | No | Yes | Yes |
+| White label | No | No | No | Yes |
+| AI video generation | Coming soon | Coming soon | Coming soon | Coming soon |
+
+The revamped Studio is still coming soon on `main`, so Studio-specific limits
+can be reviewed now but should be exercised only after that branch is deployed.
+
+## 5. Understand upload limits
+
+Uploads have different rules depending on where they are used.
+
+| Upload area | Accepted content | Current limit | What counts |
+| --- | --- | --- | --- |
+| Knowledge Base | TXT, MD, CSV, JSON, PDF, and browser-recognized text files | Document count follows the plan table. The current Knowledge handler has no dedicated per-file byte cap, so use small beta files | A created document record uses one document slot; delete it to restore the slot |
+| Chat attachment | PNG, JPEG, WebP, GIF, PDF, TXT, CSV, MD, or JSON | One attachment per message; maximum 10 MB | The upload itself has no separate plan counter; sending the request uses one daily AI message |
+| CRM client import | CSV with a required `name` column | Maximum 500 rows per import | Imported client records are separate from the CRM lead count |
+| Planner calendar import | ICS exported from a calendar service | One file at a time; no dedicated file-size or event-count cap is currently published | Imported events do not use an AI message, post, or document allowance |
+| Studio Library image | PNG, JPEG, WebP, or GIF | Maximum 10 MB each; maximum 10 upload requests per minute | Uploading an owned image does not use an AI image-generation credit |
+| Studio post images | Ready images from the Library | Up to 10 images attached to one post | Saving the post uses one daily post unit; attaching images adds no extra plan charge |
+
+The Studio rows describe the upcoming revamped Studio and are **Coming soon**
+until its branch is merged and deployed.
+
+For Knowledge uploads, a PDF needs extractable text. A scanned image-only PDF
+may fail with no text unless an OCR path can read it. Unsupported, corrupt, or
+mislabeled files should show an actionable error. Large Knowledge files may
+also encounter request or processing limits even though the current handler
+does not publish a specific byte cap; record the file type and approximate size
+when reporting that failure.
+
+Chat and Studio media uploads are checked on the server as well as in the file
+picker. Renaming an unsupported file to an accepted extension should not bypass
+validation. SVG and HTML are intentionally not accepted.
+
+## 6. Complete the core test flow
 
 This first pass should take about 20 to 30 minutes. Use one fictional scenario
 throughout so you can see how the product areas fit together.
@@ -123,7 +238,8 @@ shown consistently in both views.
 
 1. Open **Analytics** and check whether your recent activity is reflected.
 2. Open **Settings → Profile**, make a harmless change, save, and reload.
-3. Review **Plan & Billing** so you know the limits on the test account.
+3. Review **Plan & Billing** and confirm it matches the plan selected during
+   the Stripe sandbox upgrade.
 4. Treat **Integrations** and **API Keys** as optional unless the beta brief
    specifically asks you to test them. Never include a secret key in a bug
    report or screenshot.
@@ -192,9 +308,15 @@ buttons, clipped text, unusable dialogs, and accidental horizontal scrolling.
 
 ### Limit pass
 
-If your test brief includes plan limits, approach a quota gradually. Confirm
-that the product explains the limit before or when it is reached and does not
-silently discard work.
+Before upgrading, try one feature that Free does not include and confirm that
+the upgrade prompt explains which plan unlocks it. Complete the Stripe sandbox
+upgrade, return to the same feature, and confirm it is now available.
+
+Approach a small quota gradually and compare the usage indicator after every
+action. Confirm that the product explains the limit before or when it is
+reached, blocks only the metered action, and does not silently discard work.
+There is no need to exhaust a 100- or 500-image allowance during routine beta
+testing; use a specially prepared boundary account for high-limit tests.
 
 ## What feedback is most useful
 
@@ -262,14 +384,17 @@ Live chat and in-app documentation are currently marked **Coming soon**.
 
 - [ ] Account created and onboarding completed
 - [ ] Product tour completed
+- [ ] Lite or Pro upgrade completed through Stripe sandbox
+- [ ] Upgraded plan and limits persisted after refresh
 - [ ] Agent created
 - [ ] Conversation and follow-up tested
 - [ ] Knowledge document uploaded and queried
+- [ ] One accepted upload and one rejected upload tested
 - [ ] Lead created and pipeline reviewed
 - [ ] Planner task created, edited, and completed
 - [ ] Goal created and updated
 - [ ] Analytics reviewed
-- [ ] Profile or plan settings reviewed
+- [ ] Profile, billing portal, and plan settings reviewed
 - [ ] Return-use and responsive-layout passes completed
 - [ ] Issues reported with reproducible steps
 - [ ] Revamped Studio left for its announced beta release
