@@ -19,14 +19,6 @@ yarn build    # typecheck + production build
 yarn preview  # preview the production build
 ```
 
-## Product guides
-
-- [Beta tester getting started guide](docs/BETA_TESTER_GETTING_STARTED.md)
-- [Marketing Studio user guide](docs/STUDIO_USER_GUIDE.md) — the revamped
-  Studio is currently on `codex/studio-content-centre` and is coming soon to
-  `main`
-- [Lead reminders and notification centre implementation plan](docs/LEAD_REMINDERS_NOTIFICATION_PLAN.md)
-
 ## Project structure
 
 ```
