@@ -20,9 +20,7 @@ const planFeatures = (plan: PlanConfig) => {
       ? 'AI images · video coming soon'
       : plan.features.aiImageGen
         ? 'AI image generation'
-        : plan.features.scheduledPosts
-          ? 'Scheduled marketing posts'
-          : 'Marketing Studio access',
+        : 'Content planning and drafts',
   ]
 }
 

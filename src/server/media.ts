@@ -78,6 +78,14 @@ export const generateImage = createServerFn({ method: 'POST' })
     return generateImageImpl(data)
   })
 
+/** User-supplied images are available for content management on every tier. */
+export const uploadStudioImage = createServerFn({ method: 'POST' })
+  .validator((d: { fileName: string; mimeType: string; base64: string }) => d)
+  .handler(async ({ data }) => {
+    const { uploadStudioImageImpl } = await import('./media.server')
+    return uploadStudioImageImpl(data)
+  })
+
 // ---------------------------------------------------------------------------
 // Video (async)
 // ---------------------------------------------------------------------------

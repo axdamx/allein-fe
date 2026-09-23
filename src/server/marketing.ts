@@ -24,6 +24,8 @@ export interface UpdatePostInput {
   title?: string
   caption?: string
   hashtags?: string[]
+  platform?: PostPlatform
+  mediaAssetIds?: string[]
   scheduledFor?: string | null
   status?: PostStatus
 }
@@ -42,6 +44,7 @@ export const generatePost = createServerFn({ method: 'POST' })
       platform: PostPlatform
       tone?: string
       agentId?: string
+      sourceIds?: string[]
     }) => d,
   )
   .handler(async ({ data }) => {
@@ -61,6 +64,13 @@ export const updatePost = createServerFn({ method: 'POST' })
   .handler(async ({ data }) => {
     const { updatePostImpl } = await import('./marketing.server')
     return updatePostImpl(data)
+  })
+
+export const duplicatePost = createServerFn({ method: 'POST' })
+  .validator((d: { id: string }) => d)
+  .handler(async ({ data }) => {
+    const { duplicatePostImpl } = await import('./marketing.server')
+    return duplicatePostImpl(data.id)
   })
 
 export const deletePost = createServerFn({ method: 'POST' })

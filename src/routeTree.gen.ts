@@ -34,8 +34,12 @@ import { Route as ApiMessagingTelegramRouteImport } from './routes/api/messaging
 import { Route as ApiChatStreamRouteImport } from './routes/api.chat.stream'
 import { Route as ApiBillingStripeWebhookRouteImport } from './routes/api.billing.stripe-webhook'
 import { Route as AuthedStudioStoryboardRouteImport } from './routes/_authed.studio.storyboard'
+import { Route as AuthedStudioSourcesRouteImport } from './routes/_authed.studio.sources'
+import { Route as AuthedStudioPlannerRouteImport } from './routes/_authed.studio.planner'
 import { Route as AuthedStudioLibraryRouteImport } from './routes/_authed.studio.library'
+import { Route as AuthedStudioCreateRouteImport } from './routes/_authed.studio.create'
 import { Route as AuthedStudioChatRouteImport } from './routes/_authed.studio.chat'
+import { Route as AuthedStudioBrandRouteImport } from './routes/_authed.studio.brand'
 import { Route as AuthedCrmPipelineRouteImport } from './routes/_authed.crm.pipeline'
 import { Route as AuthedCrmLeadsRouteImport } from './routes/_authed.crm.leads'
 import { Route as AuthedCrmClientsRouteImport } from './routes/_authed.crm.clients'
@@ -168,14 +172,34 @@ const AuthedStudioStoryboardRoute = AuthedStudioStoryboardRouteImport.update({
   path: '/storyboard',
   getParentRoute: () => AuthedStudioRoute,
 } as any)
+const AuthedStudioSourcesRoute = AuthedStudioSourcesRouteImport.update({
+  id: '/sources',
+  path: '/sources',
+  getParentRoute: () => AuthedStudioRoute,
+} as any)
+const AuthedStudioPlannerRoute = AuthedStudioPlannerRouteImport.update({
+  id: '/planner',
+  path: '/planner',
+  getParentRoute: () => AuthedStudioRoute,
+} as any)
 const AuthedStudioLibraryRoute = AuthedStudioLibraryRouteImport.update({
   id: '/library',
   path: '/library',
   getParentRoute: () => AuthedStudioRoute,
 } as any)
+const AuthedStudioCreateRoute = AuthedStudioCreateRouteImport.update({
+  id: '/create',
+  path: '/create',
+  getParentRoute: () => AuthedStudioRoute,
+} as any)
 const AuthedStudioChatRoute = AuthedStudioChatRouteImport.update({
   id: '/chat',
   path: '/chat',
+  getParentRoute: () => AuthedStudioRoute,
+} as any)
+const AuthedStudioBrandRoute = AuthedStudioBrandRouteImport.update({
+  id: '/brand',
+  path: '/brand',
   getParentRoute: () => AuthedStudioRoute,
 } as any)
 const AuthedCrmPipelineRoute = AuthedCrmPipelineRouteImport.update({
@@ -237,8 +261,12 @@ export interface FileRoutesByFullPath {
   '/crm/clients': typeof AuthedCrmClientsRouteWithChildren
   '/crm/leads': typeof AuthedCrmLeadsRouteWithChildren
   '/crm/pipeline': typeof AuthedCrmPipelineRoute
+  '/studio/brand': typeof AuthedStudioBrandRoute
   '/studio/chat': typeof AuthedStudioChatRoute
+  '/studio/create': typeof AuthedStudioCreateRoute
   '/studio/library': typeof AuthedStudioLibraryRoute
+  '/studio/planner': typeof AuthedStudioPlannerRoute
+  '/studio/sources': typeof AuthedStudioSourcesRoute
   '/studio/storyboard': typeof AuthedStudioStoryboardRoute
   '/api/billing/stripe-webhook': typeof ApiBillingStripeWebhookRoute
   '/api/chat/stream': typeof ApiChatStreamRoute
@@ -269,8 +297,12 @@ export interface FileRoutesByTo {
   '/auth/callback': typeof AuthCallbackRoute
   '/auth/google': typeof AuthGoogleRoute
   '/crm/pipeline': typeof AuthedCrmPipelineRoute
+  '/studio/brand': typeof AuthedStudioBrandRoute
   '/studio/chat': typeof AuthedStudioChatRoute
+  '/studio/create': typeof AuthedStudioCreateRoute
   '/studio/library': typeof AuthedStudioLibraryRoute
+  '/studio/planner': typeof AuthedStudioPlannerRoute
+  '/studio/sources': typeof AuthedStudioSourcesRoute
   '/studio/storyboard': typeof AuthedStudioStoryboardRoute
   '/api/billing/stripe-webhook': typeof ApiBillingStripeWebhookRoute
   '/api/chat/stream': typeof ApiChatStreamRoute
@@ -306,8 +338,12 @@ export interface FileRoutesById {
   '/_authed/crm/clients': typeof AuthedCrmClientsRouteWithChildren
   '/_authed/crm/leads': typeof AuthedCrmLeadsRouteWithChildren
   '/_authed/crm/pipeline': typeof AuthedCrmPipelineRoute
+  '/_authed/studio/brand': typeof AuthedStudioBrandRoute
   '/_authed/studio/chat': typeof AuthedStudioChatRoute
+  '/_authed/studio/create': typeof AuthedStudioCreateRoute
   '/_authed/studio/library': typeof AuthedStudioLibraryRoute
+  '/_authed/studio/planner': typeof AuthedStudioPlannerRoute
+  '/_authed/studio/sources': typeof AuthedStudioSourcesRoute
   '/_authed/studio/storyboard': typeof AuthedStudioStoryboardRoute
   '/api/billing/stripe-webhook': typeof ApiBillingStripeWebhookRoute
   '/api/chat/stream': typeof ApiChatStreamRoute
@@ -343,8 +379,12 @@ export interface FileRouteTypes {
     | '/crm/clients'
     | '/crm/leads'
     | '/crm/pipeline'
+    | '/studio/brand'
     | '/studio/chat'
+    | '/studio/create'
     | '/studio/library'
+    | '/studio/planner'
+    | '/studio/sources'
     | '/studio/storyboard'
     | '/api/billing/stripe-webhook'
     | '/api/chat/stream'
@@ -375,8 +415,12 @@ export interface FileRouteTypes {
     | '/auth/callback'
     | '/auth/google'
     | '/crm/pipeline'
+    | '/studio/brand'
     | '/studio/chat'
+    | '/studio/create'
     | '/studio/library'
+    | '/studio/planner'
+    | '/studio/sources'
     | '/studio/storyboard'
     | '/api/billing/stripe-webhook'
     | '/api/chat/stream'
@@ -411,8 +455,12 @@ export interface FileRouteTypes {
     | '/_authed/crm/clients'
     | '/_authed/crm/leads'
     | '/_authed/crm/pipeline'
+    | '/_authed/studio/brand'
     | '/_authed/studio/chat'
+    | '/_authed/studio/create'
     | '/_authed/studio/library'
+    | '/_authed/studio/planner'
+    | '/_authed/studio/sources'
     | '/_authed/studio/storyboard'
     | '/api/billing/stripe-webhook'
     | '/api/chat/stream'
@@ -616,6 +664,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthedStudioStoryboardRouteImport
       parentRoute: typeof AuthedStudioRoute
     }
+    '/_authed/studio/sources': {
+      id: '/_authed/studio/sources'
+      path: '/sources'
+      fullPath: '/studio/sources'
+      preLoaderRoute: typeof AuthedStudioSourcesRouteImport
+      parentRoute: typeof AuthedStudioRoute
+    }
+    '/_authed/studio/planner': {
+      id: '/_authed/studio/planner'
+      path: '/planner'
+      fullPath: '/studio/planner'
+      preLoaderRoute: typeof AuthedStudioPlannerRouteImport
+      parentRoute: typeof AuthedStudioRoute
+    }
     '/_authed/studio/library': {
       id: '/_authed/studio/library'
       path: '/library'
@@ -623,11 +685,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthedStudioLibraryRouteImport
       parentRoute: typeof AuthedStudioRoute
     }
+    '/_authed/studio/create': {
+      id: '/_authed/studio/create'
+      path: '/create'
+      fullPath: '/studio/create'
+      preLoaderRoute: typeof AuthedStudioCreateRouteImport
+      parentRoute: typeof AuthedStudioRoute
+    }
     '/_authed/studio/chat': {
       id: '/_authed/studio/chat'
       path: '/chat'
       fullPath: '/studio/chat'
       preLoaderRoute: typeof AuthedStudioChatRouteImport
+      parentRoute: typeof AuthedStudioRoute
+    }
+    '/_authed/studio/brand': {
+      id: '/_authed/studio/brand'
+      path: '/brand'
+      fullPath: '/studio/brand'
+      preLoaderRoute: typeof AuthedStudioBrandRouteImport
       parentRoute: typeof AuthedStudioRoute
     }
     '/_authed/crm/pipeline': {
@@ -726,15 +802,23 @@ const AuthedCrmRouteWithChildren = AuthedCrmRoute._addFileChildren(
 )
 
 interface AuthedStudioRouteChildren {
+  AuthedStudioBrandRoute: typeof AuthedStudioBrandRoute
   AuthedStudioChatRoute: typeof AuthedStudioChatRoute
+  AuthedStudioCreateRoute: typeof AuthedStudioCreateRoute
   AuthedStudioLibraryRoute: typeof AuthedStudioLibraryRoute
+  AuthedStudioPlannerRoute: typeof AuthedStudioPlannerRoute
+  AuthedStudioSourcesRoute: typeof AuthedStudioSourcesRoute
   AuthedStudioStoryboardRoute: typeof AuthedStudioStoryboardRoute
   AuthedStudioIndexRoute: typeof AuthedStudioIndexRoute
 }
 
 const AuthedStudioRouteChildren: AuthedStudioRouteChildren = {
+  AuthedStudioBrandRoute: AuthedStudioBrandRoute,
   AuthedStudioChatRoute: AuthedStudioChatRoute,
+  AuthedStudioCreateRoute: AuthedStudioCreateRoute,
   AuthedStudioLibraryRoute: AuthedStudioLibraryRoute,
+  AuthedStudioPlannerRoute: AuthedStudioPlannerRoute,
+  AuthedStudioSourcesRoute: AuthedStudioSourcesRoute,
   AuthedStudioStoryboardRoute: AuthedStudioStoryboardRoute,
   AuthedStudioIndexRoute: AuthedStudioIndexRoute,
 }

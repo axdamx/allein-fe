@@ -43,6 +43,7 @@ export const usePlan = () => {
       leads: 0,
       whatsappMessages: 0,
       telegramMessages: 0,
+      imageGen: 0,
     },
     remaining: state?.remaining ?? {
       agents: PLAN_CONFIGS.free.limits.agents.max,
@@ -53,6 +54,7 @@ export const usePlan = () => {
       leads: PLAN_CONFIGS.free.limits.leads.max,
       whatsappMessages: PLAN_CONFIGS.free.limits.whatsappMessages.max,
       telegramMessages: PLAN_CONFIGS.free.limits.telegramMessages.max,
+      imageGen: PLAN_CONFIGS.free.limits.imageGen.max,
     },
 
     /** True if the user can still perform one more of this metric. */

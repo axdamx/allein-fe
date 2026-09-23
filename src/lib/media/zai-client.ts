@@ -1,5 +1,5 @@
 /**
- * Minimal HTTP client for ZAI's media endpoints (CogView / CogVideoX).
+ * Minimal HTTP client for ZAI's media endpoints (GLM-Image / CogVideoX).
  *
  * We don't install the official SDK because ZAI's image + video APIs are simple
  * JSON-over-HTTP and we want zero new dependencies for Phase 1. The same
@@ -112,7 +112,7 @@ async function zaiFetch<T>(
   })
 
   // ZAI returns JSON for both success and error; 200/299 are success.
-  let data: unknown = null
+  let data: unknown
   const text = await res.text()
   try {
     data = text ? JSON.parse(text) : null
@@ -148,14 +148,16 @@ interface ZaiImageResponse {
 export interface GenerateImageParams {
   prompt: string
   /** Valid ZAI image models: 'cogview-4-250304' or 'glm-image'. */
-  model?: string
-  /** Pixel size like '1280x1280'. Must be 1024-2048 and divisible by 32. */
+  model?: 'glm-image' | 'cogview-4-250304'
+  /** Pixel size like '1280x1280'; GLM-Image allows 1024-2048, divisible by 32. */
   size?: string
 }
 
+export const ZAI_IMAGE_MODEL = 'glm-image' as const
+
 export async function generateImage({
   prompt,
-  model = 'cogview-4-250304',
+  model = ZAI_IMAGE_MODEL,
   size = '1280x1280',
 }: GenerateImageParams): Promise<ZaiImageResult> {
   const { data } = await zaiFetch<ZaiImageResponse>(

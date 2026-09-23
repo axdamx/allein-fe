@@ -1,21 +1,29 @@
 /**
  * Server-only implementation for AI media generation (image + video).
  *
- * Each generated asset is mirrored to the `media` Supabase Storage bucket and
- * tracked in `studio_assets` so users get a persistent library and the chat
- * agent / storyboard can reference prior outputs later.
+ * Generated images must be mirrored to the `media` Supabase Storage bucket
+ * before they become ready. Assets are tracked in `studio_assets` for the
+ * library and Studio chat. Video generation remains disabled at the public
+ * boundary until its quota and publishing workflow are ready.
  *
  * Plan gating is enforced in the public wrapper (`src/server/media.ts`) before
  * these implementations run, so we don't re-check the feature flag here.
  */
 import { getSupabaseServerClient } from '@/lib/supabase/server.server'
-import { generateCogViewImage, getImageGenerationUserMessage, ZaiMediaError } from '@/lib/media/cogview'
+import { generateZaiImage, getImageGenerationUserMessage, ZAI_IMAGE_MODEL, ZaiMediaError } from '@/lib/media/zai-image'
 import {
   submitCogVideoXJob,
   pollCogVideoXJob,
 } from '@/lib/media/cogvideox'
 import { requireUserId } from '@/server/_auth'
 import { safeError, sanitizeSupabaseMessage } from '@/server/_errors'
+import { getCurrentUserProfile } from '@/server/profile.server'
+import { reserveStudioImageCredit, refundStudioImageCredit } from '@/server/studio-image-credit.server'
+import type { PlanTier } from '@/lib/plans'
+import type { SupabaseClient } from '@supabase/supabase-js'
+import { assertSafeUrl } from '@/lib/url-guard'
+import { validateUpload, uploadRejectionMessage, MAX_UPLOAD_BYTES } from '@/lib/media/upload-validate'
+import { rateLimit } from '@/server/_rate-limit'
 
 // ---------------------------------------------------------------------------
 // Types
@@ -44,6 +52,7 @@ export interface StudioAssetRow {
     [key: string]: string | number | boolean | null | undefined
   }
   reference_id: string | null
+  collection_id: string | null
   created_at: string
   updated_at: string
 }
@@ -66,26 +75,31 @@ async function getCurrentUserId(): Promise<string> {
  * available even after ZAI's ephemeral URLs expire. Returns the public URL
  * and storage path.
  */
-async function mirrorToStorage(
+export async function mirrorToStorage(
   userId: string,
   remoteUrl: string,
   ext: 'png' | 'jpg' | 'webp' | 'mp4' | 'webm',
+  supabase: SupabaseClient = getSupabaseServerClient(),
 ): Promise<{ storagePath: string; publicUrl: string }> {
-  const supabase = getSupabaseServerClient()
-  const filename = `${crypto.randomUUID()}.${ext}`
-  const storagePath = `${userId}/${filename}`
-
-  const bufRes = await fetch(remoteUrl)
+  const bufRes = await fetch(assertSafeUrl(remoteUrl))
   if (!bufRes.ok) {
     throw new Error(`Failed to download asset (${bufRes.status})`)
   }
   const buffer = Buffer.from(await bufRes.arrayBuffer())
+  const remoteType = bufRes.headers.get('content-type')?.split(';')[0]?.trim().toLowerCase()
+  const imageExt = remoteType === 'image/jpeg' ? 'jpg'
+    : remoteType === 'image/webp' ? 'webp'
+      : remoteType === 'image/png' ? 'png' : null
+  const storedExt = ext === 'mp4' || ext === 'webm' ? ext : imageExt ?? ext
+  const storagePath = `${userId}/${crypto.randomUUID()}.${storedExt}`
 
   const { error: upErr } = await supabase.storage
     .from('media')
     .upload(storagePath, buffer, {
       contentType:
-        ext === 'mp4' ? 'video/mp4' : ext === 'webm' ? 'video/webm' : `image/${ext}`,
+        storedExt === 'mp4' ? 'video/mp4'
+          : storedExt === 'webm' ? 'video/webm'
+            : storedExt === 'jpg' ? 'image/jpeg' : `image/${storedExt}`,
       cacheControl: '3600',
       upsert: false,
     })
@@ -99,6 +113,53 @@ async function mirrorToStorage(
 // Image generation
 // ---------------------------------------------------------------------------
 
+export async function uploadStudioImageImpl(input: {
+  fileName: string
+  mimeType: string
+  base64: string
+}): Promise<StudioAssetRow | { error: string }> {
+  try {
+    const userId = await getCurrentUserId()
+    if (!rateLimit(`studio-image-upload:${userId}`, { windowMs: 60_000, max: 10 }).allowed) {
+      return { error: 'Too many uploads. Please wait a minute and try again.' }
+    }
+    if (input.base64.length > Math.ceil(MAX_UPLOAD_BYTES * 4 / 3) + 16) {
+      return { error: 'Image is too large. Maximum size is 10 MB.' }
+    }
+    const validated = validateUpload(Buffer.from(input.base64, 'base64'), input.fileName, input.mimeType)
+    if ('reason' in validated) return { error: uploadRejectionMessage(validated) }
+    if (!validated.mime.startsWith('image/')) return { error: 'Choose a PNG, JPEG, WebP, or GIF image.' }
+
+    const supabase = getSupabaseServerClient()
+    const storagePath = `${userId}/${crypto.randomUUID()}.${validated.ext}`
+    const { error: uploadError } = await supabase.storage.from('media').upload(storagePath, validated.buffer, {
+      contentType: validated.mime,
+      cacheControl: '3600',
+      upsert: false,
+    })
+    if (uploadError) return { error: sanitizeSupabaseMessage(uploadError.message, 'Could not upload image.') }
+
+    const { data: publicData } = supabase.storage.from('media').getPublicUrl(storagePath)
+    const { data: row, error: rowError } = await supabase.from('studio_assets').insert({
+      owner_id: userId,
+      kind: 'image',
+      prompt: input.fileName.slice(0, 120),
+      provider: 'upload',
+      status: 'ready',
+      storage_path: storagePath,
+      url: publicData.publicUrl,
+      meta: { original_name: input.fileName.slice(0, 120) },
+    }).select('*').single()
+    if (rowError) {
+      await supabase.storage.from('media').remove([storagePath])
+      return { error: sanitizeSupabaseMessage(rowError.message, 'Could not save image to the library.') }
+    }
+    return row as unknown as StudioAssetRow
+  } catch (err) {
+    return { error: safeError(err, 'Image upload failed.') }
+  }
+}
+
 export interface GenerateImageInput {
   prompt: string
   aspectRatio?: '1:1' | '16:9' | '9:16' | '4:3' | '3:4'
@@ -108,10 +169,13 @@ export async function generateImageImpl(
   input: GenerateImageInput,
 ): Promise<StudioAssetRow | { error: string }> {
   try {
-    const userId = await getCurrentUserId()
+    const profile = await getCurrentUserProfile()
+    if (!profile) return { error: 'Not authenticated' }
+    const userId = profile.id
     const supabase = getSupabaseServerClient()
 
-    // Create a pending row first so we always have a handle even on failure.
+    // Create the asset before reserving a credit, so a failed insert cannot
+    // consume quota. The reservation is tied to this asset in the database.
     const { data: row, error: rowErr } = await supabase
       .from('studio_assets')
       .insert({
@@ -119,7 +183,7 @@ export async function generateImageImpl(
         kind: 'image',
         prompt: input.prompt,
         provider: 'zai',
-        provider_model: 'cogview-4-250304',
+        provider_model: ZAI_IMAGE_MODEL,
         status: 'processing',
         aspect_ratio: input.aspectRatio ?? '1:1',
       })
@@ -127,49 +191,73 @@ export async function generateImageImpl(
       .single()
     if (rowErr) return { error: sanitizeSupabaseMessage(rowErr.message, 'Failed to start image generation') }
 
-    let result
+    let quota
     try {
-      result = await generateCogViewImage({
+      quota = await reserveStudioImageCredit({
+        ownerId: userId,
+        assetId: row.id,
+        plan: profile.plan as PlanTier,
+        role: profile.role,
+      })
+    } catch (err) {
+      console.warn('[media.server] image credit reservation failed:', err)
+      await supabase.from('studio_assets').update({ status: 'failed', error: 'Could not reserve image credit' }).eq('id', row.id)
+      // The RPC may have committed even if its response was lost.
+      await refundStudioImageCredit(row.id).catch((refundError) => {
+        console.warn('[media.server] uncertain reservation refund failed:', refundError)
+      })
+      return { error: 'Image generation is temporarily unavailable. Please try again later.' }
+    }
+    if (!quota.allowed) {
+      await supabase.from('studio_assets').delete().eq('id', row.id)
+      return { error: `Monthly image limit reached (${quota.max}). Resets ${new Date(quota.resetAt).toLocaleDateString('en-MY', { timeZone: 'Asia/Kuala_Lumpur' })}.` }
+    }
+
+    try {
+      const result = await generateZaiImage({
         prompt: input.prompt,
         aspectRatio: input.aspectRatio ?? '1:1',
       })
-    } catch (err) {
-      const msg = err instanceof ZaiMediaError ? err.message : 'Image generation failed'
-      // Persist the detailed reason on the asset row (internal, not returned).
-      await supabase
+
+      // Mirror to our bucket so the URL is durable before finalizing the asset.
+      const mirrored = await mirrorToStorage(userId, result.remoteUrl, 'png', supabase)
+      const { data: updated, error: updErr } = await supabase
         .from('studio_assets')
-        .update({ status: 'failed', error: msg })
+        .update({
+          status: 'ready',
+          url: mirrored.publicUrl,
+          storage_path: mirrored.storagePath,
+          meta: { size: result.size, remote_url: result.remoteUrl },
+        })
         .eq('id', row.id)
-      return { error: getImageGenerationUserMessage(err) }
-    }
+        .select('*')
+        .single()
+      if (updErr || !updated) throw new Error('Image was generated but could not be saved to the Library')
 
-    // Mirror to our bucket so the URL is durable.
-    let publicUrl = result.remoteUrl
-    let storagePath: string | null = null
-    try {
-      const ext = (result.b64 ? 'png' : 'png') as 'png' | 'jpg' | 'webp'
-      const mirrored = await mirrorToStorage(userId, result.remoteUrl, ext)
-      publicUrl = mirrored.publicUrl
-      storagePath = mirrored.storagePath
+      return updated as unknown as StudioAssetRow
     } catch (err) {
-      // Non-fatal — fall back to the remote URL.
-      console.warn('[media.server] mirror failed, using remote URL:', err)
+      const detail = err instanceof Error ? err.message : 'Image generation failed'
+      await supabase.from('studio_assets')
+        .update({ status: 'failed', error: detail })
+        .eq('id', row.id)
+        .neq('status', 'ready')
+
+      let refunded = false
+      try {
+        refunded = await refundStudioImageCredit(row.id)
+      } catch (refundError) {
+        console.warn('[media.server] image credit refund failed:', refundError)
+      }
+      const message = err instanceof ZaiMediaError
+        ? getImageGenerationUserMessage(err)
+        : 'Image was not saved to the Library. Please try again.'
+      const creditNote = profile.role === 'admin' || profile.role === 'owner'
+        ? ''
+        : refunded
+          ? ' Your image credit was restored.'
+          : ' Check the Library before retrying; contact support if your image credit was not restored.'
+      return { error: message + creditNote }
     }
-
-    const { data: updated, error: updErr } = await supabase
-      .from('studio_assets')
-      .update({
-        status: 'ready',
-        url: publicUrl,
-        storage_path: storagePath,
-        meta: { size: result.size, remote_url: result.remoteUrl },
-      })
-      .eq('id', row.id)
-      .select('*')
-      .single()
-    if (updErr) return { error: sanitizeSupabaseMessage(updErr.message, 'Failed to complete image generation') }
-
-    return updated as unknown as StudioAssetRow
   } catch (err) {
     return {
       error: safeError(err, 'Image generation failed'),
@@ -386,16 +474,38 @@ export async function deleteAssetImpl(
   // Scope the lookup by owner_id so foreign assets are invisible.
   const { data: row } = await supabase
     .from('studio_assets')
-    .select('storage_path')
+    .select('storage_path, url')
     .eq('id', assetId)
     .eq('owner_id', userId)
     .maybeSingle()
 
   if (!row) return { error: 'Asset not found' }
 
-  if (row.storage_path) {
-    await supabase.storage.from('media').remove([row.storage_path])
+  const { count: logoCount, error: logoError } = await supabase
+    .from('studio_brand_kits')
+    .select('owner_id', { count: 'exact', head: true })
+    .eq('owner_id', userId)
+    .eq('logo_asset_id', assetId)
+  if (logoError) return { error: 'Could not check whether this image is your brand logo.' }
+  if (logoCount && logoCount > 0) return { error: 'This image is your brand logo. Remove it from the brand kit before deleting.' }
+
+  if (row.url) {
+    const { count, error: referencesError } = await supabase
+      .from('posts')
+      .select('id', { count: 'exact', head: true })
+      .eq('owner_id', userId)
+      .eq('media_url', row.url)
+    if (referencesError) return { error: 'Could not check whether this image is used by a post.' }
+    if (count && count > 0) return { error: 'This image is attached to a post. Remove it from the post before deleting.' }
   }
+
+  const { count: carouselCount, error: carouselError } = await supabase
+    .from('posts')
+    .select('id', { count: 'exact', head: true })
+    .eq('owner_id', userId)
+    .contains('media_asset_ids', [assetId])
+  if (carouselError) return { error: 'Could not check whether this image is used in a post.' }
+  if (carouselCount && carouselCount > 0) return { error: 'This image is in a post. Remove it before deleting.' }
 
   const { error } = await supabase
     .from('studio_assets')
@@ -403,5 +513,8 @@ export async function deleteAssetImpl(
     .eq('id', assetId)
     .eq('owner_id', userId)
   if (error) return { error: 'Failed to delete asset' }
+  if (row.storage_path) {
+    await supabase.storage.from('media').remove([row.storage_path])
+  }
   return null
 }

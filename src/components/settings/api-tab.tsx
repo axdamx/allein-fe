@@ -25,7 +25,7 @@ export const ApiTab = () => {
         />
         <KeyRow
           label="Z.AI Media"
-          description="CogView-4 images and CogVideoX-3 video"
+          description="GLM-Image images and CogVideoX-3 video"
           status="configured"
         />
         <KeyRow
