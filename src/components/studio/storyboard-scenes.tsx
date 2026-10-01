@@ -3,7 +3,7 @@
  *
  * Renders scenes as draggable cards (horizontal). Each card shows the scene's
  * image (or a placeholder while pending), an editable caption, duration, and
- * per-scene actions: generate image (reuses the CogView pipeline), edit prompt,
+ * per-scene actions: generate image (reuses the GLM-Image pipeline), edit prompt,
  * delete. Drag-reorder persists via `reorderScenes`.
  *
  * Uses @dnd-kit with both pointer + keyboard sensors for accessibility.

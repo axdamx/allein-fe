@@ -29,7 +29,7 @@ export function windowKeyForWindow(
   window: LimitWindow,
   now: Date = new Date(),
 ): string | null {
-  if (window === 'day') {
+  if (window === 'day' || window === 'month') {
     // Parts are formatted with leading zeros where applicable.
     const parts = new Intl.DateTimeFormat('en-CA', {
       timeZone: QUOTA_TIMEZONE,
@@ -40,9 +40,9 @@ export function windowKeyForWindow(
     const y = parts.find((p) => p.type === 'year')!.value
     const m = parts.find((p) => p.type === 'month')!.value
     const d = parts.find((p) => p.type === 'day')!.value
-    return `${y}-${m}-${d}`
+    return `${y}-${m}-${window === 'month' ? '01' : d}`
   }
-  // 'lifetime' and 'month' are not windowed by usage_windows today.
+  // Lifetime limits are enforced against profile counters at create time.
   return null
 }
 
@@ -59,6 +59,7 @@ const METRIC_KEY: Record<LimitMetric, string> = {
   leads: 'leads',
   whatsappMessages: 'whatsapp_messages',
   telegramMessages: 'telegram_messages',
+  imageGen: 'image_gen',
 }
 
 export interface ConsumeResult {
@@ -70,12 +71,12 @@ export interface ConsumeResult {
   remaining: number | null
   /** Max for this metric on the user's tier. `null` for unlimited. */
   max: number | null
-  /** ISO timestamp when the window resets (start of next local day). */
+  /** ISO timestamp when the active daily or monthly window resets. */
   resetAt: string
 }
 
 /**
- * Atomically checks the daily quota for `metric` and consumes one unit if
+ * Atomically checks a daily or monthly quota and consumes one unit if
  * allowed. Race-proof: the underlying conditional upsert serialises on the
  * unique window key — including the first consume of a new day.
  *
@@ -96,25 +97,35 @@ export async function consumeQuota(
   opts?: {
     userId?: string
     plan?: PlanTier
+    role?: string
     supabase?: SupabaseClient
   },
 ): Promise<ConsumeResult> {
   let userId: string
   let plan: PlanTier
+  let role: string | undefined
 
   if (opts?.userId && opts?.plan) {
     userId = opts.userId
     plan = opts.plan
+    role = opts.role
   } else {
     const profile = await getCurrentUserProfile(opts?.supabase)
     if (!profile) throw new Error('Not authenticated')
     userId = profile.id
     plan = profile.plan as PlanTier
+    role = profile.role
   }
 
   const config = PLAN_CONFIGS[plan] ?? PLAN_CONFIGS.free
   const limit = config.limits[metric]
   const windowKey = limit.window ? windowKeyForWindow(limit.window) : null
+
+  // Owners/admins can exercise paid image generation during support and demos.
+  // Feature access remains enforced at the public media boundary.
+  if (metric === 'imageGen' && (role === 'admin' || role === 'owner')) {
+    return { allowed: true, used: 0, remaining: null, max: null, resetAt: new Date(0).toISOString() }
+  }
 
   // Lifetime metrics: not consumed here. Caller should use enforceLimitImpl.
   if (!windowKey) {
@@ -128,7 +139,7 @@ export async function consumeQuota(
   }
 
   const supabase = opts?.supabase ?? getSupabaseServerClient()
-  const { data, error } = await supabase.rpc('try_consume', {
+  const { data, error } = await supabase.rpc(limit.window === 'month' ? 'try_consume_monthly' : 'try_consume', {
     p_user_id: userId,
     p_metric: METRIC_KEY[metric],
     p_max: limit.max, // null → unlimited
@@ -195,9 +206,8 @@ async function countUserLeads(
 }
 
 /**
- * For each metric whose limit has a window (day), read today's used count
- * from usage_windows. Returns a partial override map in one database round
- * trip. Lifetime metrics are absent and fall back to profile counters.
+ * Read current daily and monthly usage from usage_windows. Lifetime metrics
+ * are absent and fall back to profile counters.
  */
 async function getWindowedUsage(
   userId: string,
@@ -205,28 +215,32 @@ async function getWindowedUsage(
   supabase: SupabaseClient = getSupabaseServerClient(),
 ): Promise<Partial<Record<LimitMetric, number>>> {
   const config = PLAN_CONFIGS[plan] ?? PLAN_CONFIGS.free
-  const today = windowKeyForWindow('day')
-  if (!today) return {}
+  const today = windowKeyForWindow('day')!
+  const thisMonth = windowKeyForWindow('month')!
 
   const out: Partial<Record<LimitMetric, number>> = {}
   const windowedMetrics = (Object.keys(config.limits) as LimitMetric[]).filter(
-    (m) => config.limits[m].window === 'day',
+    (m) => config.limits[m].window === 'day' || config.limits[m].window === 'month',
   )
 
   for (const metric of windowedMetrics) out[metric] = 0
 
-  const { data } = await supabase.rpc('get_window_usage_all', {
-    p_user_id: userId,
-    p_window_key: today,
-  })
-
-  const metricByStorageKey = new Map(
-    windowedMetrics.map((metric) => [METRIC_KEY[metric], metric] as const),
-  )
-
-  for (const row of data ?? []) {
-    const metric = metricByStorageKey.get(row.metric)
-    if (metric) out[metric] = Number(row.used ?? 0)
+  const windows = await Promise.all([
+    supabase.rpc('get_window_usage_all', { p_user_id: userId, p_window_key: today }),
+    supabase.rpc('get_window_usage_all', { p_user_id: userId, p_window_key: thisMonth }),
+  ])
+  for (const [index, response] of windows.entries()) {
+    if (response.error) throw new Error(`Failed to load usage: ${response.error.message}`)
+    const window = index === 0 ? 'day' : 'month'
+    const metricByStorageKey = new Map(
+      windowedMetrics
+        .filter((metric) => config.limits[metric].window === window)
+        .map((metric) => [METRIC_KEY[metric], metric] as const),
+    )
+    for (const row of response.data ?? []) {
+      const metric = metricByStorageKey.get(row.metric)
+      if (metric) out[metric] = Number(row.used ?? 0)
+    }
   }
   return out
 }
@@ -262,6 +276,7 @@ export function buildPlanState(
     leads: leadsCount,
     whatsappMessages: profile.whatsapp_messages_count ?? 0,
     telegramMessages: profile.telegram_messages_count ?? 0,
+    imageGen: 0,
   }
 
   const remaining: Record<LimitMetric, number | null> = {
@@ -282,6 +297,7 @@ export function buildPlanState(
       usage.telegramMessages,
       config.limits.telegramMessages.max,
     ),
+    imageGen: computeRemaining(usage.imageGen, config.limits.imageGen.max),
   }
 
   return {
@@ -304,14 +320,18 @@ export async function getPlanStateImpl(): Promise<PlanState | null> {
   ])
   const state = buildPlanState(profile, leadsCount)
 
-  // Override windowed metrics with today's windowed usage so the UI shows
-  // the correct "remaining today" instead of a lifetime counter.
+  // Override windowed metrics with current daily/monthly usage rather than
+  // lifetime profile counters.
   ;(Object.keys(windowed) as LimitMetric[]).forEach((metric) => {
     const used = windowed[metric] ?? 0
     state.usage[metric] = used
     const max = PLAN_CONFIGS[state.tier].limits[metric].max
     state.remaining[metric] = computeRemaining(used, max)
   })
+
+  if (profile.role === 'admin' || profile.role === 'owner') {
+    state.remaining.imageGen = null
+  }
 
   return state
 }

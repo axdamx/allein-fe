@@ -16,29 +16,35 @@
 import { createTool } from '@mastra/core/tools'
 import { z } from 'zod'
 import { getSupabaseServiceClient } from '@/lib/supabase/service.server'
-import { generateCogViewImage, getImageGenerationUserMessage, ZaiMediaError } from '@/lib/media/cogview'
+import { generateZaiImage, getImageGenerationUserMessage, ZAI_IMAGE_MODEL, ZaiMediaError } from '@/lib/media/zai-image'
 import { submitCogVideoXJob } from '@/lib/media/cogvideox'
 import { getDefaultModel } from '@/lib/ai-provider'
 import { generateText } from 'ai'
 import { assertSafeUrl } from '@/lib/url-guard'
+import { reserveStudioImageCredit, refundStudioImageCredit } from '@/server/studio-image-credit.server'
+import { mirrorToStorage } from '@/server/media.server'
+import { PLAN_CONFIGS, type PlanTier } from '@/lib/plans'
 
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
 
-async function ownerHasFeature(
+async function getOwnerMediaAccess(
   ownerId: string,
   feature: 'aiImageGen' | 'aiVideoGen',
-): Promise<boolean> {
+): Promise<{ allowed: boolean; plan: PlanTier; role: string }> {
   const supabase = getSupabaseServiceClient()
   const { data: profile } = await supabase
     .from('profiles')
-    .select('plan')
+    .select('plan, role')
     .eq('id', ownerId)
     .single()
-  const { PLAN_CONFIGS } = await import('@/lib/plans')
-  const tier = (profile?.plan ?? 'free') as keyof typeof PLAN_CONFIGS
-  return PLAN_CONFIGS[tier]?.features?.[feature] ?? false
+  const plan = (profile?.plan ?? 'free') as PlanTier
+  return {
+    allowed: PLAN_CONFIGS[plan]?.features?.[feature] ?? false,
+    plan,
+    role: profile?.role ?? 'user',
+  }
 }
 
 /** Insert a studio_assets row on the owner's behalf (service-role bypasses RLS). */
@@ -51,6 +57,8 @@ async function insertAssetRow(
     status: 'processing' | 'ready' | 'failed'
     aspect_ratio?: string | null
     url?: string | null
+    storage_path?: string | null
+    meta?: Record<string, string>
     provider_id?: string | null
     error?: string | null
   },
@@ -67,6 +75,8 @@ async function insertAssetRow(
       status: fields.status,
       aspect_ratio: fields.aspect_ratio ?? null,
       url: fields.url ?? null,
+      storage_path: fields.storage_path ?? null,
+      meta: fields.meta ?? {},
       provider_id: fields.provider_id ?? null,
       error: fields.error ?? null,
     })
@@ -83,7 +93,7 @@ async function insertAssetRow(
 export const generateImageTool = createTool({
   id: 'generate_image',
   description:
-    'Generate an image from a text prompt using CogView. Use this when the user asks to create, generate, make, or design an image, illustration, photo, or visual. Returns the image URL and asset id.',
+    'Generate an image from a text prompt using GLM-Image. Use this when the user asks to create, generate, make, or design an image, illustration, photo, or visual. Returns the image URL and asset id.',
   inputSchema: z.object({
     prompt: z
       .string()
@@ -97,8 +107,8 @@ export const generateImageTool = createTool({
     const ownerId = context?.agent?.resourceId
     if (!ownerId) return { success: false, error: 'No owner context' }
 
-    const allowed = await ownerHasFeature(ownerId, 'aiImageGen')
-    if (!allowed) {
+    const access = await getOwnerMediaAccess(ownerId, 'aiImageGen')
+    if (!access.allowed) {
       return {
         success: false,
         error:
@@ -106,39 +116,94 @@ export const generateImageTool = createTool({
       }
     }
 
+    let pending
     try {
-      const result = await generateCogViewImage({
+      pending = await insertAssetRow(ownerId, {
+        kind: 'image',
+        prompt,
+        provider_model: ZAI_IMAGE_MODEL,
+        status: 'processing',
+        aspect_ratio: aspect_ratio ?? '1:1',
+      })
+    } catch (err) {
+      console.warn('[studio-tools] image asset creation failed:', err)
+      return { success: false, error: 'Image generation is temporarily unavailable. Please try again later.' }
+    }
+
+    let quota
+    try {
+      quota = await reserveStudioImageCredit({
+        ownerId,
+        assetId: pending.id,
+        plan: access.plan,
+        role: access.role,
+      })
+    } catch (err) {
+      console.warn('[studio-tools] image quota unavailable:', err)
+      await getSupabaseServiceClient().from('studio_assets')
+        .update({ status: 'failed', error: 'Could not reserve image credit' })
+        .eq('id', pending.id)
+      // The RPC may have committed even if its response was lost.
+      await refundStudioImageCredit(pending.id).catch((refundError) => {
+        console.warn('[studio-tools] uncertain reservation refund failed:', refundError)
+      })
+      return { success: false, error: 'Image generation is temporarily unavailable. Please try again later.' }
+    }
+    if (!quota.allowed) {
+      await getSupabaseServiceClient().from('studio_assets').delete().eq('id', pending.id)
+      return {
+        success: false,
+        error: `Monthly image limit reached (${quota.max}). Please wait until next month or upgrade your plan.`,
+      }
+    }
+
+    try {
+      const result = await generateZaiImage({
         prompt,
         aspectRatio: aspect_ratio ?? '1:1',
       })
 
-      const row = await insertAssetRow(ownerId, {
-        kind: 'image',
-        prompt,
-        provider_model: 'cogview-4-250304',
-        status: 'ready',
-        aspect_ratio: aspect_ratio ?? '1:1',
-        url: result.remoteUrl,
-      })
+      const mirrored = await mirrorToStorage(ownerId, result.remoteUrl, 'png', getSupabaseServiceClient())
+      const { data: row, error: updateError } = await getSupabaseServiceClient()
+        .from('studio_assets')
+        .update({
+          status: 'ready',
+          url: mirrored.publicUrl,
+          storage_path: mirrored.storagePath,
+          meta: { size: result.size, remote_url: result.remoteUrl },
+        })
+        .eq('id', pending.id)
+        .select('id')
+        .single()
+      if (updateError || !row) throw new Error('Image was generated but could not be saved to the Library')
 
       return {
         success: true,
         assetId: row.id,
-        url: result.remoteUrl,
+        url: mirrored.publicUrl,
         message: 'Image generated.',
       }
     } catch (err) {
-      const msg = err instanceof ZaiMediaError ? err.message : 'Image generation failed'
-      // Record the failure so the library shows it.
-      await insertAssetRow(ownerId, {
-        kind: 'image',
-        prompt,
-        provider_model: 'cogview-4-250304',
-        status: 'failed',
-        aspect_ratio: aspect_ratio ?? '1:1',
-        error: msg,
-      }).catch(() => null)
-      return { success: false, error: getImageGenerationUserMessage(err) }
+      const detail = err instanceof Error ? err.message : 'Image generation failed'
+      await getSupabaseServiceClient().from('studio_assets')
+        .update({ status: 'failed', error: detail })
+        .eq('id', pending.id)
+        .neq('status', 'ready')
+      let refunded = false
+      try {
+        refunded = await refundStudioImageCredit(pending.id)
+      } catch (refundError) {
+        console.warn('[studio-tools] image credit refund failed:', refundError)
+      }
+      const message = err instanceof ZaiMediaError
+        ? getImageGenerationUserMessage(err)
+        : 'Image was not saved to the Library. Please try again.'
+      const creditNote = access.role === 'admin' || access.role === 'owner'
+        ? ''
+        : refunded
+          ? ' Your image credit was restored.'
+          : ' Check the Library before retrying; contact support if your image credit was not restored.'
+      return { success: false, error: message + creditNote }
     }
   },
 })
@@ -179,8 +244,8 @@ export const generateVideoTool = createTool({
     const ownerId = context?.agent?.resourceId
     if (!ownerId) return { success: false, error: 'No owner context' }
 
-    const allowed = await ownerHasFeature(ownerId, 'aiVideoGen')
-    if (!allowed) {
+    const access = await getOwnerMediaAccess(ownerId, 'aiVideoGen')
+    if (!access.allowed) {
       return {
         success: false,
         error:

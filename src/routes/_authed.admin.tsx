@@ -906,7 +906,7 @@ const SystemConfigTab = () => {
             </CardHeader>
             <CardContent className="space-y-3">
               <IntegrationRow provider="Z.AI" description="GLM-4.5-Flash agent chat &amp; text generation" configured />
-              <IntegrationRow provider="Z.AI Media" description="CogView-4 images &amp; CogVideoX-3 video" configured />
+              <IntegrationRow provider="Z.AI Media" description="GLM-Image images &amp; CogVideoX-3 video" configured />
               <IntegrationRow provider="Local MiniLM" description="On-device knowledge-base embeddings" configured />
               <IntegrationRow provider="Supabase" description="Database, auth, and storage" configured />
             </CardContent>
@@ -924,7 +924,7 @@ const SystemConfigTab = () => {
               <EnvRow label="Auth" value="Supabase Auth (SSR cookies)" />
               <EnvRow label="LLM Provider" value="Z.AI" />
               <EnvRow label="Text Model" value="GLM-4.5-Flash" />
-              <EnvRow label="Image Gen" value="Z.AI CogView-4" />
+              <EnvRow label="Image Gen" value="Z.AI GLM-Image" />
               <EnvRow label="Video Gen" value="Z.AI CogVideoX-3" />
               <EnvRow label="Embeddings" value="Local MiniLM-L6-v2" />
             </CardContent>
