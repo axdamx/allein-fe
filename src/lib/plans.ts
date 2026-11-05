@@ -19,6 +19,7 @@ export type LimitMetric =
   | 'leads'
   | 'whatsappMessages'
   | 'telegramMessages'
+  | 'imageGen'
 
 export type LimitWindow = 'lifetime' | 'day' | 'month'
 
@@ -30,7 +31,7 @@ export interface PlanLimit {
    * - 'lifetime': counter never resets (e.g. max agents). Enforced at create-time.
    * - 'day':      resets every local calendar day. Enforced atomically per
    *               operation via try_consume (see usage_windows table).
-   * - 'month':    reserved for future monthly quotas; treated as 'lifetime' today.
+   * - 'month':    resets on the first day of the next Malaysia calendar month.
    * Defaults to 'lifetime' for backward compatibility.
    */
   window?: LimitWindow
@@ -111,6 +112,7 @@ export const PLAN_CONFIGS: Record<PlanTier, PlanConfig> = {
       leads: { max: 10 },
       whatsappMessages: { max: 0, window: 'day' },
       telegramMessages: { max: 0, window: 'day' },
+      imageGen: { max: 0, window: 'month' },
     },
     features: {
       crm: true,
@@ -146,6 +148,7 @@ export const PLAN_CONFIGS: Record<PlanTier, PlanConfig> = {
       leads: { max: 100 },
       whatsappMessages: { max: 50, window: 'day' },
       telegramMessages: { max: 100, window: 'day' },
+      imageGen: { max: 0, window: 'month' },
     },
     features: {
       crm: true,
@@ -182,6 +185,7 @@ export const PLAN_CONFIGS: Record<PlanTier, PlanConfig> = {
       leads: { max: null },
       whatsappMessages: { max: null, window: 'day' },
       telegramMessages: { max: null, window: 'day' },
+      imageGen: { max: 100, window: 'month' },
     },
     features: {
       crm: true,
@@ -217,6 +221,7 @@ export const PLAN_CONFIGS: Record<PlanTier, PlanConfig> = {
       leads: { max: null },
       whatsappMessages: { max: null, window: 'day' },
       telegramMessages: { max: null, window: 'day' },
+      imageGen: { max: 500, window: 'month' },
     },
     features: {
       crm: true,

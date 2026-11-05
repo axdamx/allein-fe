@@ -70,7 +70,7 @@ const FEATURE_LABELS: Partial<Record<FeatureKey, string>> = {
   ragDocuments: 'Knowledge Base',
   aiImageGen: 'AI Image Generation',
   aiVideoGen: 'AI Video Generation',
-  scheduledPosts: 'Scheduled Posts',
+  scheduledPosts: 'Post Planning',
   teamSeats: 'Team Seats',
   apiAccess: 'API Access',
   whiteLabel: 'White Label',

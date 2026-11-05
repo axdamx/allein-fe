@@ -20,7 +20,6 @@ const ALL_FEATURES: { key: string; label: string }[] = [
   { key: 'crm', label: 'CRM pipeline' },
   { key: 'marketingStudio', label: 'Marketing Studio' },
   { key: 'ragDocuments', label: 'RAG knowledge base' },
-  { key: 'scheduledPosts', label: 'Scheduled posts' },
   { key: 'aiImageGen', label: 'AI image generation' },
   { key: 'aiVideoGen', label: 'AI video generation (coming soon)' },
   { key: 'teamSeats', label: 'Team seats' },
@@ -146,6 +145,13 @@ const PricingPage = () => {
                       value={cfg.limits.posts.max}
                       suffix={cfg.limits.posts.window === 'day' ? '/day' : undefined}
                     />
+                    {cfg.features.aiImageGen && (
+                      <LimitRow
+                        label="AI images"
+                        value={cfg.limits.imageGen.max}
+                        suffix="/month"
+                      />
+                    )}
                     <LimitRow
                       label="Documents"
                       value={cfg.limits.documents.max}

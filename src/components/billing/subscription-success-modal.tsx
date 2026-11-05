@@ -77,7 +77,7 @@ function benefitsForPlan(tier: 'lite' | 'pro'): Benefit[] {
     {
       icon: Rocket,
       title: 'Automation unlocked',
-      description: 'Schedule posts and connect your Telegram bot.',
+      description: 'Plan posts and connect your Telegram bot.',
     },
   ]
 }

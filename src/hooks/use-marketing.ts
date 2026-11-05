@@ -5,6 +5,7 @@ import {
   generatePost,
   createPost,
   updatePost,
+  duplicatePost,
   deletePost,
   type PostRow,
   type PostPlatform,
@@ -28,7 +29,11 @@ export const useGeneratePost = () => {
       platform: PostPlatform
       tone?: string
       agentId?: string
+      sourceIds?: string[]
     }) => generatePost({ data: input }),
+    onSuccess: (result) => {
+      if ('error' in result) toast.error(result.error)
+    },
     onError: (err: unknown) => {
       const msg = err instanceof Error ? err.message : 'Generation failed'
       toast.error(msg)
@@ -70,8 +75,10 @@ export const useCreatePost = () => {
       }
       toast.success('Post saved')
       qc.invalidateQueries({ queryKey: ['marketing', 'posts'] })
+      qc.invalidateQueries({ queryKey: ['studio', 'content-ideas'] })
       qc.invalidateQueries({ queryKey: ['plan-state'] })
     },
+    onError: (error: unknown) => toast.error(error instanceof Error ? error.message : 'Could not save post'),
   })
 }
 
@@ -86,6 +93,27 @@ export const useUpdatePost = () => {
       }
       qc.invalidateQueries({ queryKey: ['marketing', 'posts'] })
     },
+    onError: (error: unknown) => toast.error(error instanceof Error ? error.message : 'Could not update post'),
+  })
+}
+
+export const useDuplicatePost = () => {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (id: string) => duplicatePost({ data: { id } }),
+    onSuccess: (result) => {
+      if ('error' in result) {
+        toast.error(result.error === 'daily_post_limit_reached'
+          ? 'Daily post limit reached. Please try again after the quota resets.'
+          : result.error)
+        return
+      }
+      toast.success('Draft duplicated')
+      qc.invalidateQueries({ queryKey: ['marketing', 'posts'] })
+      qc.invalidateQueries({ queryKey: ['studio', 'content-ideas'] })
+      qc.invalidateQueries({ queryKey: ['plan-state'] })
+    },
+    onError: (error: unknown) => toast.error(error instanceof Error ? error.message : 'Could not duplicate post'),
   })
 }
 

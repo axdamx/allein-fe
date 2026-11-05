@@ -120,14 +120,7 @@ export function validateUpload(
   fileName: string,
   declaredMime: string,
 ): ValidatedUpload | UploadRejection {
-  console.log('[chat-debug] validateUpload', {
-    fileName,
-    declaredMime,
-    bytes: buffer.byteLength,
-    first8: Array.from(buffer.slice(0, 8)).map((b) => b.toString(16).padStart(2, '0')),
-  })
   if (buffer.byteLength > MAX_UPLOAD_BYTES) {
-    console.log('[chat-debug] validateUpload REJECTED: too_large')
     return { reason: 'too_large', maxBytes: MAX_UPLOAD_BYTES }
   }
 
@@ -135,7 +128,6 @@ export function validateUpload(
   const ext = (fileName.includes('.') ? fileName.split('.').pop() : '')?.toLowerCase() ?? ''
   const candidate = ALLOWED.find((a) => a.ext === ext)
   if (!candidate) {
-    console.log('[chat-debug] validateUpload REJECTED: bad_extension', { ext, allowed: ALLOWED_EXTENSIONS })
     return { reason: 'bad_extension', allowed: ALLOWED_EXTENSIONS }
   }
 
@@ -149,7 +141,6 @@ export function validateUpload(
       return true
     })
     if (!bytesOk) {
-      console.log('[chat-debug] validateUpload REJECTED: bad_content (magic-byte mismatch)', { ext, expected: candidate.sniff })
       return { reason: 'bad_content' }
     }
   }
@@ -166,7 +157,6 @@ export function validateUpload(
       dm === cm ||
       (isTextFamily && (dm.startsWith('text/') || dm === 'application/json'))
     if (!declaredCompatible) {
-      console.log('[chat-debug] validateUpload REJECTED: bad_content (MIME mismatch)', { declared: dm, expected: cm })
       return { reason: 'bad_content' }
     }
   }
